@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   FileText,
@@ -39,7 +40,11 @@ const managementNav = [
   { label: "Billing", href: "/billing", icon: CreditCard },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({
+  churchName,
+}: {
+  churchName?: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -92,7 +97,7 @@ export function AdminSidebar() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-sidebar-foreground">
-              My Church
+              {churchName || "My Church"}
             </span>
             <Badge className="border-gold/30 bg-gold/15 text-gold text-xs">
               Standard
@@ -114,7 +119,10 @@ export function AdminSidebar() {
           <Separator className="bg-sidebar-border" />
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton className="text-sidebar-foreground/60">
+              <SidebarMenuButton
+                className="text-sidebar-foreground/60"
+                onClick={() => signOut({ callbackUrl: "/sign-in" })}
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Sign out</span>
               </SidebarMenuButton>
