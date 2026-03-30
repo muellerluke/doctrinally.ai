@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 
 export default function UserManagementPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="User Management"
         description="Manage admin access and invitations for your church"

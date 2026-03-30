@@ -12,12 +12,10 @@ import { Button } from "@/components/ui/button";
 
 export default function SignInPage() {
   return (
-    <Card className="shadow-lg">
+    <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
         <CardTitle className="font-heading text-2xl">Welcome back</CardTitle>
-        <CardDescription>
-          Sign in to manage your church
-        </CardDescription>
+        <CardDescription>Sign in to manage your church</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="space-y-4">
@@ -30,7 +28,7 @@ export default function SignInPage() {
               <Label htmlFor="password">Password</Label>
               <Link
                 href="/forgot-password"
-                className="text-xs text-muted-foreground hover:text-primary"
+                className="text-xs text-muted-foreground transition-colors hover:text-primary"
               >
                 Forgot password?
               </Link>
@@ -45,7 +43,7 @@ export default function SignInPage() {
           Don&apos;t have an account?{" "}
           <Link
             href="/sign-up"
-            className="font-medium text-primary hover:underline"
+            className="font-semibold text-primary transition-colors hover:text-primary/80"
           >
             Sign up
           </Link>

@@ -45,11 +45,13 @@ export function AdminSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold text-gold-foreground">
             <BookOpen className="h-4 w-4" />
           </div>
-          <span className="font-heading text-lg">Doctrinally.AI</span>
+          <span className="font-heading text-lg text-sidebar-foreground">
+            Doctrinally.AI
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
@@ -89,28 +91,30 @@ export function AdminSidebar() {
       <SidebarFooter className="p-4">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">My Church</span>
-            <Badge variant="secondary" className="text-xs">
+            <span className="text-sm font-medium text-sidebar-foreground">
+              My Church
+            </span>
+            <Badge className="border-gold/30 bg-gold/15 text-gold text-xs">
               Standard
             </Badge>
           </div>
-          <Separator />
+          <Separator className="bg-sidebar-border" />
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
               <span>Questions</span>
               <span>0 / 500</span>
             </div>
             <Progress value={0} className="h-1.5" />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
               <span>Uploads</span>
               <span>0 / 25</span>
             </div>
             <Progress value={0} className="h-1.5" />
           </div>
-          <Separator />
+          <Separator className="bg-sidebar-border" />
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton className="text-muted-foreground">
+              <SidebarMenuButton className="text-sidebar-foreground/60">
                 <LogOut className="h-4 w-4" />
                 <span>Sign out</span>
               </SidebarMenuButton>

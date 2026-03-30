@@ -1,24 +1,21 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { DM_Serif_Display } from "next/font/google";
-import { Geist_Mono } from "next/font/google";
+import { Playfair_Display, Source_Serif_4, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const inter = Inter({
+const sourceSerif = Source_Serif_4({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const dmSerif = DM_Serif_Display({
+const playfair = Playfair_Display({
   variable: "--font-heading",
-  weight: "400",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
@@ -37,7 +34,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${dmSerif.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${sourceSerif.variable} ${playfair.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

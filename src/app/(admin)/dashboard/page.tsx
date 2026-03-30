@@ -4,12 +4,12 @@ import { StatCard } from "@/components/shared/stat-card";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Dashboard"
         description="Overview of your church's activity"
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Questions Asked"
           value={0}
@@ -29,7 +29,7 @@ export default function DashboardPage() {
           icon={Users}
         />
         <StatCard
-          title="Unanswered Questions"
+          title="Unanswered"
           value={0}
           description="This month"
           icon={HelpCircle}

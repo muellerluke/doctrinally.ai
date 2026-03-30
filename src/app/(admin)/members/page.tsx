@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 
 export default function MembersPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Member Directory"
         description="Members who have signed up for your church's chat experience"

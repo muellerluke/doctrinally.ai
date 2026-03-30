@@ -30,7 +30,7 @@ export function AdminHeader() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>{title}</BreadcrumbPage>
+            <BreadcrumbPage className="font-heading">{title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
