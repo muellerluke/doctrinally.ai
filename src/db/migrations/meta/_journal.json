@@ -8,6 +8,13 @@
       "when": 1774833944105,
       "tag": "0000_tearful_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774882566619,
+      "tag": "0001_gigantic_rocket_raccoon",
+      "breakpoints": true
     }
   ]
 }
