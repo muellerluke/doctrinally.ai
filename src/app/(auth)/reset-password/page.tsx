@@ -12,9 +12,11 @@ import { Button } from "@/components/ui/button";
 
 export default function ResetPasswordPage() {
   return (
-    <Card className="shadow-lg">
+    <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
-        <CardTitle className="font-heading text-2xl">Reset password</CardTitle>
+        <CardTitle className="font-heading text-2xl">
+          Reset password
+        </CardTitle>
         <CardDescription>Enter your new password below</CardDescription>
       </CardHeader>
       <CardContent>
@@ -34,7 +36,7 @@ export default function ResetPasswordPage() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           <Link
             href="/sign-in"
-            className="font-medium text-primary hover:underline"
+            className="font-semibold text-primary transition-colors hover:text-primary/80"
           >
             Back to sign in
           </Link>

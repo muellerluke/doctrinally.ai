@@ -12,9 +12,11 @@ import { Button } from "@/components/ui/button";
 
 export default function SignUpPage() {
   return (
-    <Card className="shadow-lg">
+    <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
-        <CardTitle className="font-heading text-2xl">Create an account</CardTitle>
+        <CardTitle className="font-heading text-2xl">
+          Create an account
+        </CardTitle>
         <CardDescription>
           Get started with Doctrinally.AI for your church
         </CardDescription>
@@ -41,7 +43,7 @@ export default function SignUpPage() {
           Already have an account?{" "}
           <Link
             href="/sign-in"
-            className="font-medium text-primary hover:underline"
+            className="font-semibold text-primary transition-colors hover:text-primary/80"
           >
             Sign in
           </Link>

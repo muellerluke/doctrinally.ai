@@ -16,7 +16,7 @@ export const PLANS = {
   },
   enterprise: {
     name: "Enterprise",
-    priceMonthly: 9900,
+    priceMonthly: 15000,
     documentUploadLimit: 100,
     questionLimit: 2000,
     features: [

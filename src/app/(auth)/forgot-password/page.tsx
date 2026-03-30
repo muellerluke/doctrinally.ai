@@ -12,9 +12,11 @@ import { Button } from "@/components/ui/button";
 
 export default function ForgotPasswordPage() {
   return (
-    <Card className="shadow-lg">
+    <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
-        <CardTitle className="font-heading text-2xl">Forgot password</CardTitle>
+        <CardTitle className="font-heading text-2xl">
+          Forgot password
+        </CardTitle>
         <CardDescription>
           Enter your email and we&apos;ll send you a reset link
         </CardDescription>
@@ -32,7 +34,7 @@ export default function ForgotPasswordPage() {
         <p className="mt-6 text-center text-sm text-muted-foreground">
           <Link
             href="/sign-in"
-            className="font-medium text-primary hover:underline"
+            className="font-semibold text-primary transition-colors hover:text-primary/80"
           >
             Back to sign in
           </Link>

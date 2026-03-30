@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 
 export default function DocumentsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Documents"
         description="Manage your church's content library"

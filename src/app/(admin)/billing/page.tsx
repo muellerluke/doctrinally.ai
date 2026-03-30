@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 
 export default function BillingPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Billing"
         description="Manage your subscription and view usage"
