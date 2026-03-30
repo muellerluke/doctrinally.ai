@@ -75,7 +75,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
+    <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
         <CardTitle className="font-heading text-2xl">
           Create an account

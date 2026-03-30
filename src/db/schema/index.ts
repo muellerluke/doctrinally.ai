@@ -8,3 +8,4 @@ export * from "./chats";
 export * from "./messages";
 export * from "./invitations";
 export * from "./password-reset-tokens";
+export * from "./usage-records";

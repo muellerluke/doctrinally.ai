@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
+      <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
         <CardHeader className="text-center">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <CheckCircle2 className="h-6 w-6 text-primary" />

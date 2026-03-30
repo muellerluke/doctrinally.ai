@@ -7,10 +7,11 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
   NEXT_PUBLIC_APP_DOMAIN: z.string().min(1),
 
-  // Phase 3+
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  // Phase 3 - Stripe (required for billing features)
+  STRIPE_SECRET_KEY: z.string().min(1),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  STRIPE_STANDARD_PRICE_ID: z.string().min(1),
+  STRIPE_ENTERPRISE_PRICE_ID: z.string().min(1),
 
   // Phase 5+
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
