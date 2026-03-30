@@ -8,6 +8,7 @@ import type {
   chats,
   messages,
   invitations,
+  passwordResetTokens,
 } from "@/db/schema";
 
 export type User = typeof users.$inferSelect;
@@ -36,3 +37,6 @@ export type NewMessage = typeof messages.$inferInsert;
 
 export type Invitation = typeof invitations.$inferSelect;
 export type NewInvitation = typeof invitations.$inferInsert;
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;

@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Globe } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -16,23 +14,40 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { signUpSchema } from "@/lib/validations/auth";
-import { signUp } from "@/lib/actions/auth";
+import { onboardingSchema } from "@/lib/validations/onboarding";
+import { createChurch } from "@/lib/actions/onboarding";
+import { slugify } from "@/lib/utils";
 
-export default function SignUpPage() {
+export default function OnboardingPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!slugEdited && name) {
+      setSlug(slugify(name));
+    }
+  }, [name, slugEdited]);
+
+  function handleSlugChange(value: string) {
+    setSlugEdited(true);
+    setSlug(
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "")
+        .replace(/--+/g, "-")
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
 
-    const parsed = signUpSchema.safeParse({ name, email, password });
+    const parsed = onboardingSchema.safeParse({ name, slug });
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
@@ -45,27 +60,19 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
-      const result = await signUp({ name, email, password });
+      const result = await createChurch({ name, slug });
 
       if (result.error) {
-        toast.error(result.error);
+        if (result.error.toLowerCase().includes("url")) {
+          setErrors({ slug: result.error });
+        } else {
+          toast.error(result.error);
+        }
         return;
       }
 
-      // Auto sign-in after successful registration
-      const signInResult = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        toast.error("Account created but sign-in failed. Please sign in manually.");
-        router.push("/sign-in");
-        return;
-      }
-
-      router.push("/onboarding");
+      toast.success("Church created!");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       toast.error("Something went wrong. Please try again.");
@@ -78,19 +85,19 @@ export default function SignUpPage() {
     <Card className="animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
         <CardTitle className="font-heading text-2xl">
-          Create an account
+          Set up your church
         </CardTitle>
         <CardDescription>
-          Get started with Doctrinally.AI for your church
+          Create your church to get started with Doctrinally.AI
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Church name</Label>
             <Input
               id="name"
-              placeholder="Your name"
+              placeholder="Grace Community Church"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={loading}
@@ -100,46 +107,32 @@ export default function SignUpPage() {
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="slug">Church URL</Label>
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+              <Globe className="h-4 w-4 shrink-0" />
+              <span className="shrink-0">
+                <span className="font-medium text-foreground">
+                  {slug || "yourchurch"}
+                </span>
+                .doctrinally.ai
+              </span>
+            </div>
             <Input
-              id="email"
-              type="email"
-              placeholder="you@church.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="slug"
+              placeholder="grace-community"
+              value={slug}
+              onChange={(e) => handleSlugChange(e.target.value)}
               disabled={loading}
             />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password}</p>
+            {errors.slug && (
+              <p className="text-sm text-destructive">{errors.slug}</p>
             )}
           </div>
           <Button className="w-full" type="submit" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create account
+            Create church
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            href="/sign-in"
-            className="font-semibold text-primary transition-colors hover:text-primary/80"
-          >
-            Sign in
-          </Link>
-        </p>
       </CardContent>
     </Card>
   );
