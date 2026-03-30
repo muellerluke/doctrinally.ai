@@ -15,6 +15,13 @@
       "when": 1774882566619,
       "tag": "0001_gigantic_rocket_raccoon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774903459214,
+      "tag": "0002_faulty_lorna_dane",
+      "breakpoints": true
     }
   ]
 }

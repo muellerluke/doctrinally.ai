@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 const mainNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -34,18 +35,56 @@ const mainNav = [
   { label: "Members", href: "/members", icon: Users },
 ];
 
-const managementNav = [
-  { label: "User Management", href: "/users", icon: UserCog },
-  { label: "Settings", href: "/settings", icon: Settings },
-  { label: "Billing", href: "/billing", icon: CreditCard },
-];
+interface AdminSidebarProps {
+  churchName?: string;
+  plan?: string;
+  subscriptionStatus?: string;
+  questionUsage?: number;
+  questionLimit?: number;
+  uploadUsage?: number;
+  uploadLimit?: number;
+  membershipRole?: string;
+}
 
 export function AdminSidebar({
   churchName,
-}: {
-  churchName?: string;
-}) {
+  plan,
+  subscriptionStatus,
+  questionUsage = 0,
+  questionLimit = 0,
+  uploadUsage = 0,
+  uploadLimit = 0,
+  membershipRole,
+}: AdminSidebarProps) {
   const pathname = usePathname();
+  const isOwner = membershipRole === "owner";
+
+  const managementNav = [
+    { label: "User Management", href: "/users", icon: UserCog },
+    { label: "Settings", href: "/settings", icon: Settings },
+    ...(isOwner
+      ? [{ label: "Billing", href: "/billing", icon: CreditCard }]
+      : []),
+  ];
+
+  const planLabel = plan
+    ? plan.charAt(0).toUpperCase() + plan.slice(1)
+    : "No plan";
+
+  const planBadgeClass =
+    plan === "enterprise"
+      ? "border-primary/30 bg-primary/10 text-primary"
+      : "border-gold/30 bg-gold/15 text-gold";
+
+  const questionPercentage =
+    questionLimit > 0
+      ? Math.min((questionUsage / questionLimit) * 100, 100)
+      : 0;
+  const uploadPercentage =
+    uploadLimit > 0 ? Math.min((uploadUsage / uploadLimit) * 100, 100) : 0;
+
+  const isQuestionOver = questionUsage > questionLimit && questionLimit > 0;
+  const isUploadOver = uploadUsage > uploadLimit && uploadLimit > 0;
 
   return (
     <Sidebar>
@@ -99,23 +138,45 @@ export function AdminSidebar({
             <span className="text-sm font-medium text-sidebar-foreground">
               {churchName || "My Church"}
             </span>
-            <Badge className="border-gold/30 bg-gold/15 text-gold text-xs">
-              Standard
+            <Badge className={cn("text-xs", planBadgeClass)}>
+              {planLabel}
             </Badge>
           </div>
           <Separator className="bg-sidebar-border" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-              <span>Questions</span>
-              <span>0 / 500</span>
+          {subscriptionStatus === "active" || subscriptionStatus === "past_due" ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
+                <span>Questions</span>
+                <span className={cn(isQuestionOver && "text-red-400 font-medium")}>
+                  {questionUsage.toLocaleString()} / {questionLimit.toLocaleString()}
+                </span>
+              </div>
+              <Progress
+                value={questionPercentage}
+                className={cn(
+                  "h-1.5",
+                  isQuestionOver && "[&>div]:bg-red-400"
+                )}
+              />
+              <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
+                <span>Uploads</span>
+                <span className={cn(isUploadOver && "text-red-400 font-medium")}>
+                  {uploadUsage.toLocaleString()} / {uploadLimit.toLocaleString()}
+                </span>
+              </div>
+              <Progress
+                value={uploadPercentage}
+                className={cn(
+                  "h-1.5",
+                  isUploadOver && "[&>div]:bg-red-400"
+                )}
+              />
             </div>
-            <Progress value={0} className="h-1.5" />
-            <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-              <span>Uploads</span>
-              <span>0 / 25</span>
-            </div>
-            <Progress value={0} className="h-1.5" />
-          </div>
+          ) : (
+            <p className="text-xs text-sidebar-foreground/40">
+              No active subscription
+            </p>
+          )}
           <Separator className="bg-sidebar-border" />
           <SidebarMenu>
             <SidebarMenuItem>

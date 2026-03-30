@@ -16,7 +16,7 @@ export default function AuthLayout({
           Doctrinally.AI
         </span>
       </Link>
-      <div className="relative w-full max-w-sm">{children}</div>
+      <div className="relative w-full">{children}</div>
     </div>
   );
 }

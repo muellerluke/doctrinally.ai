@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const onboardingSchema = z.object({
+export const churchInfoSchema = z.object({
   name: z
     .string()
     .min(2, "Church name must be at least 2 characters")
@@ -15,4 +15,9 @@ export const onboardingSchema = z.object({
     ),
 });
 
+export const onboardingSchema = churchInfoSchema.extend({
+  plan: z.enum(["standard", "enterprise"]),
+});
+
+export type ChurchInfoInput = z.infer<typeof churchInfoSchema>;
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
