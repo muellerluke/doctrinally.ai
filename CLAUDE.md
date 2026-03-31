@@ -136,6 +136,19 @@ Standard churches should use doctrinally.ai branding in the public member-facing
 The settings experience should clearly communicate which options are available on the current subscription tier and which require Enterprise.
 Admins should be able to manage general church settings, while owner-only actions such as billing-related access should remain restricted to owners.
 
+#### Domain and Routing Behavior
+
+When a user visits the root doctrinally.ai domain (or localhost:3000 in development), they should see the marketing landing page.
+When a user visits a subdomain of doctrinally.ai (e.g. mychurch.doctrinally.ai) or a custom domain (e.g. ai.myredeemer.com), they should be taken directly to the church's chat experience, branded to that specific church.
+There should be no landing page on subdomains or custom domains — the chat is the primary experience for church members.
+
+#### Branding Preview and Theme Support
+
+When admins/pastors configure colors and branding in the settings, the settings page should show a live preview of what the member-facing chat experience will look like with those colors.
+The branding settings should support both light mode and dark mode configurations, and the preview should allow toggling between them.
+Enterprise churches should be able to customize primary color, accent color, background color, text color, and logo for both light and dark themes.
+Standard churches should see a preview of the default doctrinally.ai branding with a clear indicator that custom branding requires the Enterprise plan.
+
 ### User Management
 
 Owners should be able to manage users for their church.
@@ -222,6 +235,10 @@ It should also include the church's domain setup, showing the doctrinally.ai sub
 Standard churches should still use doctrinally.ai branding in the public member-facing experience, while Enterprise churches should be able to customize that experience more fully.
 The page should make it clear which settings are available for the current subscription tier and which features require the Enterprise plan.
 Owner-only settings such as billing-related access should be clearly separated from settings that regular admins are allowed to manage.
+The branding section should include a live preview panel that shows what the member-facing chat experience will look like with the current color and logo settings.
+The preview should support toggling between light and dark mode so admins can see both themes before saving.
+Enterprise churches should be able to configure primary color, accent color, background, text color, and logo for both light and dark themes.
+Standard churches should see the default doctrinally.ai branding in the preview with a clear upgrade prompt for custom branding.
 
 ### User Management - Admin/Pastor
 
@@ -336,6 +353,11 @@ To do:
 - Build the settings page for church-level configuration
 - Add forms for church name, description, logo, branding, and other identity settings
 - Show the church's doctrinally.ai subdomain and prepare support for Enterprise custom domains
+- Add branding configuration with live preview panel showing the member-facing chat experience
+- Support light mode and dark mode theme configuration with preview toggle
+- Enterprise churches can customize primary color, accent color, background, text, and logo for both themes
+- Standard churches see default branding in preview with Enterprise upgrade prompt
+- Implement domain-aware routing: root domain shows landing page, subdomains and custom domains show church chat
 - Build the user management page for owners
 - Create the members table showing name, email, role, and last login or invitation status
 - Create the invitations flow for adding users by email

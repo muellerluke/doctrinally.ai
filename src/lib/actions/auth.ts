@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { createHash } from "crypto";
 import { eq, and, gt } from "drizzle-orm";
 import { db } from "@/db";
-import { users, passwordResetTokens } from "@/db/schema";
+import { users, passwordResetTokens, invitations, memberships } from "@/db/schema";
 import { signUpSchema, forgotPasswordSchema } from "@/lib/validations/auth";
 import { generateToken } from "@/lib/utils";
 
@@ -117,4 +117,58 @@ export async function resetPassword(input: {
     .where(eq(passwordResetTokens.userId, resetToken.userId));
 
   return { success: true };
+}
+
+export async function validateInvitationToken(token: string) {
+  const invite = await db.query.invitations.findFirst({
+    where: and(
+      eq(invitations.token, token),
+      eq(invitations.status, "pending")
+    ),
+  });
+
+  if (!invite) return { error: "Invalid or expired invitation" };
+  if (new Date(invite.expiresAt) < new Date()) {
+    return { error: "This invitation has expired" };
+  }
+
+  return { success: true, invitation: invite };
+}
+
+export async function acceptInvitation(token: string, userId: string) {
+  const result = await validateInvitationToken(token);
+  if (result.error || !result.invitation) return { error: result.error };
+
+  const invite = result.invitation;
+
+  // Check if already a member
+  const existing = await db.query.memberships.findFirst({
+    where: and(
+      eq(memberships.userId, userId),
+      eq(memberships.churchId, invite.churchId)
+    ),
+  });
+
+  if (existing) {
+    await db
+      .update(invitations)
+      .set({ status: "accepted" })
+      .where(eq(invitations.id, invite.id));
+    return { success: true, churchId: invite.churchId };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(memberships).values({
+      userId,
+      churchId: invite.churchId,
+      role: invite.role,
+    });
+
+    await tx
+      .update(invitations)
+      .set({ status: "accepted" })
+      .where(eq(invitations.id, invite.id));
+  });
+
+  return { success: true, churchId: invite.churchId };
 }

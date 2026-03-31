@@ -13,31 +13,81 @@ const protectedPaths = [
 
 const authPaths = ["/sign-in", "/sign-up"];
 
+// Paths that should never be blocked on subdomains (API, assets, etc.)
+const alwaysAllowPaths = ["/api", "/_next", "/favicon.ico"];
+
 export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000";
   const { pathname } = request.nextUrl;
 
-  // Subdomain — e.g. mychurch.doctrinally.ai or mychurch.localhost:3000
-  if (
+  // Skip paths that are always allowed
+  if (alwaysAllowPaths.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  const isSubdomain =
     hostname !== appDomain &&
     hostname !== `www.${appDomain}` &&
-    hostname.endsWith(`.${appDomain}`)
-  ) {
+    hostname.endsWith(`.${appDomain}`);
+
+  const isCustomDomain =
+    !isSubdomain &&
+    hostname !== appDomain &&
+    hostname !== `www.${appDomain}`;
+
+  // --- Subdomain routing (e.g. mychurch.doctrinally.ai) ---
+  if (isSubdomain) {
     const slug = hostname.replace(`.${appDomain}`, "");
     const response = NextResponse.next();
     response.headers.set("x-church-slug", slug);
+
+    // On subdomains, block admin and auth pages — redirect to chat
+    if (
+      protectedPaths.some((p) => pathname.startsWith(p)) ||
+      authPaths.some((p) => pathname.startsWith(p))
+    ) {
+      return NextResponse.redirect(new URL("/chat", request.url));
+    }
+
+    // Rewrite root to chat page
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/chat";
+      const rewrite = NextResponse.rewrite(url);
+      rewrite.headers.set("x-church-slug", slug);
+      return rewrite;
+    }
+
     return response;
   }
 
-  // Custom domain — e.g. ai.mychurch.com
-  if (hostname !== appDomain && hostname !== `www.${appDomain}`) {
+  // --- Custom domain routing (e.g. ai.mychurch.com) ---
+  if (isCustomDomain) {
     const response = NextResponse.next();
     response.headers.set("x-church-slug", `custom:${hostname}`);
+
+    // On custom domains, block admin and auth pages — redirect to chat
+    if (
+      protectedPaths.some((p) => pathname.startsWith(p)) ||
+      authPaths.some((p) => pathname.startsWith(p))
+    ) {
+      return NextResponse.redirect(new URL("/chat", request.url));
+    }
+
+    // Rewrite root to chat page
+    if (pathname === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/chat";
+      const rewrite = NextResponse.rewrite(url);
+      rewrite.headers.set("x-church-slug", `custom:${hostname}`);
+      return rewrite;
+    }
+
     return response;
   }
 
-  // Root domain — handle auth-based redirects
+  // --- Root domain (doctrinally.ai / localhost:3000) ---
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
   const isAuthPage = authPaths.some((p) => pathname.startsWith(p));
 
@@ -62,5 +112,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
