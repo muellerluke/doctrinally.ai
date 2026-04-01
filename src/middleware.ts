@@ -39,8 +39,6 @@ export async function middleware(request: NextRequest) {
   // --- Subdomain routing (e.g. mychurch.doctrinally.ai) ---
   if (isSubdomain) {
     const slug = hostname.replace(`.${appDomain}`, "");
-    const response = NextResponse.next();
-    response.headers.set("x-church-slug", slug);
 
     // On subdomains, block admin and auth pages — redirect to chat
     if (
@@ -54,19 +52,20 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/chat";
-      const rewrite = NextResponse.rewrite(url);
-      rewrite.headers.set("x-church-slug", slug);
-      return rewrite;
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set("x-church-slug", slug);
+      requestHeaders.set("x-pathname", pathname);
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
 
-    return response;
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-church-slug", slug);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // --- Custom domain routing (e.g. ai.mychurch.com) ---
   if (isCustomDomain) {
-    const response = NextResponse.next();
-    response.headers.set("x-church-slug", `custom:${hostname}`);
-
     // On custom domains, block admin and auth pages — redirect to chat
     if (
       protectedPaths.some((p) => pathname.startsWith(p)) ||
@@ -79,12 +78,16 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/chat";
-      const rewrite = NextResponse.rewrite(url);
-      rewrite.headers.set("x-church-slug", `custom:${hostname}`);
-      return rewrite;
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set("x-church-slug", `custom:${hostname}`);
+      requestHeaders.set("x-pathname", pathname);
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
 
-    return response;
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-church-slug", `custom:${hostname}`);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // --- Root domain (doctrinally.ai / localhost:3000) ---
@@ -108,9 +111,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.next();
-  response.headers.set("x-pathname", pathname);
-  return response;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
