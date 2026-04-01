@@ -7,7 +7,8 @@ import { MembersDirectoryTable } from "./members-directory-table";
 
 export default async function MembersPage() {
   const { church } = await requireMembership();
-  const members = await getChurchMembers(church.id);
+  const allMembers = await getChurchMembers(church.id);
+  const members = allMembers.filter((m) => m.role === "member");
 
   return (
     <div className="space-y-8">

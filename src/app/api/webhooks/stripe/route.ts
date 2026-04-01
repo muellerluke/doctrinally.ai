@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { db } from "@/db";
@@ -54,8 +54,8 @@ export async function POST(request: Request) {
       case "invoice.payment_failed":
         await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
         break;
-      case "invoice.upcoming":
-        await handleInvoiceUpcoming(event.data.object as Stripe.Invoice);
+      case "invoice.created":
+        await handleInvoiceCreated(event.data.object as Stripe.Invoice);
         break;
     }
   } catch (err) {
@@ -246,8 +246,9 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
     .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
 }
 
-async function handleInvoiceUpcoming(invoice: Stripe.Invoice) {
-  // Add overage charges before the next invoice is created
+async function handleInvoiceCreated(invoice: Stripe.Invoice) {
+  // Add overage charges to the draft invoice before it's finalized (~1 hour window).
+  // At this point the old billing period has ended, so its usage record is final.
   const subscriptionId = getInvoiceSubscriptionId(invoice);
   if (!subscriptionId) return;
 
@@ -255,14 +256,15 @@ async function handleInvoiceUpcoming(invoice: Stripe.Invoice) {
     where: eq(subscriptions.stripeSubscriptionId, subscriptionId),
   });
 
-  if (!sub?.stripeCustomerId) return;
+  if (!sub?.stripeCustomerId || !sub.currentPeriodStart) return;
 
-  // Find current period usage
-  const usage = sub.currentPeriodStart
-    ? await db.query.usageRecords.findFirst({
-        where: eq(usageRecords.churchId, sub.churchId),
-      })
-    : null;
+  // Find the closing period's usage record (the period that just ended)
+  const usage = await db.query.usageRecords.findFirst({
+    where: and(
+      eq(usageRecords.churchId, sub.churchId),
+      eq(usageRecords.periodStart, sub.currentPeriodStart)
+    ),
+  });
 
   if (!usage) return;
 
@@ -274,10 +276,13 @@ async function handleInvoiceUpcoming(invoice: Stripe.Invoice) {
   );
   const questionOverage = Math.max(0, usage.questions - sub.questionLimit);
 
-  // Add overage invoice items (these will be included on the next invoice)
+  if (uploadOverage <= 0 && questionOverage <= 0) return;
+
+  // Add overage line items to the draft invoice
   if (uploadOverage > 0) {
     await stripe.invoiceItems.create({
       customer: sub.stripeCustomerId,
+      invoice: invoice.id,
       description: `Document upload overage (${uploadOverage} over ${sub.documentUploadLimit} limit)`,
       amount: Math.round(uploadOverage * rates.documentUpload * 100),
       currency: "usd",
@@ -287,6 +292,7 @@ async function handleInvoiceUpcoming(invoice: Stripe.Invoice) {
   if (questionOverage > 0) {
     await stripe.invoiceItems.create({
       customer: sub.stripeCustomerId,
+      invoice: invoice.id,
       description: `Question overage (${questionOverage} over ${sub.questionLimit} limit)`,
       amount: Math.round(questionOverage * rates.question * 100),
       currency: "usd",

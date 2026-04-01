@@ -10,6 +10,7 @@ import type {
   invitations,
   passwordResetTokens,
   usageRecords,
+  folders,
 } from "@/db/schema";
 
 export type User = typeof users.$inferSelect;
@@ -44,3 +45,6 @@ export type NewPasswordResetToken = typeof passwordResetTokens.$inferInsert;
 
 export type UsageRecord = typeof usageRecords.$inferSelect;
 export type NewUsageRecord = typeof usageRecords.$inferInsert;
+
+export type Folder = typeof folders.$inferSelect;
+export type NewFolder = typeof folders.$inferInsert;

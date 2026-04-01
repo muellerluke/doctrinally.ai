@@ -16,7 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PlanCard } from "@/components/billing/plan-card";
 import { churchInfoSchema } from "@/lib/validations/onboarding";
-import { createChurch } from "@/lib/actions/onboarding";
+import {
+  createChurch,
+  getExistingChurch,
+  resumeCheckout,
+} from "@/lib/actions/onboarding";
 import { slugify } from "@/lib/utils";
 import type { PlanType } from "@/lib/plans";
 
@@ -25,13 +29,28 @@ export default function OnboardingPage() {
   const searchParams = useSearchParams();
   const canceled = searchParams.get("canceled") === "true";
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // 0 = loading, 1 = church info, 2 = plan
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanType>("standard");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [hasExistingChurch, setHasExistingChurch] = useState(false);
+
+  // Check if user already has a church (needs plan selection only)
+  useEffect(() => {
+    getExistingChurch().then((result) => {
+      if (result?.church) {
+        setName(result.church.name);
+        setSlug(result.church.slug);
+        setHasExistingChurch(true);
+        setStep(2); // Skip to plan selection
+      } else {
+        setStep(1); // Show church info form
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (canceled) {
@@ -40,10 +59,10 @@ export default function OnboardingPage() {
   }, [canceled]);
 
   useEffect(() => {
-    if (!slugEdited && name) {
+    if (!slugEdited && name && !hasExistingChurch) {
       setSlug(slugify(name));
     }
-  }, [name, slugEdited]);
+  }, [name, slugEdited, hasExistingChurch]);
 
   function handleSlugChange(value: string) {
     setSlugEdited(true);
@@ -73,7 +92,15 @@ export default function OnboardingPage() {
   async function handleSubmit() {
     setLoading(true);
     try {
-      const result = await createChurch({ name, slug, plan: selectedPlan });
+      let result;
+
+      if (hasExistingChurch) {
+        // Church already exists — just create a new checkout session
+        result = await resumeCheckout(selectedPlan);
+      } else {
+        // New church — create church + checkout session
+        result = await createChurch({ name, slug, plan: selectedPlan });
+      }
 
       if (result.error) {
         if (result.error.toLowerCase().includes("url")) {
@@ -93,6 +120,20 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Loading state while checking for existing church
+  if (step === 0) {
+    return (
+      <Card className="mx-auto max-w-sm shadow-xl shadow-primary/[0.04]">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-2">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+          <CardTitle className="font-heading text-2xl">Loading...</CardTitle>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
@@ -174,14 +215,16 @@ export default function OnboardingPage() {
           </div>
 
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setStep(1)}
-              disabled={loading}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
+            {!hasExistingChurch && (
+              <Button
+                variant="outline"
+                onClick={() => setStep(1)}
+                disabled={loading}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            )}
             <Button
               className="flex-1"
               onClick={handleSubmit}

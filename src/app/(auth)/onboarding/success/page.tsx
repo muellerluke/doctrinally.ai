@@ -38,7 +38,7 @@ export default function OnboardingSuccessPage() {
       } else {
         setStatus("success");
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/settings");
           router.refresh();
         }, 2000);
       }
@@ -70,7 +70,7 @@ export default function OnboardingSuccessPage() {
               You&apos;re all set!
             </CardTitle>
             <CardDescription>
-              Your church is ready. Redirecting to your dashboard...
+              Your church is ready. Let&apos;s finish setting it up...
             </CardDescription>
           </>
         )}
