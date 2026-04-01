@@ -13,11 +13,9 @@ const envSchema = z.object({
   STRIPE_STANDARD_PRICE_ID: z.string().min(1),
   STRIPE_ENTERPRISE_PRICE_ID: z.string().min(1),
 
-  // Phase 5+
+  // Phase 5 - Storage, Background Jobs, AI
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   TRIGGER_SECRET_KEY: z.string().optional(),
-
-  // Phase 6+
   OPENAI_API_KEY: z.string().optional(),
 });
 

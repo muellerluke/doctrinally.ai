@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
 import { eq, and, lte, gte } from "drizzle-orm";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -38,6 +39,15 @@ export default async function AdminLayout({
     });
     if (!sub || sub.status === "incomplete") {
       redirect("/onboarding");
+    }
+  }
+
+  // If church setup is incomplete, nudge to settings (unless already there)
+  if (church && !church.description) {
+    const headersList = await headers();
+    const pathname = headersList.get("x-pathname") || "";
+    if (!pathname.startsWith("/settings")) {
+      redirect("/settings");
     }
   }
 

@@ -73,7 +73,7 @@ export function AdminSidebar({
 
   const planBadgeClass =
     plan === "enterprise"
-      ? "border-primary/30 bg-primary/10 text-primary"
+      ? "border-sidebar-foreground/20 bg-sidebar-foreground/10 text-sidebar-foreground"
       : "border-gold/30 bg-gold/15 text-gold";
 
   const questionPercentage =

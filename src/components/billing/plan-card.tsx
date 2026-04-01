@@ -21,7 +21,7 @@ export function PlanCard({ plan, selected, onSelect, current }: PlanCardProps) {
   return (
     <Card
       className={cn(
-        "relative cursor-pointer transition-all duration-200",
+        "relative overflow-visible cursor-pointer transition-all duration-200",
         selected
           ? "border-primary ring-2 ring-primary/20 shadow-lg"
           : "border-border hover:border-primary/40 hover:shadow-md",
@@ -30,12 +30,12 @@ export function PlanCard({ plan, selected, onSelect, current }: PlanCardProps) {
       onClick={() => onSelect?.(plan)}
     >
       {current && (
-        <Badge className="absolute -top-2.5 right-4 border-gold/30 bg-gold/15 text-gold text-xs">
+        <Badge className="absolute -top-2.5 right-4 border-gold/30 bg-background text-gold text-xs">
           Current plan
         </Badge>
       )}
       {isEnterprise && !current && (
-        <Badge className="absolute -top-2.5 right-4 border-primary/30 bg-primary/10 text-primary text-xs">
+        <Badge className="absolute -top-2.5 right-4 border-primary/30 bg-background text-primary text-xs">
           Most powerful
         </Badge>
       )}

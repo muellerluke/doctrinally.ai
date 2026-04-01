@@ -154,9 +154,9 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr,auto]">
+    <div className="flex flex-col-reverse gap-6 lg:flex-row">
       {/* Color controls */}
-      <div className="space-y-6">
+      <div className="min-w-0 flex-1 space-y-6">
         {!isEnterprise && (
           <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.03] p-4">
             <Lock className="h-5 w-5 text-primary" />
@@ -252,7 +252,7 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
       </div>
 
       {/* Live preview */}
-      <div className="space-y-3">
+      <div className="shrink-0 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Preview</p>
           <div className="flex rounded-lg border p-0.5">
