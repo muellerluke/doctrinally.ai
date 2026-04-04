@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
+
+export const metadata: Metadata = {
+  title: "AI Chat Platform for Churches — Doctrinally.AI",
+  description:
+    "Doctrinally.AI turns your church's sermons, devotions, and documents into an AI assistant. Members ask questions, get cited answers from the Bible and your own teachings. Start free — no credit card required.",
+  alternates: { canonical: "https://www.doctrinally.ai" },
+};
 import {
   Card,
   CardContent,
@@ -21,7 +29,6 @@ import {
   Palette,
   FileText,
   Check,
-  ChevronDown,
   Mail,
   MapPin,
   Quote,
@@ -198,15 +205,20 @@ export default function HomePage() {
           <div className="animate-fade-up stagger-2 max-w-4xl space-y-4">
             <h1 className="font-heading text-5xl leading-[1.08] tracking-tight sm:text-6xl lg:text-[5rem]">
               Your sermons, searchable.
-            </h1>
-            <h1 className="font-heading text-5xl leading-[1.08] tracking-tight text-primary sm:text-6xl lg:text-[5rem]">
-              Scripture cited.
+              <span className="block text-primary">
+                Scripture cited.
+              </span>
             </h1>
           </div>
           <p className="animate-fade-up stagger-3 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Doctrinally.AI turns your church&apos;s sermons, devotions, and
-            documents into an AI assistant that answers your congregation&apos;s
-            questions — with citations back to the source.
+            Doctrinally.AI is an AI-powered chat platform built for churches.
+            Upload your sermons, devotions, YouTube videos, and documents — then
+            let your congregation ask questions and receive answers grounded in
+            your own teachings and the Bible, with inline citations back to the
+            original source. Whether it&apos;s a verse from Sunday&apos;s sermon
+            or a passage from Scripture, every answer is backed by real content
+            your church has published. Setup takes minutes, no technical
+            expertise required.
           </p>
           <div className="animate-fade-up stagger-4 flex flex-col gap-4 pt-2 sm:flex-row">
             <Button size="lg" render={<Link href="/sign-up" />}>
@@ -251,7 +263,7 @@ export default function HomePage() {
               How it works
             </p>
             <h2 className="mt-4 font-heading text-3xl sm:text-4xl">
-              Three steps to smarter ministry
+              How does Doctrinally.AI work?
             </h2>
           </div>
           <div className="mx-auto mt-16 grid max-w-5xl gap-12 lg:grid-cols-3">
@@ -280,7 +292,7 @@ export default function HomePage() {
             Features
           </p>
           <h2 className="mt-4 font-heading text-3xl sm:text-4xl">
-            Everything your church needs
+            What does Doctrinally.AI include?
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">
             Upload your content, let AI index it, and watch your congregation
@@ -441,15 +453,14 @@ export default function HomePage() {
           </div>
           <div className="mx-auto mt-16 max-w-3xl divide-y">
             {faqs.map((faq) => (
-              <details key={faq.question} className="group py-5">
-                <summary className="flex cursor-pointer items-center justify-between text-[0.95rem] font-medium">
+              <div key={faq.question} className="py-5">
+                <h3 className="text-[0.95rem] font-medium">
                   {faq.question}
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
-                </summary>
+                </h3>
                 <p className="mt-3 pr-8 text-[0.9rem] leading-relaxed text-muted-foreground">
                   {faq.answer}
                 </p>
-              </details>
+              </div>
             ))}
           </div>
         </div>

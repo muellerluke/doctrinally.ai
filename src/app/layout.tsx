@@ -22,9 +22,43 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Doctrinally.AI",
+  title: {
+    default: "Doctrinally.AI — AI Chat Platform for Churches",
+    template: "%s | Doctrinally.AI",
+  },
   description:
-    "AI-powered chat platform for churches. Ask questions and get answers from the Bible and your church's sermons, devotions, and documents.",
+    "Doctrinally.AI turns your church's sermons, devotions, and documents into an AI assistant your congregation can ask questions. Cited answers from Scripture and your own content. Start free — no credit card required.",
+  metadataBase: new URL("https://www.doctrinally.ai"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Doctrinally.AI",
+    title: "Doctrinally.AI — AI Chat Platform for Churches",
+    description:
+      "Turn your church's sermons and documents into an AI assistant. Members ask questions, get cited answers from the Bible and your own teachings.",
+    url: "https://www.doctrinally.ai",
+    images: [
+      {
+        url: "/logo-light-mode.png",
+        width: 512,
+        height: 512,
+        alt: "Doctrinally.AI",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Doctrinally.AI — AI Chat Platform for Churches",
+    description:
+      "Turn your church's sermons and documents into an AI assistant. Members ask questions, get cited answers from the Bible and your own teachings.",
+    images: ["/logo-light-mode.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

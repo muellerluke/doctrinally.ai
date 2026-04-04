@@ -1,0 +1,29 @@
+# Doctrinally.AI
+
+Doctrinally.AI is an AI-powered chat platform designed specifically for churches. It allows church administrators and pastors to upload their sermons, devotions, YouTube videos, PDF documents, and other teaching materials, which are then automatically transcribed, chunked, and indexed using semantic search and vector embeddings. Church members can then ask questions through a branded chat interface and receive AI-generated answers that are grounded in the church's own content and the Bible, with inline citations linking back to the original source material — including video timestamps, document pages, and scripture references from the Berean Standard Bible.
+
+The platform is built as a multi-tenant SaaS application where each church operates in a fully isolated environment with its own subdomain (e.g., mychurch.doctrinally.ai) or custom domain for Enterprise customers. It offers two subscription tiers: Standard at $49 per month (50 document uploads, 1,000 messages) and Enterprise at $99 per month (100 document uploads, 2,000 messages, custom domain, custom branding). The platform includes an analytics dashboard for tracking member engagement, common topics, and content gaps.
+
+## Pages
+
+- [Homepage](https://www.doctrinally.ai/): Product overview, features, pricing, FAQ
+- [Privacy Policy](https://www.doctrinally.ai/privacy): Data collection, AI processing, security practices
+- [Terms of Use](https://www.doctrinally.ai/terms): Subscription terms, content ownership, acceptable use
+
+## Key Features
+
+- AI chat with retrieval-augmented generation from church content
+- YouTube video transcription and timestamp-aware citations
+- PDF, Word, and video document processing
+- Rich text editor for creating custom documents
+- Bible passage lookup using the Berean Standard Bible (BSB)
+- Analytics dashboard with topic classification
+- Role-based access (owner, admin, member)
+- Custom domain and branding for Enterprise churches
+- Downloadable QR code for congregation access
+
+## Contact
+
+- Email: hello@doctrinally.ai
+- Location: Austin, TX
+- Company: L&D Holdings LLC

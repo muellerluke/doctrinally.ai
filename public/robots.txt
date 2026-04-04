@@ -1,0 +1,45 @@
+# Doctrinally.AI - Robots.txt
+
+# Allow all search engines
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /onboarding
+Disallow: /dashboard
+Disallow: /documents
+Disallow: /members
+Disallow: /users
+Disallow: /settings
+Disallow: /billing
+
+# Allow AI search crawlers explicitly
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Block AI training-only crawlers
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+Sitemap: https://www.doctrinally.ai/sitemap.xml
