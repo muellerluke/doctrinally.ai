@@ -2,8 +2,8 @@ export const PLANS = {
   standard: {
     name: "Standard",
     price: 49,
-    documentUploadLimit: 25,
-    questionLimit: 500,
+    documentUploadLimit: 50,
+    questionLimit: 1000,
     features: {
       customDomain: false,
       customBranding: false,
@@ -11,8 +11,8 @@ export const PLANS = {
     description: "Perfect for churches getting started with AI-powered chat",
     highlights: [
       "Subdomain on doctrinally.ai",
-      "25 document uploads per month",
-      "500 messages per month",
+      "50 document uploads per month",
+      "1,000 messages per month",
       "Doctrinally.AI branding",
     ],
   },

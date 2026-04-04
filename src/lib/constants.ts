@@ -5,18 +5,18 @@ export const PLANS = {
   standard: {
     name: "Standard",
     priceMonthly: 4900,
-    documentUploadLimit: 25,
-    questionLimit: 500,
+    documentUploadLimit: 50,
+    questionLimit: 1000,
     features: [
       "Subdomain on doctrinally.ai",
-      "Up to 25 document uploads/month",
-      "500 messages/month",
+      "Up to 50 document uploads/month",
+      "1,000 messages/month",
       "Doctrinally.AI branding",
     ],
   },
   enterprise: {
     name: "Enterprise",
-    priceMonthly: 15000,
+    priceMonthly: 9900,
     documentUploadLimit: 100,
     questionLimit: 2000,
     features: [

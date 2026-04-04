@@ -92,8 +92,8 @@ const features = [
 
 const standardFeatures = [
   "Subdomain on doctrinally.ai",
-  "Up to 25 document uploads / month",
-  "500 messages / month",
+  "Up to 50 document uploads / month",
+  "1,000 messages / month",
   "Doctrinally.AI branding",
   "Analytics dashboard",
   "Email support",
