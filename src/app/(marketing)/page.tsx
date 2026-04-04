@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ContactForm } from "@/components/marketing/contact-form";
 import {
   Card,
   CardContent,
@@ -461,23 +462,18 @@ export default function HomePage() {
             Have questions? We&apos;d love to hear from you.
           </p>
         </div>
-        <div className="mx-auto mt-12 flex max-w-md flex-col items-center gap-6">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <Mail className="h-5 w-5 text-primary" />
-            <span>hello@doctrinally.ai</span>
+        <div className="mx-auto mt-12 max-w-lg">
+          <ContactForm />
+          <div className="mt-6 flex flex-col items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              <span>hello@doctrinally.ai</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span>Austin, TX</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <MapPin className="h-5 w-5 text-primary" />
-            <span>Austin, TX</span>
-          </div>
-          <Button
-            size="lg"
-            variant="outline"
-            render={<a href="mailto:hello@doctrinally.ai" />}
-          >
-            Send us an email
-            <ArrowRight className="h-4 w-4" />
-          </Button>
         </div>
       </section>
 

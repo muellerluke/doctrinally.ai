@@ -4,8 +4,9 @@ import { getServerSession } from "next-auth";
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { db } from "@/db";
-import { memberships, users, invitations } from "@/db/schema";
+import { memberships, users, invitations, churches } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
+import { sendInvitationEmail } from "@/lib/email";
 
 async function requireOwnerContext() {
   const session = await getServerSession(authOptions);
@@ -101,6 +102,18 @@ export async function inviteUser(input: {
     expiresAt,
   });
 
+  // Send invitation email
+  const church = await db.query.churches.findFirst({
+    where: eq(churches.id, input.churchId),
+  });
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-up?invite=${token}`;
+  await sendInvitationEmail(
+    input.email,
+    church?.name || "a church",
+    input.role,
+    inviteUrl
+  );
+
   return { success: true, token };
 }
 
@@ -181,6 +194,18 @@ export async function resendInvitation(invitationId: string) {
     .update(invitations)
     .set({ token, expiresAt, status: "pending" })
     .where(eq(invitations.id, invitationId));
+
+  // Resend email
+  const church = await db.query.churches.findFirst({
+    where: eq(churches.id, invite.churchId),
+  });
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-up?invite=${token}`;
+  await sendInvitationEmail(
+    invite.email,
+    church?.name || "a church",
+    invite.role,
+    inviteUrl
+  );
 
   return { success: true, token };
 }

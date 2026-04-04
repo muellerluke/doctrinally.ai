@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users, passwordResetTokens, invitations, memberships } from "@/db/schema";
 import { signUpSchema, forgotPasswordSchema } from "@/lib/validations/auth";
 import { generateToken } from "@/lib/utils";
+import { sendPasswordResetEmail } from "@/lib/email";
 
 export async function signUp(input: {
   name: string;
@@ -72,8 +73,11 @@ export async function forgotPassword(input: { email: string }) {
 
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${rawToken}`;
 
-  // TODO: Replace with real email provider (Resend, SendGrid, etc.)
-  console.log(`[Password Reset] Link for ${email}: ${resetUrl}`);
+  const emailResult = await sendPasswordResetEmail(email, resetUrl);
+  if (!emailResult.success) {
+    console.error("Failed to send password reset email:", emailResult.error);
+    // Still return success to avoid leaking whether the email exists
+  }
 
   return { success: true };
 }
