@@ -41,8 +41,8 @@ export default async function ChatLayout({
   if (!church) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 p-4">
-        <img src="/logo-transparent-bg.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
-        <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
+        <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
+        <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
         <h1 className="font-heading text-2xl">Church not found</h1>
         <p className="text-muted-foreground">
           This church doesn&apos;t exist or hasn&apos;t been set up yet.

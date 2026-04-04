@@ -54,7 +54,7 @@ export function ChatPreview({
           />
         ) : (
           <img
-            src="/logo-transparent-bg.png"
+            src="/logo-light-mode.png"
             alt="Doctrinally.AI"
             className="rounded"
             style={{ width: previewLogoSize, height: previewLogoSize }}

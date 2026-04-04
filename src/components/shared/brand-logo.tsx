@@ -9,14 +9,14 @@ export function BrandLogo({ className, size = 20 }: BrandLogoProps) {
   return (
     <>
       <img
-        src="/logo-transparent-bg.png"
+        src="/logo-light-mode.png"
         alt="Doctrinally.AI"
         width={size}
         height={size}
         className={cn("rounded dark:hidden", className)}
       />
       <img
-        src="/logo-orange-bg.png"
+        src="/logo-dark-mode.png"
         alt="Doctrinally.AI"
         width={size}
         height={size}

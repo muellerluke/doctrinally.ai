@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { ThemeSelector } from "@/components/shared/theme-selector";
 
 export function MarketingFooter() {
   return (
     <footer className="border-t bg-secondary/30 py-10">
       <div className="container mx-auto flex flex-col items-center gap-6 px-4 text-sm text-muted-foreground sm:flex-row sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <img src="/logo-transparent-bg.png" alt="Doctrinally.AI" className="h-6 w-6 rounded-md dark:hidden" />
-          <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="hidden h-6 w-6 rounded-md dark:block" />
+          <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-6 w-6 rounded-md dark:hidden" />
+          <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-6 w-6 rounded-md dark:block" />
           <span className="font-heading text-base text-foreground">
             Doctrinally.AI
           </span>
@@ -25,10 +26,15 @@ export function MarketingFooter() {
             Terms of Use
           </Link>
         </div>
-        <p>
-          &copy; {new Date().getFullYear()} Doctrinally.AI. All rights
-          reserved.
-        </p>
+        <div className="flex flex-col items-center gap-2 sm:items-end">
+          <ThemeSelector />
+          <p>
+            &copy; {new Date().getFullYear()} Doctrinally.AI
+          </p>
+          <p className="text-[10px] text-muted-foreground/60">
+            Owned and operated by L&amp;D Holdings LLC
+          </p>
+        </div>
       </div>
     </footer>
   );

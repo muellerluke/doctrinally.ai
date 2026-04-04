@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
 import {
   Card,
   CardContent,
@@ -190,7 +191,7 @@ export default function HomePage() {
               variant="outline"
               className="border-gold/30 bg-gold/[0.08] px-4 py-1.5 text-sm font-normal text-gold"
             >
-              <img src="/logo-transparent-bg.png" alt="" className="mr-1.5 h-3.5 w-3.5 rounded-sm" />
+              <img src="/logo-light-mode.png" alt="" className="mr-1.5 h-3.5 w-3.5 rounded-sm" />
               For churches that teach deeply
             </Badge>
           </div>
@@ -199,7 +200,7 @@ export default function HomePage() {
               Your sermons, searchable.
             </h1>
             <h1 className="font-heading text-5xl leading-[1.08] tracking-tight text-primary sm:text-6xl lg:text-[5rem]">
-              Your Scripture, cited.
+              Scripture cited.
             </h1>
           </div>
           <p className="animate-fade-up stagger-3 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
@@ -233,6 +234,11 @@ export default function HomePage() {
               <Check className="h-4 w-4 text-gold" />
               No credit card required
             </span>
+          </div>
+
+          {/* Chat preview */}
+          <div className="animate-fade-up stagger-5 mt-8 w-full max-w-lg">
+            <HeroChatPreview />
           </div>
         </div>
       </section>

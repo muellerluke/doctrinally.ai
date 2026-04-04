@@ -14,8 +14,8 @@ export function MarketingHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/logo-transparent-bg.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg dark:hidden" />
-            <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="hidden h-8 w-8 rounded-lg dark:block" />
+            <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg dark:hidden" />
+            <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-8 w-8 rounded-lg dark:block" />
             <span className="font-heading text-xl tracking-tight">
               Doctrinally.AI
             </span>

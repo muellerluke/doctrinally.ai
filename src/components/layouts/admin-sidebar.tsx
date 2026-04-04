@@ -89,7 +89,7 @@ export function AdminSidebar({
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg" />
+          <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg" />
           <span className="font-heading text-lg text-sidebar-foreground">
             Doctrinally.AI
           </span>
