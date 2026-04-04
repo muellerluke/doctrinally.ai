@@ -38,6 +38,17 @@ export default function RootLayout({
       className={`${sourceSerif.variable} ${playfair.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          async
+          src="https://plausible.io/js/pa-OLhck3vYwRCsbi0z4VP5k.js"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <AuthSessionProvider>
           <ThemeProvider>
