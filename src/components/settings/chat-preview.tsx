@@ -53,17 +53,12 @@ export function ChatPreview({
             style={{ height: previewLogoSize, maxWidth: previewLogoSize * 3 }}
           />
         ) : (
-          <div
-            className="flex items-center justify-center rounded"
-            style={{
-              backgroundColor: primaryColor,
-              color: backgroundColor,
-              width: previewLogoSize,
-              height: previewLogoSize,
-            }}
-          >
-            <BookOpen style={{ width: previewLogoSize * 0.5, height: previewLogoSize * 0.5 }} />
-          </div>
+          <img
+            src="/logo-transparent-bg.png"
+            alt="Doctrinally.AI"
+            className="rounded"
+            style={{ width: previewLogoSize, height: previewLogoSize }}
+          />
         )}
         <span style={{ fontWeight: 600, fontSize: 12 }}>{churchName}</span>
       </div>

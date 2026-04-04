@@ -10,7 +10,6 @@ import {
   UserCog,
   Settings,
   CreditCard,
-  BookOpen,
   LogOut,
 } from "lucide-react";
 import {
@@ -90,9 +89,7 @@ export function AdminSidebar({
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold text-gold-foreground">
-            <BookOpen className="h-4 w-4" />
-          </div>
+          <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg" />
           <span className="font-heading text-lg text-sidebar-foreground">
             Doctrinally.AI
           </span>

@@ -6,7 +6,6 @@ import { useRouter, usePathname } from "next/navigation";
 import {
   LogIn,
   Plus,
-  BookOpen,
   MessageSquare,
   Trash2,
   X,
@@ -124,9 +123,10 @@ export function ChatSidebar({
               className="h-8 w-8 rounded-lg object-cover"
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <BookOpen className="h-4 w-4" />
-            </div>
+            <>
+              <img src="/logo-transparent-bg.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg dark:hidden" />
+              <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="hidden h-8 w-8 rounded-lg dark:block" />
+            </>
           )}
           <span className="font-heading text-sm font-semibold leading-tight">
             {churchName}

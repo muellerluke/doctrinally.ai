@@ -109,14 +109,24 @@ export async function removeDomainFromVercel(domain: string): Promise<{
   }
 }
 
-/**
- * Check the DNS configuration and SSL status of a domain on Vercel.
- */
-export async function getDomainStatus(domain: string): Promise<{
+export interface DomainVerification {
+  type: string;   // "TXT" or "CNAME" or "A"
+  domain: string;  // e.g. "_vercel.ai.mychurch.com" or "ai.mychurch.com"
+  value: string;   // the record value
+  reason: string;  // e.g. "pending_domain_verification"
+}
+
+export interface DomainStatusResult {
   configured: boolean;
   verified: boolean;
+  verification?: DomainVerification[];
   error?: string;
-}> {
+}
+
+/**
+ * Check the DNS configuration, verification status, and required DNS records.
+ */
+export async function getDomainStatus(domain: string): Promise<DomainStatusResult> {
   try {
     const projectId = getProjectId();
     const teamParam = getTeamParam();
@@ -138,8 +148,57 @@ export async function getDomainStatus(domain: string): Promise<{
     return {
       configured: true,
       verified: data.verified === true,
+      verification: data.verification ?? [],
     };
   } catch {
     return { configured: false, verified: false };
+  }
+}
+
+/**
+ * Get the recommended DNS configuration for a domain.
+ * Vercel recommends either a CNAME to cname.vercel-dns.com or an A record to 76.76.21.21.
+ */
+export async function getDomainConfig(domain: string): Promise<{
+  configuredBy: string | null;
+  misconfigured: boolean;
+  aRecords: { value: string }[];
+  cnameRecord: { value: string } | null;
+}> {
+  try {
+    const teamParam = getTeamParam();
+
+    const response = await fetch(
+      `${VERCEL_API_BASE}/v6/domains/${domain}/config${teamParam}`,
+      {
+        method: "GET",
+        headers: getHeaders(),
+      }
+    );
+
+    if (!response.ok) {
+      return {
+        configuredBy: null,
+        misconfigured: true,
+        aRecords: [],
+        cnameRecord: null,
+      };
+    }
+
+    const data = await response.json();
+
+    return {
+      configuredBy: data.configuredBy ?? null,
+      misconfigured: data.misconfigured ?? true,
+      aRecords: data.aValues?.map((v: string) => ({ value: v })) ?? [],
+      cnameRecord: data.cnames?.[0] ? { value: data.cnames[0] } : null,
+    };
+  } catch {
+    return {
+      configuredBy: null,
+      misconfigured: true,
+      aRecords: [],
+      cnameRecord: null,
+    };
   }
 }

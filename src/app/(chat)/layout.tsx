@@ -9,7 +9,6 @@ import { getChats } from "@/lib/actions/chats";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { VisitorTracker } from "@/components/chat/visitor-tracker";
 import type { ChatHistoryItem } from "@/components/chat/chat-sidebar";
-import { BookOpen } from "lucide-react";
 
 const FONT_CSS_MAP: Record<string, string> = {
   "source-serif": "'Source Serif 4', serif",
@@ -42,9 +41,8 @@ export default async function ChatLayout({
   if (!church) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 p-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-          <BookOpen className="h-8 w-8 text-muted-foreground" />
-        </div>
+        <img src="/logo-transparent-bg.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
+        <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
         <h1 className="font-heading text-2xl">Church not found</h1>
         <p className="text-muted-foreground">
           This church doesn&apos;t exist or hasn&apos;t been set up yet.

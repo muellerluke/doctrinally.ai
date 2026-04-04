@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { memberships } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
-import { getDomainStatus } from "@/lib/vercel";
+import { getDomainStatus, getDomainConfig } from "@/lib/vercel";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -19,7 +19,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Verify user is admin/owner
   const membership = await db.query.memberships.findFirst({
     where: eq(memberships.userId, session.user.id),
   });
@@ -28,7 +27,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
-  const status = await getDomainStatus(domain);
+  const [status, config] = await Promise.all([
+    getDomainStatus(domain),
+    getDomainConfig(domain),
+  ]);
 
-  return NextResponse.json(status);
+  return NextResponse.json({
+    ...status,
+    ...config,
+  });
 }

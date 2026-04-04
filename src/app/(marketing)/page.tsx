@@ -8,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  BookOpen,
   MessageSquare,
   Upload,
   BarChart3,
@@ -190,7 +189,7 @@ export default function HomePage() {
               variant="outline"
               className="border-gold/30 bg-gold/[0.08] px-4 py-1.5 text-sm font-normal text-gold"
             >
-              <BookOpen className="mr-1.5 h-3.5 w-3.5" />
+              <img src="/logo-transparent-bg.png" alt="" className="mr-1.5 h-3.5 w-3.5 rounded-sm" />
               For churches that teach deeply
             </Badge>
           </div>

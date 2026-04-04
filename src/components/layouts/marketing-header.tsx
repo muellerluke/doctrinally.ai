@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
@@ -14,9 +14,8 @@ export function MarketingHeader() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <BookOpen className="h-4 w-4" />
-            </div>
+            <img src="/logo-transparent-bg.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg dark:hidden" />
+            <img src="/logo-orange-bg.png" alt="Doctrinally.AI" className="hidden h-8 w-8 rounded-lg dark:block" />
             <span className="font-heading text-xl tracking-tight">
               Doctrinally.AI
             </span>
