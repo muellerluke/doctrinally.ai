@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { signUpSchema } from "@/lib/validations/auth";
 import { signUp } from "@/lib/actions/auth";
 
@@ -25,12 +26,18 @@ export default function SignUpPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
+
+    if (!agreed) {
+      setErrors({ agreed: "You must agree to the terms to continue" });
+      return;
+    }
 
     const parsed = signUpSchema.safeParse({ name, email, password });
     if (!parsed.success) {
@@ -126,7 +133,49 @@ export default function SignUpPage() {
               <p className="text-sm text-destructive">{errors.password}</p>
             )}
           </div>
-          <Button className="w-full" type="submit" disabled={loading}>
+          <div className="space-y-1.5">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="agree-terms"
+                checked={agreed}
+                onCheckedChange={(v) => {
+                  setAgreed(v === true);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.agreed;
+                    return next;
+                  });
+                }}
+                disabled={loading}
+                className="mt-0.5"
+              />
+              <label
+                htmlFor="agree-terms"
+                className="text-xs leading-relaxed text-muted-foreground"
+              >
+                I agree to the{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="font-medium text-primary underline underline-offset-2"
+                >
+                  Terms of Use
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="font-medium text-primary underline underline-offset-2"
+                >
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+            {errors.agreed && (
+              <p className="text-sm text-destructive">{errors.agreed}</p>
+            )}
+          </div>
+          <Button className="w-full" type="submit" disabled={loading || !agreed}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create account
           </Button>

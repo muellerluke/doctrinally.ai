@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { signUp } from "@/lib/actions/auth";
 
 interface MemberAuthModalProps {
@@ -34,6 +35,7 @@ export function MemberAuthModal({ open, onOpenChange }: MemberAuthModalProps) {
   const [signUpName, setSignUpName] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpAgreed, setSignUpAgreed] = useState(false);
   const [signUpLoading, setSignUpLoading] = useState(false);
 
   async function handleSignIn(e: React.FormEvent) {
@@ -60,6 +62,10 @@ export function MemberAuthModal({ open, onOpenChange }: MemberAuthModalProps) {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    if (!signUpAgreed) {
+      toast.error("Please agree to the Terms of Use and Privacy Policy");
+      return;
+    }
     setSignUpLoading(true);
     try {
       const result = await signUp({
@@ -168,7 +174,39 @@ export function MemberAuthModal({ open, onOpenChange }: MemberAuthModalProps) {
                   required
                 />
               </div>
-              <Button className="w-full" type="submit" disabled={signUpLoading}>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="su-agree"
+                  checked={signUpAgreed}
+                  onCheckedChange={(v) => setSignUpAgreed(v === true)}
+                  disabled={signUpLoading}
+                  className="mt-0.5"
+                />
+                <label
+                  htmlFor="su-agree"
+                  className="text-[11px] leading-relaxed text-muted-foreground"
+                >
+                  I agree to the{" "}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline underline-offset-2"
+                  >
+                    Terms of Use
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary underline underline-offset-2"
+                  >
+                    Privacy Policy
+                  </a>
+                </label>
+              </div>
+              <Button className="w-full" type="submit" disabled={signUpLoading || !signUpAgreed}>
                 {signUpLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
