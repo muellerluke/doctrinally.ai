@@ -146,7 +146,7 @@ export function AdminSidebar({
           {subscriptionStatus === "active" || subscriptionStatus === "past_due" ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-                <span>Questions</span>
+                <span>Messages</span>
                 <span className={cn(isQuestionOver && "text-red-400 font-medium")}>
                   {questionUsage.toLocaleString()} / {questionLimit.toLocaleString()}
                 </span>

@@ -27,6 +27,8 @@ export const churches = pgTable("churches", {
   // Additional branding
   faviconUrl: text("favicon_url"),
   welcomeMessage: text("welcome_message"),
+  logoHeight: text("logo_height"),
+  fontFamily: text("font_family"),
 
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

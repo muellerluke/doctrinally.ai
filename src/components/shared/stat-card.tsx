@@ -1,3 +1,4 @@
+import { ArrowDown, ArrowUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -6,6 +7,7 @@ interface StatCardProps {
   value: string | number;
   description?: string;
   icon: LucideIcon;
+  delta?: number | null;
 }
 
 export function StatCard({
@@ -13,6 +15,7 @@ export function StatCard({
   value,
   description,
   icon: Icon,
+  delta,
 }: StatCardProps) {
   return (
     <Card className="transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:shadow-primary/[0.04]">
@@ -26,9 +29,27 @@ export function StatCard({
       </CardHeader>
       <CardContent>
         <div className="font-heading text-3xl">{value}</div>
-        {description && (
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        )}
+        <div className="mt-1 flex items-center gap-2">
+          {delta != null && delta !== 0 && (
+            <span
+              className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+                delta > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {delta > 0 ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              )}
+              {Math.abs(delta)}%
+            </span>
+          )}
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

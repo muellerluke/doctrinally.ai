@@ -92,7 +92,7 @@ const features = [
 const standardFeatures = [
   "Subdomain on doctrinally.ai",
   "Up to 25 document uploads / month",
-  "500 questions / month",
+  "500 messages / month",
   "Doctrinally.AI branding",
   "Analytics dashboard",
   "Email support",
@@ -101,7 +101,7 @@ const standardFeatures = [
 const enterpriseFeatures = [
   "Custom domain (ai.yourchurch.com)",
   "Up to 100 document uploads / month",
-  "2,000 questions / month",
+  "2,000 messages / month",
   "Your own logo and branding",
   "Analytics dashboard",
   "Priority support",
@@ -155,7 +155,7 @@ const faqs = [
   {
     question: "What happens if I exceed my monthly limits?",
     answer:
-      "You can continue using the platform. Overages are billed at $0.50 per additional document upload and $0.25 per additional question.",
+      "You can continue using the platform. Overages are billed at $0.25 per additional document upload and $0.25 per additional message.",
   },
   {
     question: "Is my church's data secure?",
@@ -360,7 +360,7 @@ export default function HomePage() {
                   Enterprise
                 </CardTitle>
                 <div className="flex items-baseline gap-1">
-                  <span className="font-heading text-4xl">$150</span>
+                  <span className="font-heading text-4xl">$99</span>
                   <span className="text-muted-foreground">/month</span>
                 </div>
               </CardHeader>
@@ -383,8 +383,8 @@ export default function HomePage() {
             </Card>
           </div>
           <p className="mx-auto mt-8 max-w-md text-center text-sm text-muted-foreground">
-            Need more? Overages are billed at $0.50 per extra document upload
-            and $0.25 per extra question.
+            Need more? Overages are billed at $0.25 per extra document upload
+            and $0.25 per extra message.
           </p>
         </div>
       </section>

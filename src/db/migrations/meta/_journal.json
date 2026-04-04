@@ -36,6 +36,41 @@
       "when": 1775047672476,
       "tag": "0004_safe_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775064300145,
+      "tag": "0005_fantastic_human_torch",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775153596884,
+      "tag": "0006_funny_sersi",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775232072465,
+      "tag": "0007_complete_medusa",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1775235759490,
+      "tag": "0008_faulty_kree",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1775236782603,
+      "tag": "0009_outgoing_bromley",
+      "breakpoints": true
     }
   ]
 }

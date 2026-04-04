@@ -10,6 +10,8 @@ interface ChatPreviewProps {
   backgroundColor: string;
   textColor: string;
   darkMode?: boolean;
+  logoHeight?: number;
+  fontFamily?: string;
 }
 
 export function ChatPreview({
@@ -20,16 +22,22 @@ export function ChatPreview({
   backgroundColor,
   textColor,
   darkMode,
+  logoHeight = 20,
+  fontFamily,
 }: ChatPreviewProps) {
+  // Scale logo height proportionally for the preview (preview is ~320px wide)
+  const previewLogoSize = Math.round(logoHeight * 0.6);
+
   return (
     <div
-      className="overflow-hidden rounded-xl border shadow-sm"
+      className="flex flex-col overflow-hidden rounded-xl border shadow-sm"
       style={{
         backgroundColor,
         color: textColor,
         width: 320,
-        height: 440,
+        height: 600,
         fontSize: 11,
+        fontFamily: fontFamily || undefined,
       }}
     >
       {/* Header */}
@@ -41,21 +49,27 @@ export function ChatPreview({
           <img
             src={logoUrl}
             alt={churchName}
-            className="h-5 w-5 rounded object-cover"
+            className="rounded object-contain"
+            style={{ height: previewLogoSize, maxWidth: previewLogoSize * 3 }}
           />
         ) : (
           <div
-            className="flex h-5 w-5 items-center justify-center rounded"
-            style={{ backgroundColor: primaryColor, color: backgroundColor }}
+            className="flex items-center justify-center rounded"
+            style={{
+              backgroundColor: primaryColor,
+              color: backgroundColor,
+              width: previewLogoSize,
+              height: previewLogoSize,
+            }}
           >
-            <BookOpen style={{ width: 10, height: 10 }} />
+            <BookOpen style={{ width: previewLogoSize * 0.5, height: previewLogoSize * 0.5 }} />
           </div>
         )}
         <span style={{ fontWeight: 600, fontSize: 12 }}>{churchName}</span>
       </div>
 
       {/* Messages area */}
-      <div className="flex flex-1 flex-col gap-3 p-3" style={{ height: 340 }}>
+      <div className="flex flex-1 flex-col gap-3 overflow-hidden p-3">
         {/* Welcome */}
         <div className="flex flex-col items-center justify-center gap-1.5 py-4">
           <div
@@ -109,7 +123,7 @@ export function ChatPreview({
       </div>
 
       {/* Input bar */}
-      <div className="border-t px-3 py-2" style={{ borderColor: `${textColor}15` }}>
+      <div className="mt-auto border-t px-3 py-2 pb-3" style={{ borderColor: `${textColor}15` }}>
         <div
           className="flex items-center gap-2 rounded-lg px-3 py-1.5"
           style={{

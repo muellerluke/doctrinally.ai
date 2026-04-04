@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ export function GeneralForm({ church }: GeneralFormProps) {
   const [phone, setPhone] = useState(church.phone ?? "");
   const [address, setAddress] = useState(church.address ?? "");
   const [saving, setSaving] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(church.logoUrl);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSave() {
     setSaving(true);
@@ -48,6 +51,37 @@ export function GeneralForm({ church }: GeneralFormProps) {
       toast.error("Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Upload failed");
+        return;
+      }
+
+      setLogoUrl(data.logoUrl);
+      toast.success("Logo uploaded");
+      router.refresh();
+    } catch {
+      toast.error("Failed to upload logo");
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -111,25 +145,53 @@ export function GeneralForm({ church }: GeneralFormProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-6">
-            {church.logoUrl ? (
+            {logoUrl ? (
               <img
-                src={church.logoUrl}
+                src={logoUrl}
                 alt="Church logo"
                 className="h-20 w-20 rounded-xl object-cover border"
               />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed text-muted-foreground">
-                <Upload className="h-6 w-6" />
-              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {uploadingLogo ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Upload className="h-6 w-6" />
+                )}
+              </button>
             )}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 Upload a logo for your church. Recommended size: 256x256px.
               </p>
               <p className="text-xs text-muted-foreground">
-                Logo upload via Vercel Blob will be available in Phase 5.
+                PNG, JPEG, WebP, or SVG. Max 5MB.
               </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                >
+                  {uploadingLogo && (
+                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  )}
+                  {logoUrl ? "Change logo" : "Upload logo"}
+                </Button>
+              </div>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
           </div>
         </CardContent>
       </Card>

@@ -12,7 +12,7 @@ export const PLANS = {
     highlights: [
       "Subdomain on doctrinally.ai",
       "25 document uploads per month",
-      "500 questions per month",
+      "500 messages per month",
       "Doctrinally.AI branding",
     ],
   },
@@ -29,7 +29,7 @@ export const PLANS = {
     highlights: [
       "Custom domain support",
       "100 document uploads per month",
-      "2,000 questions per month",
+      "2,000 messages per month",
       "Your own logo and branding",
     ],
   },
@@ -46,7 +46,7 @@ export function getPlanLimits(plan: PlanType) {
 
 export function getOverageRates() {
   return {
-    documentUpload: 0.5,
+    documentUpload: 0.25,
     question: 0.25,
   };
 }

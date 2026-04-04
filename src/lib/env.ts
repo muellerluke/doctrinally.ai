@@ -17,6 +17,11 @@ const envSchema = z.object({
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   TRIGGER_SECRET_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+
+  // Phase 9 - Vercel Domain Management
+  VERCEL_API_TOKEN: z.string().optional(),
+  VERCEL_PROJECT_ID: z.string().optional(),
+  VERCEL_TEAM_ID: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

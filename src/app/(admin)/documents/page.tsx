@@ -1,4 +1,7 @@
 import { FileText } from "lucide-react";
+import { eq, and, sql } from "drizzle-orm";
+import { db } from "@/db";
+import { documents as documentsTable } from "@/db/schema";
 import { requireMembership } from "@/lib/auth-guards";
 import { getDocuments } from "@/lib/actions/documents";
 import { getFolders } from "@/lib/actions/folders";
@@ -6,9 +9,10 @@ import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { DocumentLibrary } from "@/components/documents/document-library";
 import { DocumentActions } from "./document-actions";
+import { AdminChatTester } from "@/components/documents/admin-chat-tester";
 
 export default async function DocumentsPage() {
-  const { membership } = await requireMembership();
+  const { membership, church } = await requireMembership();
   const churchId = membership.churchId;
 
   const [docsResult, foldersResult] = await Promise.all([
@@ -24,6 +28,9 @@ export default async function DocumentsPage() {
           type: d.type,
           status: d.status,
           metadata: d.metadata as Record<string, unknown> | null,
+          sourceUrl: d.sourceUrl,
+          blobPath: d.blobPath,
+          content: d.content,
           createdAt: d.createdAt,
         }))
       : [];
@@ -39,6 +46,12 @@ export default async function DocumentsPage() {
       : [];
 
   const isEmpty = documents.length === 0 && folders.length === 0;
+
+  // Get document status counts for the chat tester
+  const indexedCount = documents.filter((d) => d.status === "indexed").length;
+  const processingCount = documents.filter(
+    (d) => d.status === "processing" || d.status === "queued"
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -61,6 +74,13 @@ export default async function DocumentsPage() {
           churchId={churchId}
         />
       )}
+
+      <AdminChatTester
+        churchId={churchId}
+        churchName={church.name}
+        indexedCount={indexedCount}
+        processingCount={processingCount}
+      />
     </div>
   );
 }

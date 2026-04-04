@@ -59,7 +59,7 @@ export function PlanCard({ plan, selected, onSelect, current }: PlanCardProps) {
           </div>
         ))}
         <div className="mt-3 rounded-md bg-muted/50 p-2.5 text-xs text-muted-foreground">
-          Overages: ${0.5}/upload &middot; ${0.25}/question beyond limits
+          Overages: ${0.25}/upload &middot; ${0.25}/message beyond limits
         </div>
       </CardContent>
     </Card>

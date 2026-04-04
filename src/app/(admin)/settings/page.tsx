@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneralForm } from "@/components/settings/general-form";
 import { BrandingForm } from "@/components/settings/branding-form";
 import { DomainForm } from "@/components/settings/domain-form";
+import { QrCodeCard } from "@/components/settings/qr-code-card";
 
 export default async function SettingsPage() {
   const { membership, church } = await requireMembership();
@@ -19,6 +20,13 @@ export default async function SettingsPage() {
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
   const isOwner = membership.role === "owner";
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000";
+  const protocol = appDomain.includes("localhost") ? "http" : "https";
+
+  // Build the chat URL: custom domain for Enterprise, subdomain otherwise
+  const chatUrl =
+    isEnterprise && church.customDomain
+      ? `${protocol}://${church.customDomain}/chat`
+      : `${protocol}://${church.slug}.${appDomain}/chat`;
 
   return (
     <div className="space-y-8">
@@ -34,7 +42,7 @@ export default async function SettingsPage() {
           <TabsTrigger value="domain">Domain</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general" className="mt-6">
+        <TabsContent value="general" className="mt-6 space-y-6">
           <GeneralForm
             church={{
               name: church.name,
@@ -44,6 +52,7 @@ export default async function SettingsPage() {
               logoUrl: church.logoUrl,
             }}
           />
+          <QrCodeCard chatUrl={chatUrl} />
         </TabsContent>
 
         <TabsContent value="branding" className="mt-6">
@@ -61,6 +70,8 @@ export default async function SettingsPage() {
               darkTextColor: church.darkTextColor,
               darkLogoUrl: church.darkLogoUrl,
               welcomeMessage: church.welcomeMessage,
+              logoHeight: church.logoHeight,
+              fontFamily: church.fontFamily,
             }}
             isEnterprise={isEnterprise}
           />

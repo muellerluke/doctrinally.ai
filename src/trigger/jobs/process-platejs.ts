@@ -4,6 +4,65 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkByHeadings, chunkByTokens } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
+import { lookupPassage } from "@/lib/bible";
+
+/**
+ * Extract plain text from Plate editor JSON nodes, preserving headings
+ * as markdown-style headings for the chunking pipeline.
+ * Fetches actual Bible passage text for bible_passage nodes.
+ */
+async function plateNodesToText(nodes: any[]): Promise<string> {
+  const lines: string[] = [];
+
+  for (const node of nodes) {
+    if (!node) continue;
+
+    if (node.type === "h1") {
+      lines.push(`# ${extractText(node)}`);
+    } else if (node.type === "h2") {
+      lines.push(`## ${extractText(node)}`);
+    } else if (node.type === "h3") {
+      lines.push(`### ${extractText(node)}`);
+    } else if (node.type === "blockquote") {
+      lines.push(`> ${extractText(node)}`);
+    } else if (node.type === "bible_passage") {
+      const book = node.book || "";
+      const chapter = node.chapter || 0;
+      const verse = String(node.verse || "");
+
+      if (book && chapter && verse) {
+        const verseParts = verse.split("-");
+        const verseStart = parseInt(verseParts[0], 10);
+        const verseEnd = verseParts[1] ? parseInt(verseParts[1], 10) : undefined;
+
+        try {
+          const result = await lookupPassage(book, chapter, verseStart, verseEnd);
+          if (result) {
+            lines.push(`${result.reference}: ${result.text}`);
+          } else {
+            lines.push(`${book} ${chapter}:${verse}`);
+          }
+        } catch {
+          lines.push(`${book} ${chapter}:${verse}`);
+        }
+      }
+    } else {
+      const text = extractText(node);
+      if (text.trim()) lines.push(text);
+    }
+  }
+
+  return lines.join("\n\n");
+}
+
+function extractText(node: any): string {
+  if (typeof node === "string") return node;
+  if (node.text !== undefined) return node.text;
+  if (Array.isArray(node.children)) {
+    return node.children.map(extractText).join("");
+  }
+  return "";
+}
 
 export const processPlatejs = task({
   id: "process-platejs",
@@ -28,10 +87,28 @@ export const processPlatejs = task({
         .set({ status: "processing", errorMessage: null, updatedAt: new Date() })
         .where(eq(documents.id, documentId));
 
-      // Get markdown content
-      const markdown = doc.content;
-      if (!markdown || markdown.trim().length === 0) {
+      // Get content — may be JSON (Plate nodes) or markdown (legacy)
+      const rawContent = doc.content;
+      if (!rawContent || rawContent.trim().length === 0) {
         throw new Error("Document has no content");
+      }
+
+      // Convert Plate JSON to markdown-like text for chunking
+      let markdown: string;
+      try {
+        const parsed = JSON.parse(rawContent);
+        if (Array.isArray(parsed)) {
+          markdown = await plateNodesToText(parsed);
+        } else {
+          markdown = rawContent;
+        }
+      } catch {
+        // Already markdown
+        markdown = rawContent;
+      }
+
+      if (!markdown.trim()) {
+        throw new Error("Document has no extractable text content");
       }
 
       // Split by headings first

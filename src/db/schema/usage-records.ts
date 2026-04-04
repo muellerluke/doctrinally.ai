@@ -18,6 +18,7 @@ export const usageRecords = pgTable(
     periodEnd: timestamp("period_end", { mode: "date" }).notNull(),
     documentUploads: integer("document_uploads").notNull().default(0),
     questions: integer("questions").notNull().default(0),
+    visitors: integer("visitors").notNull().default(0),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },

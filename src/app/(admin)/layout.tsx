@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { eq, and, lte, gte } from "drizzle-orm";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -42,14 +42,7 @@ export default async function AdminLayout({
     }
   }
 
-  // If church setup is incomplete, nudge to settings (unless already there)
-  if (church && !church.description) {
-    const headersList = await headers();
-    const pathname = headersList.get("x-pathname") || "";
-    if (!pathname.startsWith("/settings")) {
-      redirect("/settings");
-    }
-  }
+  const needsSetup = church && !church.description;
 
   // Fetch subscription and usage data for sidebar
   const sub = await db.query.subscriptions.findFirst({
@@ -82,6 +75,20 @@ export default async function AdminLayout({
       <SidebarInset>
         <AdminHeader userName={session.user.name} />
         <main className="flex-1 p-6">
+          {needsSetup && (
+            <div className="mb-6 flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-400/20 dark:bg-blue-950/40 dark:text-blue-300">
+              <span className="font-medium">Finish setting up your church.</span>
+              <Link
+                href="/settings"
+                className="underline underline-offset-2 hover:text-blue-900 dark:hover:text-blue-200"
+              >
+                Go to Settings
+              </Link>
+              <span className="text-blue-700 dark:text-blue-400">
+                to add a description and complete your profile.
+              </span>
+            </div>
+          )}
           {sub?.status === "past_due" && (
             <div className="mb-6 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <span className="font-medium">Payment past due.</span>

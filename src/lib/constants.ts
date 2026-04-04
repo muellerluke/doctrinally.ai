@@ -10,7 +10,7 @@ export const PLANS = {
     features: [
       "Subdomain on doctrinally.ai",
       "Up to 25 document uploads/month",
-      "500 questions/month",
+      "500 messages/month",
       "Doctrinally.AI branding",
     ],
   },
@@ -23,7 +23,7 @@ export const PLANS = {
       "Custom domain",
       "Custom branding and logo",
       "Up to 100 document uploads/month",
-      "2,000 questions/month",
+      "2,000 messages/month",
     ],
   },
 } as const;

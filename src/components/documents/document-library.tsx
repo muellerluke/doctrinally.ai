@@ -24,6 +24,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { FolderRow } from "./folder-row";
 import { MoveDialog } from "./move-dialog";
+import { DocumentViewerModal } from "./document-viewer-modal";
 import {
   getDocumentColumns,
   type DocumentRow,
@@ -87,6 +88,7 @@ export function DocumentLibrary({
     type: "folder" | "document";
     id: string;
   } | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<DocumentRow | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -115,6 +117,9 @@ export function DocumentLibrary({
           type: d.type,
           status: d.status,
           metadata: d.metadata as Record<string, unknown> | null,
+          sourceUrl: d.sourceUrl,
+          blobPath: d.blobPath,
+          content: d.content,
           createdAt: d.createdAt,
         }))
       );
@@ -284,11 +289,21 @@ export function DocumentLibrary({
     });
   }
 
+  function handleOpenDocument(doc: DocumentRow) {
+    if (doc.type === "youtube" && doc.sourceUrl) {
+      window.open(doc.sourceUrl, "_blank", "noopener,noreferrer");
+    } else if (doc.type === "platejs") {
+      window.open(`/documents/${doc.id}/edit`, "_blank", "noopener,noreferrer");
+    } else {
+      setViewingDoc(doc);
+    }
+  }
+
   const columns = useMemo(
     () =>
       getDocumentColumns({
+        onOpen: handleOpenDocument,
         onEdit: (id) => {
-          // Will be implemented with edit dialogs
           toast.info("Edit coming soon");
         },
         onRetry: handleRetry,
@@ -384,10 +399,10 @@ export function DocumentLibrary({
           <SelectContent>
             <SelectItem value="">All statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="uploaded">Uploaded</SelectItem>
-            <SelectItem value="queued">Queued</SelectItem>
+            <SelectItem value="uploaded">Waiting to process</SelectItem>
+            <SelectItem value="queued">In queue</SelectItem>
             <SelectItem value="processing">Processing</SelectItem>
-            <SelectItem value="indexed">Indexed</SelectItem>
+            <SelectItem value="indexed">Ready</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
@@ -469,6 +484,20 @@ export function DocumentLibrary({
         description="This will permanently delete the document and all its indexed data. This action cannot be undone."
         onConfirm={handleDeleteDocument}
         destructive
+      />
+
+      {/* Document viewer */}
+      <DocumentViewerModal
+        document={viewingDoc}
+        open={viewingDoc !== null}
+        onOpenChange={(open) => {
+          if (!open) setViewingDoc(null);
+        }}
+        onSave={async () => {
+          setViewingDoc(null);
+          await refreshData();
+          router.refresh();
+        }}
       />
 
       {/* Move dialog */}

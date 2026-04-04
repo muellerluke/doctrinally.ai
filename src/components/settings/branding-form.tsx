@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sun, Moon, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -10,8 +10,45 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ChatPreview } from "@/components/settings/chat-preview";
 import { updateChurchBranding } from "@/lib/actions/settings";
+
+const FONT_OPTIONS = [
+  { value: "source-serif", label: "Source Serif 4", css: "'Source Serif 4', serif" },
+  { value: "playfair", label: "Playfair Display", css: "'Playfair Display', serif" },
+  { value: "inter", label: "Inter", css: "'Inter', sans-serif" },
+  { value: "lora", label: "Lora", css: "'Lora', serif" },
+  { value: "merriweather", label: "Merriweather", css: "'Merriweather', serif" },
+  { value: "dm-sans", label: "DM Sans", css: "'DM Sans', sans-serif" },
+  { value: "nunito", label: "Nunito", css: "'Nunito', sans-serif" },
+  { value: "eb-garamond", label: "EB Garamond", css: "'EB Garamond', serif" },
+] as const;
+
+// Google Fonts that aren't already bundled in the app
+const GOOGLE_FONTS_URL_MAP: Record<string, string> = {
+  inter: "Inter:wght@400;500;600;700",
+  lora: "Lora:wght@400;500;600;700",
+  merriweather: "Merriweather:wght@400;700",
+  "dm-sans": "DM+Sans:wght@400;500;600;700",
+  nunito: "Nunito:wght@400;500;600;700",
+  "eb-garamond": "EB+Garamond:wght@400;500;600;700",
+};
+
+const LOGO_HEIGHT_OPTIONS = [
+  { value: "20", label: "20px — Compact" },
+  { value: "24", label: "24px — Small" },
+  { value: "32", label: "32px — Default" },
+  { value: "40", label: "40px — Medium" },
+  { value: "48", label: "48px — Large" },
+  { value: "56", label: "56px — Extra Large" },
+] as const;
 
 // Default doctrinally.ai branding
 const DEFAULTS = {
@@ -43,6 +80,8 @@ interface BrandingFormProps {
     darkTextColor: string | null;
     darkLogoUrl: string | null;
     welcomeMessage: string | null;
+    logoHeight: string | null;
+    fontFamily: string | null;
   };
   isEnterprise: boolean;
 }
@@ -80,6 +119,27 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
     church.darkTextColor || DEFAULTS.dark.textColor
   );
 
+  // Typography & layout
+  const [logoHeight, setLogoHeight] = useState(church.logoHeight || "32");
+  const [fontFamily, setFontFamily] = useState(church.fontFamily || "source-serif");
+
+  const selectedFont = FONT_OPTIONS.find((f) => f.value === fontFamily) || FONT_OPTIONS[0];
+
+  // Dynamically load Google Font for preview
+  useEffect(() => {
+    const googleParam = GOOGLE_FONTS_URL_MAP[fontFamily];
+    if (!googleParam) return;
+
+    const linkId = `google-font-preview-${fontFamily}`;
+    if (document.getElementById(linkId)) return;
+
+    const link = document.createElement("link");
+    link.id = linkId;
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${googleParam}&display=swap`;
+    document.head.appendChild(link);
+  }, [fontFamily]);
+
   const previewColors = previewDark
     ? {
         primaryColor: darkPrimary,
@@ -106,6 +166,8 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
         darkAccentColor: darkAccent,
         darkBackgroundColor: darkBg,
         darkTextColor: darkTxt,
+        logoHeight,
+        fontFamily,
       });
       if (result.error) {
         toast.error(result.error);
@@ -170,6 +232,83 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
             </div>
           </div>
         )}
+
+        <Card>
+          <CardHeader className="flex-row items-center gap-2 space-y-0">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4"
+            >
+              <polyline points="4 7 4 4 20 4 20 7" />
+              <line x1="9" y1="20" x2="15" y2="20" />
+              <line x1="12" y1="4" x2="12" y2="20" />
+            </svg>
+            <CardTitle className="text-lg">Typography & Layout</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Font Family</Label>
+                <Select
+                  value={fontFamily}
+                  onValueChange={(v) => v && setFontFamily(v)}
+                  disabled={!isEnterprise}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_OPTIONS.map((font) => (
+                      <SelectItem
+                        key={font.value}
+                        value={font.value}
+                        className="text-xs"
+                        style={{ fontFamily: font.css }}
+                      >
+                        {font.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  Applied to the member-facing chat experience
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Logo Height</Label>
+                <Select
+                  value={logoHeight}
+                  onValueChange={(v) => v && setLogoHeight(v)}
+                  disabled={!isEnterprise}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOGO_HEIGHT_OPTIONS.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-xs"
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground">
+                  Controls the logo size in the chat header
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="flex-row items-center gap-2 space-y-0">
@@ -284,6 +423,8 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
           churchName={church.name}
           logoUrl={previewDark ? church.darkLogoUrl || church.logoUrl : church.logoUrl}
           darkMode={previewDark}
+          logoHeight={parseInt(logoHeight, 10)}
+          fontFamily={selectedFont.css}
           {...previewColors}
         />
         {!isEnterprise && (

@@ -7,13 +7,23 @@ import {
 import { ListPlugin } from "@platejs/list/react";
 import { IndentPlugin } from "@platejs/indent/react";
 import { CalloutPlugin } from "@platejs/callout/react";
+import { CodeBlockPlugin } from "@platejs/code-block/react";
 import { SlashPlugin, SlashInputPlugin } from "@platejs/slash-command/react";
+import {
+  AutoformatPlugin,
+  type AutoformatRule,
+} from "@platejs/autoformat";
 import { MarkdownPlugin } from "@platejs/markdown";
+import { DndPlugin } from "@platejs/dnd";
 import { createPlatePlugin } from "platejs/react";
+import type { SlateEditor } from "platejs";
+import { KEYS } from "platejs";
+import { toggleList } from "@platejs/list";
 import {
   BIBLE_PASSAGE_TYPE,
   BiblePassageElement,
 } from "./bible-passage-element";
+import { SlashInputElement } from "./slash-input-element";
 
 // Custom plugin for the Bible passage void element
 const BiblePassagePlugin = createPlatePlugin({
@@ -25,91 +35,45 @@ const BiblePassagePlugin = createPlatePlugin({
   },
 }).withComponent(BiblePassageElement);
 
-// Slash menu item definitions
-export interface SlashMenuItem {
-  key: string;
-  label: string;
-  description: string;
-  icon: string;
-  onSelect: (editor: any) => void;
-}
+// ---- Autoformat rules ----
 
-export const slashMenuItems: SlashMenuItem[] = [
+const autoformatBlocks: AutoformatRule[] = [
+  { match: "# ", mode: "block", type: KEYS.h1 },
+  { match: "## ", mode: "block", type: KEYS.h2 },
+  { match: "### ", mode: "block", type: KEYS.h3 },
+  { match: "> ", mode: "block", type: KEYS.blockquote },
+];
+
+const autoformatMarks: AutoformatRule[] = [
+  { match: "**", mode: "mark", type: KEYS.bold },
+  { match: "__", mode: "mark", type: KEYS.underline },
+  { match: "*", mode: "mark", type: KEYS.italic },
+  { match: "_", mode: "mark", type: KEYS.italic },
+  { match: "`", mode: "mark", type: KEYS.code },
+];
+
+const autoformatLists: AutoformatRule[] = [
   {
-    key: "h1",
-    label: "Heading 1",
-    description: "Large section heading",
-    icon: "H1",
-    onSelect: (editor) => {
-      editor.tf.h1.toggle();
+    match: ["* ", "- "],
+    mode: "block",
+    type: "list",
+    format: (editor) => {
+      toggleList(editor as any, { listStyleType: KEYS.ul });
     },
   },
   {
-    key: "h2",
-    label: "Heading 2",
-    description: "Medium section heading",
-    icon: "H2",
-    onSelect: (editor) => {
-      editor.tf.h2.toggle();
-    },
-  },
-  {
-    key: "h3",
-    label: "Heading 3",
-    description: "Small section heading",
-    icon: "H3",
-    onSelect: (editor) => {
-      editor.tf.h3.toggle();
-    },
-  },
-  {
-    key: "bullet-list",
-    label: "Bullet List",
-    description: "Unordered bullet list",
-    icon: "List",
-    onSelect: (editor) => {
-      editor.tf.toggleBlock({ type: "p" });
-      editor.tf.setNodes({ listStyleType: "disc", indent: 1 });
-    },
-  },
-  {
-    key: "numbered-list",
-    label: "Numbered List",
-    description: "Ordered numbered list",
-    icon: "ListOrdered",
-    onSelect: (editor) => {
-      editor.tf.toggleBlock({ type: "p" });
-      editor.tf.setNodes({ listStyleType: "decimal", indent: 1 });
-    },
-  },
-  {
-    key: "callout",
-    label: "Callout",
-    description: "Highlighted callout block",
-    icon: "MessageSquare",
-    onSelect: (editor) => {
-      editor.tf.toggleBlock({ type: "callout" });
-    },
-  },
-  {
-    key: "bible-passage",
-    label: "Bible Passage",
-    description: "Embed a Bible passage reference",
-    icon: "BookOpen",
-    onSelect: (editor) => {
-      editor.insertNodes({
-        type: BIBLE_PASSAGE_TYPE,
-        book: "John",
-        chapter: 3,
-        verse: "16",
-        version: "ESV",
-        children: [{ text: "" }],
-      });
+    match: [String.raw`^\d+\.$ `, String.raw`^\d+\)$ `],
+    matchByRegex: true,
+    mode: "block",
+    type: "list",
+    format: (editor) => {
+      toggleList(editor as any, { listStyleType: KEYS.ol });
     },
   },
 ];
 
-// All editor plugins in order
+// ---- All editor plugins ----
+
 export const editorPlugins = [
   BasicBlocksPlugin,
   BasicMarksPlugin.configurePlugin(BoldPlugin, {
@@ -120,8 +84,28 @@ export const editorPlugins = [
   IndentPlugin,
   ListPlugin,
   CalloutPlugin,
-  SlashPlugin,
-  SlashInputPlugin,
+  CodeBlockPlugin,
+  SlashPlugin.configure({
+    options: {
+      triggerPreviousCharPattern: /^\s?$/,
+      triggerQuery: (editor: SlateEditor) =>
+        !editor.api.some({
+          match: { type: editor.getType(KEYS.codeBlock) },
+        }),
+    },
+  }),
+  SlashInputPlugin.withComponent(SlashInputElement),
+  AutoformatPlugin.configure({
+    options: {
+      enableUndoOnDelete: true,
+      rules: [...autoformatBlocks, ...autoformatMarks, ...autoformatLists],
+    },
+  }),
+  DndPlugin.configure({
+    options: {
+      enableScroller: true,
+    },
+  }),
   MarkdownPlugin,
   BiblePassagePlugin,
 ];

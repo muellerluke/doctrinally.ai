@@ -156,7 +156,7 @@ export default async function BillingPage() {
                 )}
                 {data.questionOverageCost > 0 && (
                   <p>
-                    Questions: ${data.questionOverageCost.toFixed(2)} (
+                    Messages: ${data.questionOverageCost.toFixed(2)} (
                     {data.questionOverage} over)
                   </p>
                 )}
@@ -182,7 +182,7 @@ export default async function BillingPage() {
             overageCost={data.uploadOverageCost}
           />
           <UsageDisplay
-            label="Questions"
+            label="Messages"
             current={data.questions}
             limit={data.questionLimit}
             overageCost={data.questionOverageCost}
@@ -232,7 +232,7 @@ export default async function BillingPage() {
                     (vs {PLANS.standard.documentUploadLimit})
                   </p>
                   <p>
-                    {PLANS.enterprise.questionLimit.toLocaleString()} questions/mo
+                    {PLANS.enterprise.questionLimit.toLocaleString()} messages/mo
                     (vs {PLANS.standard.questionLimit})
                   </p>
                 </div>

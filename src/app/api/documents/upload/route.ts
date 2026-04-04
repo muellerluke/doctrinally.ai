@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { eq } from "drizzle-orm";
 import { put } from "@vercel/blob";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, memberships } from "@/db/schema";
 import { incrementDocumentUpload } from "@/lib/usage";
+
+const TYPE_TO_TASK: Record<string, string> = {
+  pdf: "process-pdf",
+  word: "process-word",
+  video: "process-video",
+};
 
 const MAX_FILE_SIZE: Record<string, number> = {
   "application/pdf": 50 * 1024 * 1024, // 50MB
@@ -24,6 +31,8 @@ const MIME_TO_TYPE: Record<string, string> = {
   "video/webm": "video",
   "video/quicktime": "video",
 };
+
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -98,6 +107,16 @@ export async function POST(request: Request) {
 
   // Increment usage
   await incrementDocumentUpload(membership.churchId);
+
+  // Trigger processing task
+  const taskId = TYPE_TO_TASK[docType];
+  if (taskId) {
+    try {
+      await tasks.trigger(taskId, { documentId: doc.id });
+    } catch (err) {
+      console.error(`Failed to trigger ${taskId} for ${doc.id}:`, err);
+    }
+  }
 
   return NextResponse.json({
     success: true,

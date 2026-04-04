@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
-import { YoutubeTranscript } from "youtube-transcript";
+import { YoutubeTranscript } from "youtube-transcript/dist/youtube-transcript.esm.js";
 
 /**
  * Extract YouTube video ID from a URL.

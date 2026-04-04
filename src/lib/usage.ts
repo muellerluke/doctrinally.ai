@@ -45,6 +45,27 @@ export async function incrementQuestionCount(churchId: string) {
     .where(eq(usageRecords.id, record.id));
 }
 
+export async function incrementVisitorCount(churchId: string) {
+  const now = new Date();
+  const record = await db.query.usageRecords.findFirst({
+    where: and(
+      eq(usageRecords.churchId, churchId),
+      lte(usageRecords.periodStart, now),
+      gte(usageRecords.periodEnd, now)
+    ),
+  });
+
+  if (!record) return;
+
+  await db
+    .update(usageRecords)
+    .set({
+      visitors: sql`${usageRecords.visitors} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(usageRecords.id, record.id));
+}
+
 export async function getCurrentUsage(churchId: string) {
   const now = new Date();
   return db.query.usageRecords.findFirst({

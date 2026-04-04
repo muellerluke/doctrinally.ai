@@ -3,6 +3,7 @@
 import { getServerSession } from "next-auth";
 import { eq, and, ilike, isNull, sql, count } from "drizzle-orm";
 import { del } from "@vercel/blob";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
 import { documents, chunks, memberships } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
@@ -15,6 +16,24 @@ import {
   type PlatejsDocumentInput,
   type DocumentMetadataInput,
 } from "@/lib/validations/documents";
+
+const DOC_TYPE_TO_TASK: Record<string, string> = {
+  youtube: "process-youtube",
+  pdf: "process-pdf",
+  word: "process-word",
+  video: "process-video",
+  platejs: "process-platejs",
+};
+
+async function triggerProcessing(docType: string, documentId: string) {
+  const taskId = DOC_TYPE_TO_TASK[docType];
+  if (!taskId) return;
+  try {
+    await tasks.trigger(taskId, { documentId });
+  } catch (err) {
+    console.error(`Failed to trigger ${taskId} for ${documentId}:`, err);
+  }
+}
 
 async function getAuthContext() {
   const session = await getServerSession(authOptions);
@@ -110,6 +129,8 @@ export async function createYouTubeDocument(input: YouTubeUploadInput) {
 
   await incrementDocumentUpload(ctx.membership.churchId);
 
+  await triggerProcessing("youtube", doc.id);
+
   return { success: true, documentId: doc.id };
 }
 
@@ -179,6 +200,8 @@ export async function publishPlatejsDocument(documentId: string) {
     .where(eq(documents.id, documentId));
 
   await incrementDocumentUpload(ctx.membership.churchId);
+
+  await triggerProcessing("platejs", documentId);
 
   return { success: true };
 }
@@ -266,6 +289,8 @@ export async function retryDocument(documentId: string) {
     .set({ status: "queued", errorMessage: null, updatedAt: new Date() })
     .where(eq(documents.id, documentId));
 
+  await triggerProcessing(doc.type, documentId);
+
   return { success: true };
 }
 
@@ -289,6 +314,8 @@ export async function reprocessDocument(documentId: string) {
     .update(documents)
     .set({ status: "queued", updatedAt: new Date() })
     .where(eq(documents.id, documentId));
+
+  await triggerProcessing(doc.type, documentId);
 
   return { success: true };
 }

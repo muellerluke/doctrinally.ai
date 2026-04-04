@@ -293,7 +293,7 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice) {
     await stripe.invoiceItems.create({
       customer: sub.stripeCustomerId,
       invoice: invoice.id,
-      description: `Question overage (${questionOverage} over ${sub.questionLimit} limit)`,
+      description: `Message overage (${questionOverage} over ${sub.questionLimit} limit)`,
       amount: Math.round(questionOverage * rates.question * 100),
       currency: "usd",
     });

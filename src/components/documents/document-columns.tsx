@@ -33,6 +33,9 @@ export interface DocumentRow {
   type: string;
   status: string;
   metadata: Record<string, unknown> | null;
+  sourceUrl: string | null;
+  blobPath: string | null;
+  content: string | null;
   createdAt: Date;
 }
 
@@ -52,6 +55,7 @@ function capitalizeType(type: string) {
 }
 
 interface ColumnOptions {
+  onOpen: (doc: DocumentRow) => void;
   onEdit: (id: string) => void;
   onRetry: (id: string) => void;
   onReprocess: (id: string) => void;
@@ -62,7 +66,7 @@ interface ColumnOptions {
 export function getDocumentColumns(
   options: ColumnOptions
 ): ColumnDef<DocumentRow>[] {
-  const { onEdit, onRetry, onReprocess, onDelete, onMove } = options;
+  const { onOpen, onEdit, onRetry, onReprocess, onDelete, onMove } = options;
 
   return [
     {
@@ -83,14 +87,18 @@ export function getDocumentColumns(
       cell: ({ row }) => {
         const Icon = typeIcons[row.original.type] ?? FileText;
         return (
-          <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => onOpen(row.original)}
+            className="flex items-center gap-2.5 text-left transition-colors hover:text-primary"
+          >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
               <Icon className="h-3.5 w-3.5 text-primary" />
             </div>
             <span className="truncate font-medium">
               {row.original.title}
             </span>
-          </div>
+          </button>
         );
       },
     },
@@ -132,7 +140,7 @@ export function getDocumentColumns(
               <span className="sr-only">Document actions</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(doc.id)}>
+              <DropdownMenuItem onClick={() => onOpen(doc)}>
                 <Eye />
                 View
               </DropdownMenuItem>

@@ -31,10 +31,12 @@ export function FolderRow({
   onMove,
 }: FolderRowProps) {
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onOpen(folder.id)}
-      className="group flex w-full items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-4 py-3 text-left transition-colors hover:border-border hover:bg-card"
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(folder.id); }}
+      className="group flex w-full cursor-pointer items-center gap-3 rounded-lg border border-border/60 bg-card/60 px-4 py-3 text-left transition-colors hover:border-border hover:bg-card"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
         <FolderIcon className="h-4.5 w-4.5 text-primary" />
@@ -84,6 +86,6 @@ export function FolderRow({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </button>
+    </div>
   );
 }

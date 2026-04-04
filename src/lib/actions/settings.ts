@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { churches, memberships, subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { canUseCustomBranding, canUseCustomDomain } from "@/lib/plan-gating";
+import { addDomainToVercel, removeDomainFromVercel } from "@/lib/vercel";
 
 async function getAuthContext() {
   const session = await getServerSession(authOptions);
@@ -65,6 +66,8 @@ const brandingSchema = z.object({
   darkTextColor: z.string().nullable().optional(),
   darkLogoUrl: z.string().nullable().optional(),
   welcomeMessage: z.string().max(200).nullable().optional(),
+  logoHeight: z.string().nullable().optional(),
+  fontFamily: z.string().nullable().optional(),
 });
 
 export async function updateChurchBranding(
@@ -121,6 +124,25 @@ export async function updateChurchDomain(customDomain: string | null) {
     if (existing && existing.id !== ctx.membership.churchId) {
       return { error: "This domain is already in use" };
     }
+  }
+
+  // Get the old domain to remove from Vercel if changing
+  const currentChurch = await db.query.churches.findFirst({
+    where: eq(churches.id, ctx.membership.churchId),
+  });
+  const oldDomain = currentChurch?.customDomain;
+
+  // Add new domain to Vercel (provisions SSL automatically)
+  if (customDomain) {
+    const result = await addDomainToVercel(customDomain);
+    if (!result.success) {
+      return { error: result.error || "Failed to register domain with Vercel" };
+    }
+  }
+
+  // Remove old domain from Vercel if it's being changed or cleared
+  if (oldDomain && oldDomain !== customDomain) {
+    await removeDomainFromVercel(oldDomain);
   }
 
   await db
