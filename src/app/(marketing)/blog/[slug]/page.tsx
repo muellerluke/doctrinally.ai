@@ -116,12 +116,21 @@ export default async function BlogPostPage({
 
       {/* Body */}
       <section className="container mx-auto max-w-3xl px-4 py-16">
-        <div className="prose max-w-none text-foreground prose-headings:font-heading prose-headings:tracking-tight prose-h2:mt-12 prose-h2:text-2xl prose-h2:sm:text-3xl prose-p:text-[1.05rem] prose-p:leading-[1.8] prose-p:text-muted-foreground prose-strong:text-foreground">
+        <div className="space-y-10">
           {post.sections.map((section, i) => (
-            <div key={i}>
-              {section.heading ? <h2>{section.heading}</h2> : null}
+            <div key={i} className="space-y-5">
+              {section.heading ? (
+                <h2 className="font-heading text-2xl tracking-tight sm:text-3xl">
+                  {section.heading}
+                </h2>
+              ) : null}
               {section.paragraphs.map((p, j) => (
-                <p key={j}>{p}</p>
+                <p
+                  key={j}
+                  className="text-[1.05rem] leading-[1.8] text-muted-foreground"
+                >
+                  {p}
+                </p>
               ))}
             </div>
           ))}
