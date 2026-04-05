@@ -4,7 +4,11 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
-import { YoutubeTranscript } from "youtube-transcript/dist/youtube-transcript.esm.js";
+import {
+  fetchYouTubeCaptions,
+  transcribeYouTubeViaWhisper,
+} from "../utils/youtube";
+import type { WhisperSegment } from "../utils/whisper";
 
 /**
  * Extract YouTube video ID from a URL.
@@ -50,19 +54,25 @@ export const processYouTube = task({
       const videoId = extractVideoId(doc.sourceUrl!);
       if (!videoId) throw new Error(`Could not extract video ID from: ${doc.sourceUrl}`);
 
-      // Fetch transcript
-      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      // Two-tier transcript: cheap captions first, Whisper fallback.
+      let segments: WhisperSegment[];
+      let transcriptSource: "captions" | "whisper";
 
-      if (!transcript || transcript.length === 0) {
-        throw new Error("No transcript available for this video");
+      try {
+        segments = await fetchYouTubeCaptions(videoId);
+        transcriptSource = "captions";
+      } catch (captionErr) {
+        console.warn(
+          `[process-youtube] Captions unavailable for ${videoId}, falling back to Whisper:`,
+          captionErr instanceof Error ? captionErr.message : captionErr
+        );
+        segments = await transcribeYouTubeViaWhisper(videoId);
+        transcriptSource = "whisper";
       }
 
-      // Map transcript to segments with start/end times
-      const segments = transcript.map((entry, i) => ({
-        text: entry.text,
-        start: entry.offset / 1000, // Convert ms to seconds
-        end: (entry.offset + entry.duration) / 1000,
-      }));
+      if (segments.length === 0) {
+        throw new Error("No transcript available for this video");
+      }
 
       // Chunk transcript into ~120 second segments
       const transcriptChunks = chunkTranscript(segments, 120);
@@ -97,7 +107,11 @@ export const processYouTube = task({
         .set({ status: "indexed", updatedAt: new Date() })
         .where(eq(documents.id, documentId));
 
-      return { success: true, chunkCount: transcriptChunks.length };
+      return {
+        success: true,
+        chunkCount: transcriptChunks.length,
+        transcriptSource,
+      };
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown error occurred";

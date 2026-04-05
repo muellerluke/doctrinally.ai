@@ -30,6 +30,7 @@ import { createFolder } from "@/lib/actions/folders";
 import { YouTubeUploadDialog } from "@/components/documents/youtube-upload-dialog";
 import { FileUploadDialog } from "@/components/documents/file-upload-dialog";
 import { PlatejsDocumentDialog } from "@/components/documents/platejs-document-dialog";
+import { useUploads } from "@/components/documents/upload-provider";
 
 interface DocumentActionsProps {
   churchId: string;
@@ -42,6 +43,8 @@ export function DocumentActions({
 }: DocumentActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { addUpload, updateProgress, completeUpload, failUpload } =
+    useUploads();
 
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
@@ -145,6 +148,10 @@ export function DocumentActions({
         onOpenChange={setFileUploadOpen}
         churchId={churchId}
         folderId={currentFolderId}
+        onUploadStart={addUpload}
+        onUploadProgress={updateProgress}
+        onUploadComplete={completeUpload}
+        onUploadError={failUpload}
       />
       <PlatejsDocumentDialog
         open={newDocOpen}

@@ -5,6 +5,8 @@ import { eq, and, lte, gte } from "drizzle-orm";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/layouts/admin-sidebar";
 import { AdminHeader } from "@/components/layouts/admin-header";
+import { UploadProvider } from "@/components/documents/upload-provider";
+import { UploadProgress } from "@/components/documents/upload-progress";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
 import { memberships, churches, subscriptions, usageRecords } from "@/db/schema";
@@ -61,6 +63,7 @@ export default async function AdminLayout({
     : null;
 
   return (
+    <UploadProvider>
     <SidebarProvider>
       <AdminSidebar
         churchName={church?.name}
@@ -104,6 +107,8 @@ export default async function AdminLayout({
           {children}
         </main>
       </SidebarInset>
+      <UploadProgress />
     </SidebarProvider>
+    </UploadProvider>
   );
 }

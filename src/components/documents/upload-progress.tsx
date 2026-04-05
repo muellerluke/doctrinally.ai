@@ -85,7 +85,9 @@ export function UploadProgress() {
                   <div className="mt-1 flex items-center gap-2">
                     <Progress value={upload.progress} className="h-1 flex-1" />
                     <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                      {upload.progress}%
+                      {upload.progress === 0
+                        ? "Preparing…"
+                        : `${upload.progress}%`}
                     </span>
                   </div>
                 )}

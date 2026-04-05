@@ -4,19 +4,7 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
-
-const WHISPER_API_URL = "https://api.openai.com/v1/audio/transcriptions";
-
-interface WhisperSegment {
-  text: string;
-  start: number;
-  end: number;
-}
-
-interface WhisperResponse {
-  text: string;
-  segments: WhisperSegment[];
-}
+import { transcribeWithWhisper } from "../utils/whisper";
 
 export const processVideo = task({
   id: "process-video",
@@ -44,9 +32,6 @@ export const processVideo = task({
       // Download video from blob storage
       if (!doc.blobPath) throw new Error("Document has no blob path");
 
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
-
       const videoResponse = await fetch(doc.blobPath);
       if (!videoResponse.ok)
         throw new Error(`Failed to download video: ${videoResponse.statusText}`);
@@ -57,35 +42,11 @@ export const processVideo = task({
       const filename =
         doc.blobPath.split("/").pop() || "video.mp4";
 
-      // Call OpenAI Whisper API for transcription
-      const formData = new FormData();
-      formData.append("file", videoBlob, filename);
-      formData.append("model", "whisper-1");
-      formData.append("response_format", "verbose_json");
-
-      const whisperResponse = await fetch(WHISPER_API_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: formData,
-      });
-
-      if (!whisperResponse.ok) {
-        const errorText = await whisperResponse.text();
-        throw new Error(
-          `Whisper API error (${whisperResponse.status}): ${errorText}`
-        );
-      }
-
-      const whisperData: WhisperResponse = await whisperResponse.json();
-
-      if (!whisperData.segments || whisperData.segments.length === 0) {
-        throw new Error("No transcript segments returned from Whisper");
-      }
+      // Transcribe via shared Whisper util
+      const segments = await transcribeWithWhisper(videoBlob, filename);
 
       // Chunk transcript segments by time (~120 seconds per chunk)
-      const transcriptChunks = chunkTranscript(whisperData.segments, 120);
+      const transcriptChunks = chunkTranscript(segments, 120);
 
       if (transcriptChunks.length === 0) {
         throw new Error("No chunks generated from video transcript");
