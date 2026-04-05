@@ -2,14 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Sparkles } from "lucide-react";
+import { MessageSquare, Sparkles, Menu } from "lucide-react";
 import { useChat, type ChatMessage } from "@/lib/hooks/use-chat";
 import { ChatMessages } from "@/components/chat/chat-messages";
 import { ChatInput } from "@/components/chat/chat-input";
+import { useChatShell } from "@/components/chat/chat-shell";
 
 interface ChatInterfaceProps {
   churchId: string;
   churchName: string;
+  churchLogoUrl?: string | null;
   welcomeMessage?: string;
   chatId?: string;
   initialMessages?: ChatMessage[];
@@ -25,11 +27,13 @@ const SUGGESTED_QUESTIONS = [
 export function ChatInterface({
   churchId,
   churchName,
+  churchLogoUrl,
   welcomeMessage,
   chatId: initialChatId,
   initialMessages,
 }: ChatInterfaceProps) {
   const router = useRouter();
+  const { toggleSidebar } = useChatShell();
   const {
     messages,
     chatId,
@@ -45,7 +49,6 @@ export function ChatInterface({
     initialMessages,
   });
 
-  // Update URL when a new chatId is received (first message in a new conversation)
   const prevChatIdRef = useRef(initialChatId);
   useEffect(() => {
     if (chatId && chatId !== prevChatIdRef.current) {
@@ -58,6 +61,37 @@ export function ChatInterface({
 
   return (
     <div className="flex flex-1 flex-col">
+      {/* Mobile navbar — visible only on small screens */}
+      <div className="flex items-center gap-3 border-b px-3 py-2.5 md:hidden">
+        <button
+          onClick={toggleSidebar}
+          className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        {churchLogoUrl ? (
+          <img
+            src={churchLogoUrl}
+            alt={churchName}
+            className="h-6 w-6 rounded object-cover"
+          />
+        ) : (
+          <>
+            <img
+              src="/logo-light-mode.png"
+              alt="Doctrinally.AI"
+              className="h-6 w-6 rounded dark:hidden"
+            />
+            <img
+              src="/logo-dark-mode.png"
+              alt="Doctrinally.AI"
+              className="hidden h-6 w-6 rounded dark:block"
+            />
+          </>
+        )}
+        <span className="truncate text-sm font-semibold">{churchName}</span>
+      </div>
+
       {!hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-8 p-4">
           <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">

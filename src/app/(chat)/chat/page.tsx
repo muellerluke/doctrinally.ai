@@ -16,6 +16,7 @@ export default async function ChatPage() {
     <ChatInterface
       churchId={church.id}
       churchName={church.name}
+      churchLogoUrl={church.logoUrl}
       welcomeMessage={church.welcomeMessage ?? undefined}
     />
   );

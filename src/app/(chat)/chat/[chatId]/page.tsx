@@ -43,6 +43,7 @@ export default async function ChatHistoryPage({
     <ChatInterface
       churchId={church.id}
       churchName={church.name}
+      churchLogoUrl={church.logoUrl}
       welcomeMessage={church.welcomeMessage ?? undefined}
       chatId={chatId}
       initialMessages={initialMessages}

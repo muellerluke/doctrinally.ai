@@ -7,6 +7,7 @@ import { getCurrentChurch } from "@/lib/church-context";
 import { canUseCustomBranding } from "@/lib/plan-gating";
 import { getChats } from "@/lib/actions/chats";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
+import { ChatShell } from "@/components/chat/chat-shell";
 import { VisitorTracker } from "@/components/chat/visitor-tracker";
 import type { ChatHistoryItem } from "@/components/chat/chat-sidebar";
 
@@ -99,24 +100,26 @@ export default async function ChatLayout({
           href={`https://fonts.googleapis.com/css2?family=${googleFontParam}&display=swap`}
         />
       )}
-      <div
-        className="flex h-screen"
-        style={{
-          ...brandingVars,
-          fontFamily:
-            isEnterprise && church.fontFamily && FONT_CSS_MAP[church.fontFamily]
-              ? FONT_CSS_MAP[church.fontFamily]
-              : undefined,
-        } as React.CSSProperties}
-      >
-        <ChatSidebar
-          churchName={church.name}
-          churchLogoUrl={isEnterprise ? church.logoUrl : null}
-          chats={chatHistory}
-        />
-        <div className="flex flex-1 flex-col">{children}</div>
-        <VisitorTracker churchId={church.id} />
-      </div>
+      <ChatShell>
+        <div
+          className="flex h-screen"
+          style={{
+            ...brandingVars,
+            fontFamily:
+              isEnterprise && church.fontFamily && FONT_CSS_MAP[church.fontFamily]
+                ? FONT_CSS_MAP[church.fontFamily]
+                : undefined,
+          } as React.CSSProperties}
+        >
+          <ChatSidebar
+            churchName={church.name}
+            churchLogoUrl={isEnterprise ? church.logoUrl : null}
+            chats={chatHistory}
+          />
+          <div className="flex flex-1 flex-col">{children}</div>
+          <VisitorTracker churchId={church.id} />
+        </div>
+      </ChatShell>
     </>
   );
 }
