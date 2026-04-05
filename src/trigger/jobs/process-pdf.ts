@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkByTokens } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
-import { PDFParse } from "pdf-parse";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export const processPdf = task({
   id: "process-pdf",
@@ -39,11 +39,10 @@ export const processPdf = task({
       const arrayBuffer = await response.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
 
-      // Extract text from PDF using pdf-parse v2 class API
-      const parser = new PDFParse({ data });
-      const textResult = await parser.getText();
-      const text = textResult.text;
-      await parser.destroy();
+      // Extract text from PDF using unpdf (serverless-safe, no DOM deps)
+      const pdf = await getDocumentProxy(data);
+      const { text: extracted } = await extractText(pdf, { mergePages: true });
+      const text = Array.isArray(extracted) ? extracted.join("\n") : extracted;
 
       if (!text || text.trim().length === 0) {
         throw new Error("No text content extracted from PDF");

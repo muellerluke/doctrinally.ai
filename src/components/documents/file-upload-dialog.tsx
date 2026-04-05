@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 import { FileUp, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
@@ -115,67 +116,62 @@ export function FileUploadDialog({
     setLoading(true);
 
     const uploadId = crypto.randomUUID();
-    const fileType = resolveFileType(file);
+    const currentFile = file;
+    const fileType = resolveFileType(currentFile);
     const tagList = tags
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("churchId", churchId);
-    formData.append("title", title);
-    formData.append("type", fileType);
-    if (folderId) formData.append("folderId", folderId);
-    if (tagList.length > 0) formData.append("tags", tagList.join(","));
-
     onUploadStart?.({
       id: uploadId,
-      filename: file.name,
+      filename: currentFile.name,
       progress: 0,
       status: "uploading",
     });
 
-    // Close dialog immediately so user can continue working
+    // Close dialog immediately so the user can queue more uploads
     resetForm();
     onOpenChange(false);
 
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        onUploadProgress?.(uploadId, percent);
-      }
-    };
-
-    xhr.onload = () => {
-      setLoading(false);
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onUploadComplete?.(uploadId);
-        toast.success("File uploaded successfully");
-        router.refresh();
-      } else {
-        let errorMsg = "Upload failed";
-        try {
-          const body = JSON.parse(xhr.responseText);
-          if (body.error) errorMsg = body.error;
-        } catch {
-          // use default message
+    try {
+      // Client-direct upload to Vercel Blob. The browser streams bytes
+      // straight to Blob storage, bypassing Vercel's serverless body
+      // size limit. Our /api/documents/upload route only signs a token
+      // and receives an async webhook when the upload completes.
+      await upload(
+        `documents/${churchId}/${currentFile.name}`,
+        currentFile,
+        {
+          access: "public",
+          handleUploadUrl: "/api/documents/upload",
+          clientPayload: JSON.stringify({
+            title,
+            tags: tagList.join(","),
+            folderId: folderId ?? null,
+            fileType: currentFile.type,
+            fileSize: currentFile.size,
+          }),
+          onUploadProgress: (event) => {
+            onUploadProgress?.(uploadId, Math.round(event.percentage));
+          },
         }
-        onUploadError?.(uploadId, errorMsg);
-        toast.error(errorMsg);
-      }
-    };
+      );
 
-    xhr.onerror = () => {
       setLoading(false);
-      onUploadError?.(uploadId, "Network error during upload");
-      toast.error("Network error during upload");
-    };
-
-    xhr.open("POST", "/api/documents/upload");
-    xhr.send(formData);
+      onUploadComplete?.(uploadId);
+      toast.success("File uploaded successfully");
+      // The documents row was created server-side in onBeforeGenerateToken,
+      // so a refresh will show it immediately (status: "uploaded", then
+      // flips to "queued" once the webhook lands).
+      router.refresh();
+    } catch (err) {
+      setLoading(false);
+      const errorMsg =
+        err instanceof Error ? err.message : "Upload failed";
+      onUploadError?.(uploadId, errorMsg);
+      toast.error(errorMsg);
+    }
   }
 
   return (
@@ -238,7 +234,7 @@ export function FileUploadDialog({
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  PDF, DOCX, or video files
+                  PDF or DOCX up to 50 MB &middot; video up to 2 GB
                 </p>
               </div>
             )}
