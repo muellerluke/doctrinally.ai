@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { db } from "@/db";
 import { churches, subscriptions, usageRecords } from "@/db/schema";
-import { getPlanLimits, getOverageRates } from "@/lib/plans";
+import { getInitialLimits, getOverageRates } from "@/lib/plans";
 import type { PlanType } from "@/lib/plans";
 import type Stripe from "stripe";
 
@@ -110,12 +110,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   if (!period) return;
 
+  // Honor trial status from Stripe so the DB matches reality.
+  const isTrialing = stripeSubscription.status === "trialing";
+  const nextStatus = isTrialing ? "trialing" : "active";
+
   await db.transaction(async (tx) => {
     await tx
       .update(subscriptions)
       .set({
         stripeSubscriptionId: stripeSubscription.id,
-        status: "active",
+        status: nextStatus,
         currentPeriodStart: period.periodStart,
         currentPeriodEnd: period.periodEnd,
         updatedAt: new Date(),
@@ -142,9 +146,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const churchId = subscription.metadata?.churchId;
   if (!churchId) return;
 
-  const plan = subscription.metadata?.plan as PlanType | undefined;
-  const limits = plan ? getPlanLimits(plan) : null;
-
   const statusMap: Record<string, typeof subscriptions.$inferInsert.status> = {
     active: "active",
     past_due: "past_due",
@@ -155,6 +156,15 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const mappedStatus = statusMap[subscription.status] ?? "incomplete";
   const period = getSubscriptionPeriod(subscription);
+
+  // Resolve limits based on both plan and trial state. This is the path that
+  // fires on the trialing → active transition: when Stripe flips status to
+  // "active" at the end of the trial, limits bump from TRIAL_LIMITS to the
+  // full plan limits automatically.
+  const plan = subscription.metadata?.plan as PlanType | undefined;
+  const limits = plan
+    ? getInitialLimits(plan, mappedStatus === "trialing")
+    : null;
 
   await db
     .update(subscriptions)

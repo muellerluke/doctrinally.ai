@@ -8,6 +8,7 @@ import {
   TrendingUp,
   AlertTriangle,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { db } from "@/db";
 import { memberships, churches } from "@/db/schema";
@@ -92,6 +93,25 @@ export default async function BillingPage() {
         title="Billing"
         description="Manage your subscription, view usage, and track overage"
       />
+
+      {data.status === "trialing" && data.currentPeriodEnd && (
+        <div className="flex items-start gap-3 rounded-lg border border-blue-500/30 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-400/20 dark:bg-blue-950/40 dark:text-blue-100">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-300" />
+          <div className="flex-1">
+            <p className="font-medium">You&apos;re on a free trial</p>
+            <p className="mt-0.5 text-blue-800 dark:text-blue-200/80">
+              Your card will be charged ${data.planPrice} on{" "}
+              {data.currentPeriodEnd.toLocaleDateString(undefined, {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}{" "}
+              unless you cancel. Trial limits: {data.documentUploadLimit}{" "}
+              document uploads and {data.questionLimit} messages.
+            </p>
+          </div>
+        </div>
+      )}
 
       {data.status === "past_due" && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-50 p-4 text-sm text-amber-800">
@@ -190,8 +210,8 @@ export default async function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Plan Comparison for Standard */}
-      {data.plan === "standard" && (
+      {/* Plan Comparison for Standard (hidden during trial to keep focus on conversion) */}
+      {data.plan === "standard" && data.status !== "trialing" && (
         <Card className="border-primary/20 bg-primary/[0.02]">
           <CardHeader>
             <CardTitle className="text-lg">

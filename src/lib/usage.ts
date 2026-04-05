@@ -116,6 +116,10 @@ export async function canUseService(churchId: string): Promise<boolean> {
 
   if (!sub) return false;
 
-  // Allow usage for active and past_due (grace period)
-  return sub.status === "active" || sub.status === "past_due";
+  // Allow usage for active, past_due (grace period), and trialing.
+  return (
+    sub.status === "active" ||
+    sub.status === "past_due" ||
+    sub.status === "trialing"
+  );
 }

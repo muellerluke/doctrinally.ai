@@ -55,7 +55,6 @@ export async function getChurchInvitations(churchId: string) {
 export async function inviteUser(input: {
   churchId: string;
   email: string;
-  role: "admin" | "member";
 }) {
   const ctx = await requireOwnerContext();
   if (!ctx) return { error: "Only owners can invite users" };
@@ -97,7 +96,7 @@ export async function inviteUser(input: {
     churchId: input.churchId,
     invitedBy: ctx.userId,
     email: input.email,
-    role: input.role,
+    role: "admin",
     token,
     expiresAt,
   });
@@ -110,11 +109,11 @@ export async function inviteUser(input: {
   await sendInvitationEmail(
     input.email,
     church?.name || "a church",
-    input.role,
+    "admin",
     inviteUrl
   );
 
-  return { success: true, token };
+  return { success: true };
 }
 
 export async function changeUserRole(input: {

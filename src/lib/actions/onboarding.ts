@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { onboardingSchema } from "@/lib/validations/onboarding";
 import { slugify } from "@/lib/utils";
 import { stripe, getStripePriceId } from "@/lib/stripe";
-import { getPlanLimits } from "@/lib/plans";
+import { getInitialLimits, TRIAL_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
 
 export async function getExistingChurch() {
@@ -46,8 +46,10 @@ export async function resumeCheckout(plan: "standard" | "enterprise") {
   });
   if (!sub) return { error: "No subscription found" };
 
-  // Update plan if changed
-  const limits = getPlanLimits(plan);
+  // Update plan if changed. Standard still starts as a trial on resume so
+  // churches that bailed from the first checkout still get the trial offer.
+  const isTrial = plan === "standard";
+  const limits = getInitialLimits(plan, isTrial);
   await db
     .update(subscriptions)
     .set({
@@ -78,11 +80,13 @@ export async function resumeCheckout(plan: "standard" | "enterprise") {
     customer: customerId,
     line_items: [{ price: getStripePriceId(plan), quantity: 1 }],
     allow_promotion_codes: true,
+    payment_method_collection: "always",
     success_url: `${env.NEXT_PUBLIC_APP_URL}/onboarding/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.NEXT_PUBLIC_APP_URL}/onboarding?canceled=true`,
     metadata: { churchId: membership.churchId, plan },
     subscription_data: {
       metadata: { churchId: membership.churchId, plan },
+      ...(isTrial && { trial_period_days: TRIAL_DAYS }),
     },
   });
 
@@ -120,7 +124,10 @@ export async function createChurch(input: {
     };
   }
 
-  const limits = getPlanLimits(parsed.data.plan);
+  // Standard signups start as a 14-day free trial with reduced limits.
+  // Enterprise goes straight to paid since it requires sales-led onboarding.
+  const isTrial = parsed.data.plan === "standard";
+  const limits = getInitialLimits(parsed.data.plan, isTrial);
 
   const result = await db.transaction(async (tx) => {
     const [church] = await tx
@@ -168,11 +175,13 @@ export async function createChurch(input: {
     customer: customer.id,
     line_items: [{ price: getStripePriceId(parsed.data.plan), quantity: 1 }],
     allow_promotion_codes: true,
+    payment_method_collection: "always",
     success_url: `${env.NEXT_PUBLIC_APP_URL}/onboarding/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.NEXT_PUBLIC_APP_URL}/onboarding?canceled=true`,
     metadata: { churchId: result.id, plan: parsed.data.plan },
     subscription_data: {
       metadata: { churchId: result.id, plan: parsed.data.plan },
+      ...(isTrial && { trial_period_days: TRIAL_DAYS }),
     },
   });
 

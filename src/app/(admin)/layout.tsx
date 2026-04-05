@@ -71,6 +71,9 @@ export default async function AdminLayout({
         uploadUsage={usage?.documentUploads ?? 0}
         uploadLimit={sub?.documentUploadLimit ?? 0}
         membershipRole={membership.role}
+        trialEndsAt={
+          sub?.status === "trialing" ? sub?.currentPeriodEnd ?? null : null
+        }
       />
       <SidebarInset>
         <AdminHeader userName={session.user.name} />

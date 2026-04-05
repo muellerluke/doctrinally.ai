@@ -25,7 +25,12 @@ export async function verifyCheckoutSession(sessionId: string) {
     expand: ["subscription"],
   });
 
-  if (checkoutSession.payment_status !== "paid") {
+  // For trial checkouts, Stripe returns payment_status="no_payment_required"
+  // since no charge happens until day 15. Accept both.
+  if (
+    checkoutSession.payment_status !== "paid" &&
+    checkoutSession.payment_status !== "no_payment_required"
+  ) {
     return { error: "Payment was not completed" };
   }
 
@@ -68,12 +73,17 @@ export async function verifyCheckoutSession(sessionId: string) {
     const periodStart = new Date(item.current_period_start * 1000);
     const periodEnd = new Date(item.current_period_end * 1000);
 
+    // Respect Stripe's actual status — for trial checkouts this will be
+    // "trialing" and current_period_end will be the trial end date.
+    const nextStatus =
+      stripeSubscription.status === "trialing" ? "trialing" : "active";
+
     await db.transaction(async (tx) => {
       await tx
         .update(subscriptions)
         .set({
           stripeSubscriptionId: stripeSubscription.id,
-          status: "active",
+          status: nextStatus,
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           updatedAt: new Date(),

@@ -43,6 +43,7 @@ interface AdminSidebarProps {
   uploadUsage?: number;
   uploadLimit?: number;
   membershipRole?: string;
+  trialEndsAt?: Date | null;
 }
 
 export function AdminSidebar({
@@ -54,6 +55,7 @@ export function AdminSidebar({
   uploadUsage = 0,
   uploadLimit = 0,
   membershipRole,
+  trialEndsAt,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const isOwner = membershipRole === "owner";
@@ -66,14 +68,29 @@ export function AdminSidebar({
       : []),
   ];
 
-  const planLabel = plan
-    ? plan.charAt(0).toUpperCase() + plan.slice(1)
-    : "No plan";
+  const isTrialing = subscriptionStatus === "trialing";
 
-  const planBadgeClass =
-    plan === "enterprise"
+  const planLabel = isTrialing
+    ? "Trial"
+    : plan
+      ? plan.charAt(0).toUpperCase() + plan.slice(1)
+      : "No plan";
+
+  const planBadgeClass = isTrialing
+    ? "border-blue-400/40 bg-blue-400/15 text-blue-300"
+    : plan === "enterprise"
       ? "border-sidebar-foreground/20 bg-sidebar-foreground/10 text-sidebar-foreground"
       : "border-gold/30 bg-gold/15 text-gold";
+
+  const trialDaysLeft =
+    isTrialing && trialEndsAt
+      ? Math.max(
+          0,
+          Math.ceil(
+            (trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          )
+        )
+      : null;
 
   const questionPercentage =
     questionLimit > 0
@@ -139,8 +156,21 @@ export function AdminSidebar({
               {planLabel}
             </Badge>
           </div>
+          {isTrialing && trialDaysLeft !== null && (
+            <Link
+              href="/billing"
+              className="flex items-center justify-between rounded-md border border-blue-400/30 bg-blue-400/10 px-2.5 py-1.5 text-xs text-blue-200 transition hover:bg-blue-400/15"
+            >
+              <span className="font-medium">Free trial</span>
+              <span>
+                {trialDaysLeft} {trialDaysLeft === 1 ? "day" : "days"} left
+              </span>
+            </Link>
+          )}
           <Separator className="bg-sidebar-border" />
-          {subscriptionStatus === "active" || subscriptionStatus === "past_due" ? (
+          {subscriptionStatus === "active" ||
+          subscriptionStatus === "past_due" ||
+          subscriptionStatus === "trialing" ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
                 <span>Messages</span>

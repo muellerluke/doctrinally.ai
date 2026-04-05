@@ -37,11 +37,26 @@ export const PLANS = {
 
 export type PlanType = keyof typeof PLANS;
 
+// Free trial configuration. Only Standard is trialable; Enterprise goes through sales.
+export const TRIAL_DAYS = 14;
+export const TRIAL_LIMITS = {
+  documentUploadLimit: 10,
+  questionLimit: 100,
+} as const;
+
 export function getPlanLimits(plan: PlanType) {
   return {
     documentUploadLimit: PLANS[plan].documentUploadLimit,
     questionLimit: PLANS[plan].questionLimit,
   };
+}
+
+// Source of truth for the limits stored on a subscription row.
+// During a trial the church gets a capped taste of Standard; on conversion
+// the Stripe webhook (trialing → active) bumps to full plan limits.
+export function getInitialLimits(plan: PlanType, isTrial: boolean) {
+  if (isTrial) return { ...TRIAL_LIMITS };
+  return getPlanLimits(plan);
 }
 
 export function getOverageRates() {

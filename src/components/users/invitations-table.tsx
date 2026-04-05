@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Copy, Check } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable } from "@/components/shared/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,6 @@ export function InvitationsTable({
 }: InvitationsTableProps) {
   const router = useRouter();
   const [revokeTarget, setRevokeTarget] = useState<Invitation | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function handleRevoke() {
     if (!revokeTarget) return;
@@ -60,14 +59,6 @@ export function InvitationsTable({
       toast.success("Invitation resent with new link");
       router.refresh();
     }
-  }
-
-  function handleCopyLink(invite: Invitation) {
-    const link = `${window.location.origin}/invite?token=${invite.token}`;
-    navigator.clipboard.writeText(link);
-    setCopiedId(invite.id);
-    setTimeout(() => setCopiedId(null), 2000);
-    toast.success("Link copied");
   }
 
   const columns: ColumnDef<Invitation>[] = [
@@ -114,19 +105,6 @@ export function InvitationsTable({
                     <MoreHorizontal className="h-4 w-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleCopyLink(invite)}>
-                      {copiedId === invite.id ? (
-                        <>
-                          <Check className="mr-2 h-4 w-4 text-green-600" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="mr-2 h-4 w-4" />
-                          Copy link
-                        </>
-                      )}
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleResend(invite)}>
                       Resend
                     </DropdownMenuItem>

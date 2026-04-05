@@ -3,11 +3,13 @@
 import bcrypt from "bcryptjs";
 import { createHash } from "crypto";
 import { eq, and, gt } from "drizzle-orm";
+import { getServerSession } from "next-auth";
 import { db } from "@/db";
 import { users, passwordResetTokens, invitations, memberships } from "@/db/schema";
 import { signUpSchema, forgotPasswordSchema } from "@/lib/validations/auth";
 import { generateToken } from "@/lib/utils";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { authOptions } from "@/lib/auth";
 
 export async function signUp(input: {
   name: string;
@@ -175,4 +177,10 @@ export async function acceptInvitation(token: string, userId: string) {
   });
 
   return { success: true, churchId: invite.churchId };
+}
+
+export async function acceptInvitationForCurrentUser(token: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return { error: "Not authenticated" };
+  return acceptInvitation(token, session.user.id);
 }

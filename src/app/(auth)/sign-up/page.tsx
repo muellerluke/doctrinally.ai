@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,10 +18,15 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signUpSchema } from "@/lib/validations/auth";
-import { signUp } from "@/lib/actions/auth";
+import {
+  signUp,
+  validateInvitationToken,
+  acceptInvitationForCurrentUser,
+} from "@/lib/actions/auth";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,6 +34,26 @@ export default function SignUpPage() {
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = searchParams.get("invite");
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const result = await validateInvitationToken(token);
+      if (cancelled) return;
+      if (result.error || !result.invitation) {
+        toast.error(result.error || "Invalid invitation");
+        return;
+      }
+      setEmail(result.invitation.email);
+      setInviteToken(token);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +97,17 @@ export default function SignUpPage() {
         return;
       }
 
-      router.push("/onboarding");
+      if (inviteToken) {
+        const accept = await acceptInvitationForCurrentUser(inviteToken);
+        if (accept.error) {
+          toast.error(accept.error);
+          router.push("/onboarding");
+        } else {
+          router.push("/dashboard");
+        }
+      } else {
+        router.push("/onboarding");
+      }
       router.refresh();
     } catch {
       toast.error("Something went wrong. Please try again.");
@@ -114,7 +149,7 @@ export default function SignUpPage() {
               placeholder="you@church.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
+              disabled={loading || !!inviteToken}
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email}</p>

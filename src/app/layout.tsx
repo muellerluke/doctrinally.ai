@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -82,15 +83,6 @@ export default function RootLayout({
             __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
           }}
         />
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=AW-18062091965"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'AW-18062091965');`,
-          }}
-        />
       </head>
       <body className="min-h-full flex flex-col">
         <AuthSessionProvider>
@@ -100,6 +92,7 @@ export default function RootLayout({
           </ThemeProvider>
         </AuthSessionProvider>
       </body>
+      <GoogleAnalytics gaId="AW-18062091965" />
     </html>
   );
 }

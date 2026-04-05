@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -14,13 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { inviteUser } from "@/lib/actions/users";
 
 interface InviteDialogProps {
@@ -36,26 +29,20 @@ export function InviteDialog({
 }: InviteDialogProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "member">("member");
   const [loading, setLoading] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const result = await inviteUser({ churchId, email, role });
+      const result = await inviteUser({ churchId, email });
       if (result.error) {
         toast.error(result.error);
         return;
       }
-      if (result.token) {
-        const link = `${window.location.origin}/invite?token=${result.token}`;
-        setInviteLink(link);
-        toast.success("Invitation created");
-        router.refresh();
-      }
+      toast.success(`Invitation sent to ${email}`);
+      router.refresh();
+      handleClose(false);
     } catch {
       toast.error("Failed to send invitation");
     } finally {
@@ -63,20 +50,9 @@ export function InviteDialog({
     }
   }
 
-  function handleCopy() {
-    if (inviteLink) {
-      navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  }
-
   function handleClose(open: boolean) {
     if (!open) {
       setEmail("");
-      setRole("member");
-      setInviteLink(null);
-      setCopied(false);
     }
     onOpenChange(open);
   }
@@ -85,78 +61,33 @@ export function InviteDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite user</DialogTitle>
+          <DialogTitle>Invite admin</DialogTitle>
         </DialogHeader>
 
-        {inviteLink ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Share this link with{" "}
-              <span className="font-medium text-foreground">{email}</span> to
-              invite them as{" "}
-              <span className="font-medium text-foreground">{role}</span>.
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                value={inviteLink}
-                readOnly
-                className="font-mono text-xs"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopy}
-                className="shrink-0"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="invite-email">Email</Label>
+            <Input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="user@example.com"
+              required
+              disabled={loading}
+            />
             <p className="text-xs text-muted-foreground">
-              This link expires in 7 days.
+              The invitee will receive an email with a link to create their
+              account as an admin.
             </p>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select
-                value={role}
-                onValueChange={(v) => v && setRole(v as "admin" | "member")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {loading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Create invitation
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+          <DialogFooter>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send invitation
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

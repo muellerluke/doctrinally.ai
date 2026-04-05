@@ -6,7 +6,6 @@ const organization = {
   logo: "https://www.doctrinally.ai/logo-light-mode.png",
   description:
     "AI-powered chat platform for churches. Turns sermons, devotions, and documents into an AI assistant that answers congregation questions with citations back to the source.",
-  email: "hello@doctrinally.ai",
   address: {
     "@type": "PostalAddress",
     addressLocality: "Austin",
