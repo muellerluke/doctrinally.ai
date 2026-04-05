@@ -126,7 +126,7 @@ export default async function BillingPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Current Plan */}
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between space-y-0">

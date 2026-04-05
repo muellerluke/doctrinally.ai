@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 
+const isDev = process.env.NODE_ENV === "development";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -43,6 +45,28 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+
+    // Dev-only: one-click login as the first user in the DB. Skips password.
+    // This provider is completely absent in production builds.
+    ...(isDev
+      ? [
+          CredentialsProvider({
+            id: "dev-login",
+            name: "Dev Login",
+            credentials: {},
+            async authorize() {
+              const user = await db.query.users.findFirst();
+              if (!user) return null;
+              return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                image: user.image,
+              };
+            },
+          }),
+        ]
+      : []),
   ],
   session: {
     strategy: "jwt",

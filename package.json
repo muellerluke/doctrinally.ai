@@ -31,6 +31,7 @@
     "@platejs/selection": "^52.3.10",
     "@platejs/slash-command": "^52.3.10",
     "@radix-ui/react-select": "^2.2.6",
+    "@supadata/js": "^1.4.0",
     "@tanstack/react-table": "^8.21.3",
     "@trigger.dev/build": "^4.4.3",
     "@trigger.dev/sdk": "^4.4.3",

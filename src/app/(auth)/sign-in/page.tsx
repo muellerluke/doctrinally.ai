@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -130,7 +130,48 @@ function SignInContent() {
             Sign up
           </Link>
         </p>
+        {process.env.NODE_ENV === "development" && <DevLoginButton callbackUrl={callbackUrl} />}
       </CardContent>
     </Card>
+  );
+}
+
+function DevLoginButton({ callbackUrl }: { callbackUrl: string }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleDevLogin() {
+    setLoading(true);
+    try {
+      const result = await signIn("dev-login", { redirect: false });
+      if (result?.error) {
+        toast.error("Dev login failed — no users in the database");
+        return;
+      }
+      router.push(callbackUrl);
+      router.refresh();
+    } catch {
+      toast.error("Dev login failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t pt-4">
+      <Button
+        variant="outline"
+        className="w-full border-dashed border-amber-500/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-500"
+        onClick={handleDevLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Zap className="mr-2 h-4 w-4" />
+        )}
+        Dev Login (skip auth)
+      </Button>
+    </div>
   );
 }

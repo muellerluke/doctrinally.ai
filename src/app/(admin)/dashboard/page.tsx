@@ -69,7 +69,7 @@ export default async function DashboardPage({
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Messages"
               value={summary?.questions ?? 0}
@@ -104,7 +104,7 @@ export default async function DashboardPage({
           <TrendChart title="Messages Over Time" data={questionTrend} />
 
           {/* Bottom grid */}
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <TopicsList topics={topics} />
             <UnansweredList questions={unanswered} />
           </div>

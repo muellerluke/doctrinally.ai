@@ -1,9 +1,6 @@
 import { Innertube } from "youtubei.js";
-import {
-  transcribeWithWhisper,
-  WhisperFileTooLargeError,
-  type WhisperSegment,
-} from "./whisper";
+import { Supadata } from "@supadata/js";
+import type { WhisperSegment } from "./whisper";
 
 export class CaptionsUnavailableError extends Error {
   constructor(message: string) {
@@ -12,12 +9,10 @@ export class CaptionsUnavailableError extends Error {
   }
 }
 
-export { WhisperFileTooLargeError };
-
 /**
- * Free, fast path: pull captions from YouTube's InnerTube API.
- * Works on most videos, including ones where the old timedtext
- * endpoint returns "Transcript is disabled".
+ * Tier 1 — Free: pull captions from YouTube's InnerTube API via youtubei.js.
+ * Works on most videos, including ones where the old timedtext endpoint
+ * returns "Transcript is disabled".
  */
 export async function fetchYouTubeCaptions(
   videoId: string
@@ -70,74 +65,72 @@ export async function fetchYouTubeCaptions(
 }
 
 /**
- * Fallback path: download the smallest audio-only stream and run it
- * through OpenAI Whisper. ~$0.006/min, bounded at 25 MB input.
+ * Tier 2 — Cheap (~$0.001/req): use Supadata's YouTube transcript API.
+ * Handles bot-detection and datacenter IP issues on their end.
+ * Falls back to their AI-generated transcript if native captions are missing.
  */
-export async function transcribeYouTubeViaWhisper(
+export async function fetchSupadataTranscript(
   videoId: string
 ): Promise<WhisperSegment[]> {
-  const yt = await Innertube.create();
-  const info = await yt.getInfo(videoId);
-
-  // Let youtubei.js pick the best audio-only format — it handles signature
-  // decryption, client fallbacks, and combined-vs-adaptive lists internally.
-  let format;
-  try {
-    format = info.chooseFormat({ type: "audio", quality: "bestefficiency" });
-  } catch {
-    try {
-      format = info.chooseFormat({ type: "audio", quality: "best" });
-    } catch (err) {
-      throw new Error(
-        `No audio format available for video ${videoId}: ${
-          err instanceof Error ? err.message : "unknown error"
-        }`
-      );
-    }
+  const apiKey = process.env.SUPADATA_API_KEY;
+  if (!apiKey) {
+    throw new Error("SUPADATA_API_KEY is not set — cannot use Supadata fallback");
   }
 
-  const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
-  if (format.content_length && format.content_length > WHISPER_MAX_BYTES) {
-    throw new WhisperFileTooLargeError(format.content_length);
-    // TODO: chunk audio into <25 MB pieces and stitch transcripts for long sermons.
-  }
+  const supadata = new Supadata({ apiKey });
 
-  // Download via the info object so the player context (signature decipher,
-  // client tokens) is carried through.
-  const stream = await info.download({
-    type: "audio",
-    quality: "bestefficiency",
-    format: "any",
-  });
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const result = await supadata.transcript({ url, lang: "en" });
 
-  const parts: Uint8Array[] = [];
-  let totalBytes = 0;
-  const reader = stream.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      parts.push(value);
-      totalBytes += value.byteLength;
-      if (totalBytes > WHISPER_MAX_BYTES) {
-        throw new WhisperFileTooLargeError(totalBytes);
+  // Handle async jobs (large files return a jobId instead of immediate content)
+  type TranscriptContent = import("@supadata/js").TranscriptChunk[] | string;
+  let content: TranscriptContent | undefined;
+
+  if ("jobId" in result) {
+    const jobId = result.jobId;
+    const maxAttempts = 60; // ~60 seconds max
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const job = await supadata.transcript.getJobStatus(jobId);
+      if (job.status === "completed" && job.result) {
+        content = job.result.content;
+        break;
+      }
+      if (job.status === "failed") {
+        throw new Error(`Supadata job ${jobId} failed`);
       }
     }
-  } finally {
-    reader.releaseLock();
+    if (content === undefined) {
+      throw new Error(`Supadata job ${result.jobId} timed out after ${maxAttempts}s`);
+    }
+  } else {
+    content = result.content;
   }
 
-  const buffer = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const part of parts) {
-    buffer.set(part, offset);
-    offset += part.byteLength;
+  if (!content) {
+    throw new Error("Supadata returned empty transcript");
   }
 
-  const blob = new Blob([buffer], {
-    type: format.mime_type ?? "audio/mp4",
-  });
+  // Timestamped chunks: { text, offset (ms), duration (ms), lang }
+  if (Array.isArray(content)) {
+    const segments: WhisperSegment[] = content
+      .filter((c) => c.text && typeof c.offset === "number")
+      .map((c) => ({
+        text: c.text,
+        start: c.offset / 1000,
+        end: (c.offset + (c.duration || 0)) / 1000,
+      }));
 
-  const ext = format.mime_type?.includes("webm") ? "webm" : "m4a";
-  return transcribeWithWhisper(blob, `${videoId}.${ext}`);
+    if (segments.length === 0) {
+      throw new Error("Supadata returned chunks but none had text");
+    }
+    return segments;
+  }
+
+  // Plain text fallback — no timestamps, create a single segment
+  if (typeof content === "string" && content.trim().length > 0) {
+    return [{ text: content.trim(), start: 0, end: 0 }];
+  }
+
+  throw new Error("Supadata returned unrecognized transcript format");
 }

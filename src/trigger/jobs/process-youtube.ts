@@ -6,7 +6,7 @@ import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
 import {
   fetchYouTubeCaptions,
-  transcribeYouTubeViaWhisper,
+  fetchSupadataTranscript,
 } from "../utils/youtube";
 import type { WhisperSegment } from "../utils/whisper";
 
@@ -54,20 +54,20 @@ export const processYouTube = task({
       const videoId = extractVideoId(doc.sourceUrl!);
       if (!videoId) throw new Error(`Could not extract video ID from: ${doc.sourceUrl}`);
 
-      // Two-tier transcript: cheap captions first, Whisper fallback.
+      // Two-tier transcript: free InnerTube captions first, Supadata fallback.
       let segments: WhisperSegment[];
-      let transcriptSource: "captions" | "whisper";
+      let transcriptSource: "captions" | "supadata";
 
       try {
         segments = await fetchYouTubeCaptions(videoId);
         transcriptSource = "captions";
       } catch (captionErr) {
         console.warn(
-          `[process-youtube] Captions unavailable for ${videoId}, falling back to Whisper:`,
+          `[process-youtube] Captions unavailable for ${videoId}, falling back to Supadata:`,
           captionErr instanceof Error ? captionErr.message : captionErr
         );
-        segments = await transcribeYouTubeViaWhisper(videoId);
-        transcriptSource = "whisper";
+        segments = await fetchSupadataTranscript(videoId);
+        transcriptSource = "supadata";
       }
 
       if (segments.length === 0) {

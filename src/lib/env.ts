@@ -18,6 +18,9 @@ const envSchema = z.object({
   TRIGGER_SECRET_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
 
+  // Supadata - YouTube transcript fallback
+  SUPADATA_API_KEY: z.string().optional(),
+
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),

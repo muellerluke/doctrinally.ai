@@ -144,7 +144,7 @@ export function GeneralForm({ church }: GeneralFormProps) {
           <CardTitle className="text-lg">Logo</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
             {logoUrl ? (
               <img
                 src={logoUrl}
