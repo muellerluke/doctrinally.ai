@@ -72,35 +72,49 @@ export default async function ChatLayout({
   });
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
 
-  // Build CSS custom property overrides — map church colors to Tailwind theme vars
-  // This makes all components (bg-primary, text-primary, etc.) use the church's colors
-  const brandingVars: Record<string, string> = {};
+  // Build branding CSS for light and dark modes
+  let brandingCss = "";
   if (isEnterprise) {
-    if (church.primaryColor) brandingVars["--primary"] = church.primaryColor;
-    if (church.accentColor) brandingVars["--accent"] = church.accentColor;
-    if (church.backgroundColor) {
-      brandingVars["--background"] = church.backgroundColor;
-      brandingVars["--card"] = church.backgroundColor;
-    }
-    if (church.textColor) {
-      brandingVars["--foreground"] = church.textColor;
-      brandingVars["--card-foreground"] = church.textColor;
-    }
-    // Derive primary-foreground (light text on primary bg)
-    if (church.primaryColor && church.backgroundColor) {
-      brandingVars["--primary-foreground"] = church.backgroundColor;
-    }
-    // Derive muted colors from the background
-    if (church.backgroundColor) {
-      brandingVars["--muted"] = `color-mix(in srgb, ${church.backgroundColor} 90%, ${church.textColor || '#000'})`;
-      brandingVars["--muted-foreground"] = `color-mix(in srgb, ${church.textColor || '#000'} 60%, ${church.backgroundColor})`;
-    }
-    // Border and input colors
-    if (church.textColor) {
-      brandingVars["--border"] = `color-mix(in srgb, ${church.textColor} 15%, transparent)`;
-      brandingVars["--input"] = `color-mix(in srgb, ${church.textColor} 15%, transparent)`;
-    }
-    if (church.logoHeight) brandingVars["--church-logo-height"] = `${church.logoHeight}px`;
+    const light = {
+      primary: church.primaryColor,
+      accent: church.accentColor,
+      bg: church.backgroundColor,
+      text: church.textColor,
+    };
+    const dark = {
+      primary: church.darkPrimaryColor,
+      accent: church.darkAccentColor,
+      bg: church.darkBackgroundColor,
+      text: church.darkTextColor,
+    };
+
+    const buildVars = (c: typeof light) => {
+      const vars: string[] = [];
+      if (c.primary) {
+        vars.push(`--primary: ${c.primary}`);
+        if (c.bg) vars.push(`--primary-foreground: ${c.bg}`);
+      }
+      if (c.accent) vars.push(`--accent: ${c.accent}`);
+      if (c.bg) {
+        vars.push(`--background: ${c.bg}`);
+        vars.push(`--card: ${c.bg}`);
+        vars.push(`--muted: color-mix(in srgb, ${c.bg} 90%, ${c.text || "#000"})`);
+      }
+      if (c.text) {
+        vars.push(`--foreground: ${c.text}`);
+        vars.push(`--card-foreground: ${c.text}`);
+        vars.push(`--muted-foreground: color-mix(in srgb, ${c.text} 60%, ${c.bg || "#fff"})`);
+        vars.push(`--border: color-mix(in srgb, ${c.text} 15%, transparent)`);
+        vars.push(`--input: color-mix(in srgb, ${c.text} 15%, transparent)`);
+      }
+      return vars.join("; ");
+    };
+
+    const lightVars = buildVars(light);
+    const darkVars = buildVars(dark);
+
+    if (lightVars) brandingCss += `#church-chat { ${lightVars} }`;
+    if (darkVars) brandingCss += ` .dark #church-chat { ${darkVars} }`;
   }
 
   // Only load custom Google Font for Enterprise
@@ -111,6 +125,9 @@ export default async function ChatLayout({
 
   return (
     <>
+      {brandingCss && (
+        <style dangerouslySetInnerHTML={{ __html: brandingCss }} />
+      )}
       {googleFontParam && (
         // eslint-disable-next-line @next/next/no-page-custom-font
         <link
@@ -120,9 +137,9 @@ export default async function ChatLayout({
       )}
       <ChatShell>
         <div
+          id="church-chat"
           className="flex h-screen"
           style={{
-            ...brandingVars,
             fontFamily:
               isEnterprise && church.fontFamily && FONT_CSS_MAP[church.fontFamily]
                 ? FONT_CSS_MAP[church.fontFamily]
