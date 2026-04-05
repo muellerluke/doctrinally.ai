@@ -145,6 +145,10 @@ export function FileUploadDialog({
         {
           access: "public",
           handleUploadUrl: "/api/documents/upload",
+          // Chunk large files into parallel multipart pieces. Without this,
+          // @vercel/blob/client does a single PUT which 413s on files over
+          // ~100 MB. With multipart, sermon videos up to 2 GB stream fine.
+          multipart: true,
           clientPayload: JSON.stringify({
             title,
             tags: tagList.join(","),

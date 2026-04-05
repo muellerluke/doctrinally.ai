@@ -76,20 +76,25 @@ export async function fetchYouTubeCaptions(
 export async function transcribeYouTubeViaWhisper(
   videoId: string
 ): Promise<WhisperSegment[]> {
-  const yt = await Innertube.create({ retrieve_player: true });
-  const info = await yt.getBasicInfo(videoId);
+  const yt = await Innertube.create();
+  const info = await yt.getInfo(videoId);
 
-  const audioFormats = (info.streaming_data?.adaptive_formats ?? []).filter(
-    (f) => f.mime_type?.startsWith("audio/")
-  );
-
-  if (audioFormats.length === 0) {
-    throw new Error(`No audio-only formats available for video ${videoId}`);
+  // Let youtubei.js pick the best audio-only format — it handles signature
+  // decryption, client fallbacks, and combined-vs-adaptive lists internally.
+  let format;
+  try {
+    format = info.chooseFormat({ type: "audio", quality: "bestefficiency" });
+  } catch {
+    try {
+      format = info.chooseFormat({ type: "audio", quality: "best" });
+    } catch (err) {
+      throw new Error(
+        `No audio format available for video ${videoId}: ${
+          err instanceof Error ? err.message : "unknown error"
+        }`
+      );
+    }
   }
-
-  // Pick the lowest-bitrate audio track to stay under Whisper's 25 MB cap.
-  audioFormats.sort((a, b) => (a.bitrate ?? 0) - (b.bitrate ?? 0));
-  const format = audioFormats[0];
 
   const WHISPER_MAX_BYTES = 25 * 1024 * 1024;
   if (format.content_length && format.content_length > WHISPER_MAX_BYTES) {
@@ -97,8 +102,9 @@ export async function transcribeYouTubeViaWhisper(
     // TODO: chunk audio into <25 MB pieces and stitch transcripts for long sermons.
   }
 
-  // Download audio stream and collect into a Uint8Array.
-  const stream = await yt.download(videoId, {
+  // Download via the info object so the player context (signature decipher,
+  // client tokens) is carried through.
+  const stream = await info.download({
     type: "audio",
     quality: "bestefficiency",
     format: "any",
