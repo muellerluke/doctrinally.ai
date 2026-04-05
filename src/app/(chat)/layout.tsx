@@ -141,7 +141,7 @@ export default async function ChatLayout({
       <ChatShell>
         <div
           id="church-chat"
-          className="flex h-screen"
+          className="flex h-screen bg-background text-foreground"
           style={{
             fontFamily:
               isEnterprise && church.fontFamily && FONT_CSS_MAP[church.fontFamily]

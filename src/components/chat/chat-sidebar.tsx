@@ -213,9 +213,7 @@ export function ChatSidebar({
             </div>
           ) : (
             <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-muted-foreground"
-              size="sm"
+              className="w-full gap-2"
               onClick={() => setAuthOpen(true)}
             >
               <LogIn className="h-4 w-4" />
