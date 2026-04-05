@@ -200,9 +200,6 @@ export function ChatSidebar({
             </div>
           )}
         </div>
-
-        <Separator />
-
         {/* Auth / user section */}
         <div className="p-3">
           {session ? (

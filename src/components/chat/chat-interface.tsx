@@ -78,7 +78,7 @@ export function ChatInterface({
               <button
                 key={q}
                 onClick={() => setInput(q)}
-                className="rounded-xl border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                className="flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               >
                 <Sparkles className="mb-1 h-3.5 w-3.5 text-primary/60" />
                 {q}

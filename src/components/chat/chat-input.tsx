@@ -2,7 +2,6 @@
 
 import { useRef, useEffect } from "react";
 import { ArrowUp, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ChatInputProps {
   value: string;
@@ -21,7 +20,6 @@ export function ChatInput({
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -40,29 +38,31 @@ export function ChatInput({
 
   return (
     <div className="border-t bg-background/80 px-4 py-3 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-3xl items-center gap-2">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          rows={1}
-          className="min-h-[44px] flex-1 resize-none rounded-xl border bg-card px-4 py-3 text-sm shadow-sm outline-none ring-ring/20 transition-shadow placeholder:text-muted-foreground/60 focus:ring-2"
-          disabled={isLoading}
-        />
-        <Button
-          size="icon"
-          onClick={onSubmit}
-          disabled={isLoading || !value.trim()}
-          className="h-9 w-9 shrink-0 rounded-lg"
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <ArrowUp className="h-4 w-4" />
-          )}
-        </Button>
+      <div className="relative mx-auto max-w-3xl">
+        <div className="flex items-end rounded-2xl border bg-card shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring/20">
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            rows={1}
+            className="min-h-[52px] flex-1 resize-none bg-transparent px-4 py-3.5 pr-14 text-sm outline-none scrollbar-none placeholder:text-muted-foreground/50"
+            style={{ scrollbarWidth: "none" }}
+            disabled={isLoading}
+          />
+          <button
+            onClick={onSubmit}
+            disabled={isLoading || !value.trim()}
+            className="absolute bottom-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ArrowUp className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
