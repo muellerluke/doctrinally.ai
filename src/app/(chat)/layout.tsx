@@ -89,32 +89,35 @@ export default async function ChatLayout({
     };
 
     const buildVars = (c: typeof light) => {
-      const vars: string[] = [];
+      const rules: string[] = [];
       if (c.primary) {
-        vars.push(`--primary: ${c.primary}`);
-        if (c.bg) vars.push(`--primary-foreground: ${c.bg}`);
+        rules.push(`--primary: ${c.primary} !important`);
+        if (c.bg) rules.push(`--primary-foreground: ${c.bg} !important`);
       }
-      if (c.accent) vars.push(`--accent: ${c.accent}`);
+      if (c.accent) rules.push(`--accent: ${c.accent} !important`);
       if (c.bg) {
-        vars.push(`--background: ${c.bg}`);
-        vars.push(`--card: ${c.bg}`);
-        vars.push(`--muted: color-mix(in srgb, ${c.bg} 90%, ${c.text || "#000"})`);
+        rules.push(`--background: ${c.bg} !important`);
+        rules.push(`--card: ${c.bg} !important`);
+        rules.push(`--popover: ${c.bg} !important`);
+        rules.push(`--muted: color-mix(in srgb, ${c.bg} 90%, ${c.text || "#000"}) !important`);
       }
       if (c.text) {
-        vars.push(`--foreground: ${c.text}`);
-        vars.push(`--card-foreground: ${c.text}`);
-        vars.push(`--muted-foreground: color-mix(in srgb, ${c.text} 60%, ${c.bg || "#fff"})`);
-        vars.push(`--border: color-mix(in srgb, ${c.text} 15%, transparent)`);
-        vars.push(`--input: color-mix(in srgb, ${c.text} 15%, transparent)`);
+        rules.push(`--foreground: ${c.text} !important`);
+        rules.push(`--card-foreground: ${c.text} !important`);
+        rules.push(`--popover-foreground: ${c.text} !important`);
+        rules.push(`--muted-foreground: color-mix(in srgb, ${c.text} 60%, ${c.bg || "#fff"}) !important`);
+        rules.push(`--border: color-mix(in srgb, ${c.text} 12%, ${c.bg || "#fff"}) !important`);
+        rules.push(`--input: color-mix(in srgb, ${c.text} 12%, ${c.bg || "#fff"}) !important`);
       }
-      return vars.join("; ");
+      return rules.join("; ");
     };
 
     const lightVars = buildVars(light);
     const darkVars = buildVars(dark);
 
-    if (lightVars) brandingCss += `#church-chat { ${lightVars} }`;
-    if (darkVars) brandingCss += ` .dark #church-chat { ${darkVars} }`;
+    // Use :not(.dark) and .dark to properly scope light/dark overrides
+    if (lightVars) brandingCss += `:root:not(.dark) #church-chat { ${lightVars} }`;
+    if (darkVars) brandingCss += ` :root.dark #church-chat { ${darkVars} }`;
   }
 
   // Only load custom Google Font for Enterprise
