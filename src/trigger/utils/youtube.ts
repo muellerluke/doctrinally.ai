@@ -106,12 +106,19 @@ export async function transcribeYouTubeViaWhisper(
 
   const parts: Uint8Array[] = [];
   let totalBytes = 0;
-  for await (const chunk of stream) {
-    parts.push(chunk);
-    totalBytes += chunk.byteLength;
-    if (totalBytes > WHISPER_MAX_BYTES) {
-      throw new WhisperFileTooLargeError(totalBytes);
+  const reader = stream.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      totalBytes += value.byteLength;
+      if (totalBytes > WHISPER_MAX_BYTES) {
+        throw new WhisperFileTooLargeError(totalBytes);
+      }
     }
+  } finally {
+    reader.releaseLock();
   }
 
   const buffer = new Uint8Array(totalBytes);
