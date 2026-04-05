@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
@@ -210,14 +211,9 @@ export default function HomePage() {
             </h1>
           </div>
           <p className="animate-fade-up stagger-3 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Doctrinally.AI is an AI-powered chat platform built for churches.
-            Upload your sermons, devotions, YouTube videos, and documents — then
-            let your congregation ask questions and receive answers grounded in
-            your own teachings and the Bible, with inline citations back to the
-            original source. Whether it&apos;s a verse from Sunday&apos;s sermon
-            or a passage from Scripture, every answer is backed by real content
-            your church has published. Setup takes minutes, no technical
-            expertise required.
+            Upload your sermons, devotions, videos, and documents — then let
+            your congregation ask questions and get answers grounded in your
+            teachings and the Bible, with inline citations back to the source.
           </p>
           <div className="animate-fade-up stagger-4 flex flex-col gap-4 pt-2 sm:flex-row">
             <Button size="lg" render={<Link href="/sign-up" />}>
