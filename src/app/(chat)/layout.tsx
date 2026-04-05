@@ -72,17 +72,35 @@ export default async function ChatLayout({
   });
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
 
-  // Build CSS custom properties — only apply custom branding for Enterprise
+  // Build CSS custom property overrides — map church colors to Tailwind theme vars
+  // This makes all components (bg-primary, text-primary, etc.) use the church's colors
   const brandingVars: Record<string, string> = {};
   if (isEnterprise) {
-    if (church.primaryColor) brandingVars["--church-primary"] = church.primaryColor;
-    if (church.accentColor) brandingVars["--church-accent"] = church.accentColor;
-    if (church.backgroundColor) brandingVars["--church-bg"] = church.backgroundColor;
-    if (church.textColor) brandingVars["--church-text"] = church.textColor;
-    if (church.logoHeight) brandingVars["--church-logo-height"] = `${church.logoHeight}px`;
-    if (church.fontFamily && FONT_CSS_MAP[church.fontFamily]) {
-      brandingVars["--church-font"] = FONT_CSS_MAP[church.fontFamily];
+    if (church.primaryColor) brandingVars["--primary"] = church.primaryColor;
+    if (church.accentColor) brandingVars["--accent"] = church.accentColor;
+    if (church.backgroundColor) {
+      brandingVars["--background"] = church.backgroundColor;
+      brandingVars["--card"] = church.backgroundColor;
     }
+    if (church.textColor) {
+      brandingVars["--foreground"] = church.textColor;
+      brandingVars["--card-foreground"] = church.textColor;
+    }
+    // Derive primary-foreground (light text on primary bg)
+    if (church.primaryColor && church.backgroundColor) {
+      brandingVars["--primary-foreground"] = church.backgroundColor;
+    }
+    // Derive muted colors from the background
+    if (church.backgroundColor) {
+      brandingVars["--muted"] = `color-mix(in srgb, ${church.backgroundColor} 90%, ${church.textColor || '#000'})`;
+      brandingVars["--muted-foreground"] = `color-mix(in srgb, ${church.textColor || '#000'} 60%, ${church.backgroundColor})`;
+    }
+    // Border and input colors
+    if (church.textColor) {
+      brandingVars["--border"] = `color-mix(in srgb, ${church.textColor} 15%, transparent)`;
+      brandingVars["--input"] = `color-mix(in srgb, ${church.textColor} 15%, transparent)`;
+    }
+    if (church.logoHeight) brandingVars["--church-logo-height"] = `${church.logoHeight}px`;
   }
 
   // Only load custom Google Font for Enterprise
@@ -116,7 +134,7 @@ export default async function ChatLayout({
             churchLogoUrl={isEnterprise ? church.logoUrl : null}
             chats={chatHistory}
           />
-          <div className="flex flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
           <VisitorTracker churchId={church.id} />
         </div>
       </ChatShell>
