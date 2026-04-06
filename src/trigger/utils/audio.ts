@@ -6,6 +6,11 @@ import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { randomUUID } from "node:crypto";
 
+// Resolve ffmpeg/ffprobe paths. The Trigger.dev ffmpeg() build extension
+// sets FFMPEG_PATH and FFPROBE_PATH env vars in the container.
+const FFMPEG_BIN = process.env.FFMPEG_PATH || "ffmpeg";
+const FFPROBE_BIN = process.env.FFPROBE_PATH || "ffprobe";
+
 // Whisper's hard limit is 25 MB. We target 24 MB to leave a safety margin.
 const WHISPER_MAX_BYTES = 24 * 1024 * 1024;
 
@@ -19,7 +24,7 @@ const SEGMENT_DURATION_SECS = 2700;
  */
 function ffmpeg(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile("ffmpeg", args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(FFMPEG_BIN, args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
         reject(new Error(`ffmpeg failed: ${stderr || err.message}`));
       } else {
@@ -35,7 +40,7 @@ function ffmpeg(args: string[]): Promise<string> {
 function getAudioDuration(filePath: string): Promise<number> {
   return new Promise((resolve, reject) => {
     execFile(
-      "ffprobe",
+      FFPROBE_BIN,
       [
         "-v", "error",
         "-show_entries", "format=duration",
