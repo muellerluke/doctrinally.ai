@@ -37,7 +37,7 @@ export function ChatInput({
   }
 
   return (
-    <div className="border-t bg-background/80 px-4 py-3 backdrop-blur-sm">
+    <div className="border-t bg-background/80 px-4 py-2 backdrop-blur-sm">
       <div className="relative mx-auto max-w-3xl">
         <div className="flex items-end rounded-2xl border bg-card shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring/20">
           <textarea
@@ -47,7 +47,7 @@ export function ChatInput({
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             rows={1}
-            className="min-h-[52px] flex-1 resize-none bg-transparent px-4 py-3.5 pr-14 text-sm outline-none scrollbar-none placeholder:text-muted-foreground/50"
+            className="min-h-[52px] flex-1 resize-none bg-transparent px-4 py-3.5 pr-14 text-base outline-none scrollbar-none placeholder:text-muted-foreground/50"
             style={{ scrollbarWidth: "none" }}
             disabled={isLoading}
           />
@@ -63,6 +63,12 @@ export function ChatInput({
             )}
           </button>
         </div>
+        <p className="mt-1.5 text-center text-[10px] leading-tight text-muted-foreground/40">
+          AI can make mistakes.{" "}
+          <a href="/privacy" target="_blank" className="underline hover:text-muted-foreground/60">Privacy Policy</a>
+          {" · "}
+          <a href="/terms" target="_blank" className="underline hover:text-muted-foreground/60">Terms of Use</a>
+        </p>
       </div>
     </div>
   );
