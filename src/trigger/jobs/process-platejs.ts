@@ -66,7 +66,7 @@ function extractText(node: any): string {
 
 export const processPlatejs = task({
   id: "process-platejs",
-  machine: "small",   // 1 vCPU / 512 MB — text parsing + embeddings
+  machine: "small-1x",   // 1 vCPU / 512 MB — text parsing + embeddings
   retry: { maxAttempts: 2 },
   run: async (payload: { documentId: string }) => {
     const { documentId } = payload;
