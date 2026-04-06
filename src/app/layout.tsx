@@ -4,7 +4,6 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -76,6 +75,15 @@ export default function RootLayout({
       <head>
         <script
           async
+          src="https://plausible.io/js/pa-OLhck3vYwRCsbi0z4VP5k.js"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
+          }}
+        />
+        <script
+          async
           src="https://www.googletagmanager.com/gtag/js?id=AW-18068029031"
         />
         <script
@@ -92,7 +100,6 @@ export default function RootLayout({
           </ThemeProvider>
         </AuthSessionProvider>
       </body>
-      <GoogleAnalytics gaId="AW-18062091965" />
     </html>
   );
 }
