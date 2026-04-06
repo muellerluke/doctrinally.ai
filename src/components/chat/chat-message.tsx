@@ -229,6 +229,29 @@ function MarkdownSegment({
   );
 }
 
+function ThinkingDots() {
+  return (
+    <span className="inline-flex items-center gap-1 py-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-2 w-2 rounded-full bg-muted-foreground/40"
+          style={{
+            animation: "thinking-bounce 1.2s ease-in-out infinite",
+            animationDelay: `${i * 0.15}s`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes thinking-bounce {
+          0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+          30% { opacity: 1; transform: translateY(-4px); }
+        }
+      `}</style>
+    </span>
+  );
+}
+
 export function ChatMessage({
   role,
   content,
@@ -262,9 +285,7 @@ export function ChatMessage({
             segment.node
           )
         )}
-        {isStreaming && (
-          <span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-primary/60" />
-        )}
+        {isStreaming && !content && <ThinkingDots />}
       </div>
     </div>
   );
