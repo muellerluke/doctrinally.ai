@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { FileUp, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -62,7 +61,6 @@ export function FileUploadDialog({
   onUploadComplete,
   onUploadError,
 }: FileUploadDialogProps) {
-  const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [file, setFile] = React.useState<File | null>(null);
@@ -165,10 +163,6 @@ export function FileUploadDialog({
       setLoading(false);
       onUploadComplete?.(uploadId);
       toast.success("File uploaded successfully");
-      // The documents row was created server-side in onBeforeGenerateToken,
-      // so a refresh will show it immediately (status: "uploaded", then
-      // flips to "queued" once the webhook lands).
-      router.refresh();
     } catch (err) {
       setLoading(false);
       const errorMsg =

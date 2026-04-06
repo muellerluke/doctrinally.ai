@@ -8,6 +8,8 @@ import mammoth from "mammoth";
 
 export const processWord = task({
   id: "process-word",
+  machine: "small",   // 1 vCPU / 512 MB — Word text extraction + embeddings
+  retry: { maxAttempts: 2 },
   run: async (payload: { documentId: string }) => {
     const { documentId } = payload;
 

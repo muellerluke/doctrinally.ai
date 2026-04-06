@@ -30,6 +30,9 @@ export const churches = pgTable("churches", {
   logoHeight: text("logo_height"),
   fontFamily: text("font_family"),
 
+  // AI behavior
+  aiFallbackInstruction: text("ai_fallback_instruction"),
+
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });

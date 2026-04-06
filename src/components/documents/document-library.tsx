@@ -74,6 +74,10 @@ export function DocumentLibrary({
   const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments);
   const [allFolders, setAllFolders] = useState<FolderItem[]>([]);
 
+  // Sync server-provided props into state after router.refresh()
+  useEffect(() => setDocuments(initialDocuments), [initialDocuments]);
+  useEffect(() => setFolders(initialFolders), [initialFolders]);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);

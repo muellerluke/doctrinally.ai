@@ -8,6 +8,8 @@ import { extractText, getDocumentProxy } from "unpdf";
 
 export const processPdf = task({
   id: "process-pdf",
+  machine: "small",   // 1 vCPU / 512 MB — PDF text extraction + embeddings
+  retry: { maxAttempts: 2 },
   run: async (payload: { documentId: string }) => {
     const { documentId } = payload;
 

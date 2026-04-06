@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -46,6 +46,16 @@ export function DocumentActions({
   const { addUpload, updateProgress, completeUpload, failUpload } =
     useUploads();
 
+  // Refresh the document list when an upload finishes so the new row appears
+  // immediately, even if the user navigated into a subfolder or has filters.
+  const handleUploadComplete = useCallback(
+    (id: string) => {
+      completeUpload(id);
+      router.refresh();
+    },
+    [completeUpload, router]
+  );
+
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
 
@@ -79,7 +89,7 @@ export function DocumentActions({
             <Upload className="h-4 w-4" />
             Upload
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-[10rem]">
             <DropdownMenuItem onClick={() => setYoutubeOpen(true)}>
               <Play />
               YouTube Video
@@ -150,7 +160,7 @@ export function DocumentActions({
         folderId={currentFolderId}
         onUploadStart={addUpload}
         onUploadProgress={updateProgress}
-        onUploadComplete={completeUpload}
+        onUploadComplete={handleUploadComplete}
         onUploadError={failUpload}
       />
       <PlatejsDocumentDialog

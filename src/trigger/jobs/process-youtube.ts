@@ -29,6 +29,8 @@ function extractVideoId(url: string): string | null {
 
 export const processYouTube = task({
   id: "process-youtube",
+  machine: "small",   // 1 vCPU / 512 MB — transcript fetching + embeddings
+  retry: { maxAttempts: 2 },
   run: async (payload: { documentId: string }) => {
     const { documentId } = payload;
 

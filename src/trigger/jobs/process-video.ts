@@ -8,6 +8,8 @@ import { transcribeWithWhisper } from "../utils/whisper";
 
 export const processVideo = task({
   id: "process-video",
+  machine: "large",   // 4 vCPU / 8 GB — video downloads + transcription are memory-heavy
+  retry: { maxAttempts: 2 },
   run: async (payload: { documentId: string }) => {
     const { documentId } = payload;
 

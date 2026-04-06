@@ -3,7 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { getServerSession } from "next-auth";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { chats, messages, memberships } from "@/db/schema";
+import { chats, messages, memberships, churches } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { hybridSearch } from "@/lib/retrieval";
 import { incrementQuestionCount } from "@/lib/usage";
@@ -21,7 +21,14 @@ function getModel() {
   return openai(model);
 }
 
-function buildSystemPrompt(churchName: string): string {
+function buildSystemPrompt(
+  churchName: string,
+  fallbackInstruction?: string | null
+): string {
+  const fallbackLine = fallbackInstruction
+    ? `- ${fallbackInstruction}`
+    : `- If your searches don't find relevant church-specific information, draw on general biblical knowledge but clearly say so.`;
+
   return `You are a helpful, knowledgeable assistant for ${churchName}. Your role is to answer questions using the Bible and the church's own teachings, sermons, and documents.
 
 You have access to a search tool that lets you find relevant content from the church's library of sermons, documents, and videos. ALWAYS use the search tool at least once before answering — do not guess or make up information about the church's specific teachings.
@@ -31,7 +38,7 @@ Guidelines:
 - When you reference a search result, cite it by embedding the source using <document>DOCUMENT_ID</document> where DOCUMENT_ID is the documentId from the search result.
 - IMPORTANT: <document> tags must ALWAYS be on their own line, separated from surrounding text by blank lines. Never place a <document> tag inside a sentence or paragraph. Always finish your sentence or paragraph first, then place the tag on the next line.
 - Include the most relevant 1-3 sources as <document> embeds. You don't need to embed every result.
-- If your searches don't find relevant church-specific information, draw on general biblical knowledge but clearly say so.
+${fallbackLine}
 - When you need to quote or reference a specific Bible passage, ALWAYS use the lookupBiblePassage tool to get the exact text. Never quote Bible verses from memory — the tool provides the Berean Standard Bible (BSB) translation which is copyright-safe.
 - Be warm, pastoral, and helpful. Speak in a way that is accessible to church members of all backgrounds.
 - When referencing Bible passages, include the book, chapter, and verse.
@@ -242,6 +249,12 @@ export async function POST(request: Request) {
     }
   }
 
+  // Load church settings for system prompt (server-authoritative, not client-trusted)
+  const church = await db.query.churches.findFirst({
+    where: eq(churches.id, churchId),
+    columns: { name: true, aiFallbackInstruction: true },
+  });
+
   const coreMessages = clientMessages.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
@@ -249,7 +262,10 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: getModel(),
-    system: buildSystemPrompt(churchName || "this church"),
+    system: buildSystemPrompt(
+      church?.name || churchName || "this church",
+      church?.aiFallbackInstruction
+    ),
     messages: coreMessages,
     tools: {
       search: createSearchTool(churchId),

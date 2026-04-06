@@ -71,6 +71,13 @@
       "when": 1775236782603,
       "tag": "0009_outgoing_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1775433906836,
+      "tag": "0010_green_stick",
+      "breakpoints": true
     }
   ]
 }

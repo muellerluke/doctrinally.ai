@@ -13,6 +13,8 @@ import {
 
 export const classifyMessage = task({
   id: "classify-message",
+  machine: "micro",   // 0.25 vCPU / 256 MB — lightweight LLM call + embedding
+  retry: { maxAttempts: 2 },
   run: async (payload: {
     messageId: string;
     chatId: string;

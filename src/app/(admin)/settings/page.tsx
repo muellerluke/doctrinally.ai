@@ -9,6 +9,7 @@ import { GeneralForm } from "@/components/settings/general-form";
 import { BrandingForm } from "@/components/settings/branding-form";
 import { DomainForm } from "@/components/settings/domain-form";
 import { QrCodeCard } from "@/components/settings/qr-code-card";
+import { AiFallbackForm } from "@/components/settings/ai-fallback-form";
 
 export default async function SettingsPage() {
   const { membership, church } = await requireMembership();
@@ -40,6 +41,7 @@ export default async function SettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="domain">Domain</TabsTrigger>
+          <TabsTrigger value="ai">AI</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6 space-y-6">
@@ -84,6 +86,12 @@ export default async function SettingsPage() {
             isEnterprise={isEnterprise}
             isOwner={isOwner}
             appDomain={appDomain}
+          />
+        </TabsContent>
+
+        <TabsContent value="ai" className="mt-6">
+          <AiFallbackForm
+            currentInstruction={church.aiFallbackInstruction}
           />
         </TabsContent>
       </Tabs>

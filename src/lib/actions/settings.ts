@@ -3,6 +3,8 @@
 import { getServerSession } from "next-auth";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { db } from "@/db";
 import { churches, memberships, subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
@@ -148,6 +150,49 @@ export async function updateChurchDomain(customDomain: string | null) {
   await db
     .update(churches)
     .set({ customDomain: customDomain || null, updatedAt: new Date() })
+    .where(eq(churches.id, ctx.membership.churchId));
+
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// AI Fallback Behavior
+// ---------------------------------------------------------------------------
+
+const aiFallbackSchema = z.object({
+  rawInstruction: z.string().min(1, "Instruction is required").max(1000),
+});
+
+export async function refineAndSaveAiFallback(rawInstruction: string) {
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Unauthorized" };
+
+  const parsed = aiFallbackSchema.safeParse({ rawInstruction });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const { text } = await generateText({
+    model: openai("gpt-4o-mini"),
+    system: `You are a system prompt engineer. A church admin described how their chatbot should behave when no relevant church content is found for a user's question. Convert their instruction into a clear 1-3 sentence system prompt paragraph starting with "If no relevant church content is found..." Be faithful to the admin's intent. Do not add anything the admin did not request. Return ONLY the instruction text, no quotes or extra formatting.`,
+    prompt: parsed.data.rawInstruction,
+  });
+
+  const refined = text.trim();
+
+  await db
+    .update(churches)
+    .set({ aiFallbackInstruction: refined, updatedAt: new Date() })
+    .where(eq(churches.id, ctx.membership.churchId));
+
+  return { success: true, refinedInstruction: refined };
+}
+
+export async function clearAiFallback() {
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Unauthorized" };
+
+  await db
+    .update(churches)
+    .set({ aiFallbackInstruction: null, updatedAt: new Date() })
     .where(eq(churches.id, ctx.membership.churchId));
 
   return { success: true };
