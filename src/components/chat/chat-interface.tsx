@@ -15,6 +15,7 @@ interface ChatInterfaceProps {
   welcomeMessage?: string;
   chatId?: string;
   initialMessages?: ChatMessage[];
+  isAuthenticated?: boolean;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -31,6 +32,7 @@ export function ChatInterface({
   welcomeMessage,
   chatId: initialChatId,
   initialMessages,
+  isAuthenticated,
 }: ChatInterfaceProps) {
   const router = useRouter();
   const { toggleSidebar } = useChatShell();
@@ -49,13 +51,16 @@ export function ChatInterface({
     initialMessages,
   });
 
+  // Update the URL when a new chat is created so authenticated users can
+  // bookmark or share the conversation. Skip for anonymous users — they
+  // don't have chat history and the navigation causes a page reload.
   const prevChatIdRef = useRef(initialChatId);
   useEffect(() => {
-    if (chatId && chatId !== prevChatIdRef.current) {
+    if (isAuthenticated && chatId && chatId !== prevChatIdRef.current) {
       prevChatIdRef.current = chatId;
       router.replace(`/chat/${chatId}`, { scroll: false });
     }
-  }, [chatId, router]);
+  }, [chatId, router, isAuthenticated]);
 
   const hasMessages = messages.length > 0;
 

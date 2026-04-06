@@ -141,7 +141,7 @@ export default async function ChatLayout({
       <ChatShell>
         <div
           id="church-chat"
-          className="flex h-dvh bg-background text-foreground overflow-hidden"
+          className="flex h-dvh bg-background text-foreground overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
           style={{
             fontFamily:
               isEnterprise && church.fontFamily && FONT_CSS_MAP[church.fontFamily]

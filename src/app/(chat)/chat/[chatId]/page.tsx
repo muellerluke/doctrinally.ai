@@ -47,6 +47,7 @@ export default async function ChatHistoryPage({
       welcomeMessage={church.welcomeMessage ?? undefined}
       chatId={chatId}
       initialMessages={initialMessages}
+      isAuthenticated
     />
   );
 }

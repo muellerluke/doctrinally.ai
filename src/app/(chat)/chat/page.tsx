@@ -1,8 +1,13 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { getCurrentChurch } from "@/lib/church-context";
 import { ChatInterface } from "@/components/chat/chat-interface";
 
 export default async function ChatPage() {
-  const church = await getCurrentChurch();
+  const [church, session] = await Promise.all([
+    getCurrentChurch(),
+    getServerSession(authOptions),
+  ]);
 
   if (!church) {
     return (
@@ -18,6 +23,7 @@ export default async function ChatPage() {
       churchName={church.name}
       churchLogoUrl={church.logoUrl}
       welcomeMessage={church.welcomeMessage ?? undefined}
+      isAuthenticated={!!session?.user?.id}
     />
   );
 }
