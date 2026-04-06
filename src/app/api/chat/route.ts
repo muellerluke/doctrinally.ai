@@ -38,11 +38,17 @@ Guidelines:
 - When you reference a search result, cite it by embedding the source using <document>DOCUMENT_ID</document> where DOCUMENT_ID is the documentId from the search result.
 - IMPORTANT: <document> tags must ALWAYS be on their own line, separated from surrounding text by blank lines. Never place a <document> tag inside a sentence or paragraph. Always finish your sentence or paragraph first, then place the tag on the next line.
 - Include the most relevant 1-3 sources as <document> embeds. You don't need to embed every result.
-${fallbackLine}
 - When you need to quote or reference a specific Bible passage, ALWAYS use the lookupBiblePassage tool to get the exact text. Never quote Bible verses from memory — the tool provides the Berean Standard Bible (BSB) translation which is copyright-safe.
 - Be warm, pastoral, and helpful. Speak in a way that is accessible to church members of all backgrounds.
 - When referencing Bible passages, include the book, chapter, and verse.
-- Keep responses focused and concise unless the user asks for a detailed explanation.`;
+- Keep responses focused and concise unless the user asks for a detailed explanation.
+
+CRITICAL — Handling search results:
+- Each search result includes a "relevanceScore" between 0 and 1. Only cite and use results with a relevanceScore of 0.35 or higher. Ignore results below this threshold — they are noise, not relevant content.
+- If the search returns NO results, or ALL results have a relevanceScore below 0.35, the church's library does not contain content on this topic. In that case:
+${fallbackLine}
+- NEVER fabricate, invent, or guess what the church teaches on a topic. If you don't have church-specific content, say so explicitly. Do not present general knowledge as if it comes from the church's own materials.
+- It is much better to say "I don't have specific content from ${churchName} on this topic" than to give an answer that isn't grounded in the church's actual documents.`;
 }
 
 function chunksToMetadata(chunks: RetrievedChunk[]): Citation[] {
@@ -80,8 +86,14 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
     }),
     execute: async ({ query }) => {
       const results = await hybridSearch(churchId, query, 6);
+
+      if (results.length === 0) {
+        return { noResults: true, message: "No relevant content found in the church's library for this query." };
+      }
+
       return results.map((chunk, i) => ({
         resultNumber: i + 1,
+        relevanceScore: chunk.similarity != null ? Math.round(chunk.similarity * 100) / 100 : null,
         documentId: chunk.documentId,
         documentTitle: chunk.documentTitle,
         documentType: chunk.documentType,

@@ -134,11 +134,19 @@ export async function hybridSearch(
     keywordSearch(churchId, query, limit * 2),
   ]);
 
+  // Filter out low-similarity semantic results before fusion. Without this,
+  // irrelevant chunks (e.g., a query about "pizza" matching sermons about
+  // "peace") still appear as results and the model treats them as relevant.
+  const SIMILARITY_THRESHOLD = 0.3;
+  const filteredSemantic = semanticResults.filter(
+    (c) => typeof c.similarity === "number" && c.similarity >= SIMILARITY_THRESHOLD
+  );
+
   // Reciprocal rank fusion
   const k = 60; // RRF constant
   const scores = new Map<string, { score: number; chunk: RetrievedChunk }>();
 
-  semanticResults.forEach((chunk, rank) => {
+  filteredSemantic.forEach((chunk, rank) => {
     const rrfScore = 1 / (k + rank + 1);
     scores.set(chunk.chunkId, {
       score: rrfScore,
