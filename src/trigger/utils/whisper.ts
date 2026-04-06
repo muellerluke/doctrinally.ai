@@ -1,5 +1,4 @@
 const WHISPER_API_URL = "https://api.openai.com/v1/audio/transcriptions";
-const WHISPER_MAX_BYTES = 25 * 1024 * 1024; // 25 MB OpenAI limit
 
 export interface WhisperSegment {
   text: string;
@@ -12,20 +11,13 @@ interface WhisperResponse {
   segments: WhisperSegment[];
 }
 
-export class WhisperFileTooLargeError extends Error {
-  constructor(sizeBytes: number) {
-    super(
-      `Audio file is ${(sizeBytes / 1024 / 1024).toFixed(
-        1
-      )} MB, exceeds Whisper's 25 MB limit`
-    );
-    this.name = "WhisperFileTooLargeError";
-  }
-}
-
 /**
- * Transcribe an audio/video blob using OpenAI Whisper.
+ * Transcribe an audio blob using OpenAI Whisper.
  * Returns verbose_json segments with start/end timestamps in seconds.
+ *
+ * The caller is responsible for ensuring each blob is ≤25 MB (Whisper's
+ * hard limit). Use `splitAudioForWhisper()` from `./audio.ts` to split
+ * larger files before calling this function.
  */
 export async function transcribeWithWhisper(
   file: Blob,
@@ -33,10 +25,6 @@ export async function transcribeWithWhisper(
 ): Promise<WhisperSegment[]> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
-
-  if (file.size > WHISPER_MAX_BYTES) {
-    throw new WhisperFileTooLargeError(file.size);
-  }
 
   const formData = new FormData();
   formData.append("file", file, filename);

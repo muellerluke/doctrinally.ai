@@ -10,6 +10,42 @@ export class CaptionsUnavailableError extends Error {
 }
 
 /**
+ * Retry a function with exponential backoff when it throws a rate-limit
+ * or transient server error. Retries on HTTP 429, 500, 502, 503, 504
+ * and generic network errors.
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  {
+    maxAttempts = 3,
+    baseDelayMs = 2000,
+    label = "request",
+  }: { maxAttempts?: number; baseDelayMs?: number; label?: string } = {}
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const message =
+        err instanceof Error ? err.message : String(err);
+      const isRetryable =
+        /429|rate.?limit|too many requests|500|502|503|504|ECONNRESET|ETIMEDOUT|fetch failed/i.test(
+          message
+        );
+      if (!isRetryable || attempt === maxAttempts) break;
+      const delay = baseDelayMs * Math.pow(2, attempt - 1);
+      console.warn(
+        `[${label}] Attempt ${attempt}/${maxAttempts} failed (${message}), retrying in ${delay}ms...`
+      );
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Tier 1 — Free: pull captions from YouTube's InnerTube API via youtubei.js.
  * Works on most videos, including ones where the old timedtext endpoint
  * returns "Transcript is disabled".
@@ -17,15 +53,19 @@ export class CaptionsUnavailableError extends Error {
 export async function fetchYouTubeCaptions(
   videoId: string
 ): Promise<WhisperSegment[]> {
-  const yt = await Innertube.create({
-    lang: "en",
-    retrieve_player: false,
-  });
-
   let transcript;
   try {
-    const info = await yt.getInfo(videoId);
-    transcript = await info.getTranscript();
+    transcript = await withRetry(
+      async () => {
+        const yt = await Innertube.create({
+          lang: "en",
+          retrieve_player: false,
+        });
+        const info = await yt.getInfo(videoId);
+        return info.getTranscript();
+      },
+      { label: "YouTube InnerTube" }
+    );
   } catch (err) {
     throw new CaptionsUnavailableError(
       err instanceof Error ? err.message : "Failed to fetch captions"
@@ -80,7 +120,10 @@ export async function fetchSupadataTranscript(
   const supadata = new Supadata({ apiKey });
 
   const url = `https://www.youtube.com/watch?v=${videoId}`;
-  const result = await supadata.transcript({ url, lang: "en" });
+  const result = await withRetry(
+    () => supadata.transcript({ url, lang: "en" }),
+    { label: "Supadata transcript" }
+  );
 
   // Handle async jobs (large files return a jobId instead of immediate content)
   type TranscriptContent = import("@supadata/js").TranscriptChunk[] | string;
@@ -91,7 +134,10 @@ export async function fetchSupadataTranscript(
     const maxAttempts = 60; // ~60 seconds max
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise((r) => setTimeout(r, 1000));
-      const job = await supadata.transcript.getJobStatus(jobId);
+      const job = await withRetry(
+        () => supadata.transcript.getJobStatus(jobId),
+        { maxAttempts: 3, baseDelayMs: 1000, label: "Supadata job poll" }
+      );
       if (job.status === "completed" && job.result) {
         content = job.result.content;
         break;
