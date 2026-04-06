@@ -115,9 +115,22 @@ export default async function ChatLayout({
     const lightVars = buildVars(light);
     const darkVars = buildVars(dark);
 
-    // Use :not(.dark) and .dark to properly scope light/dark overrides
-    if (lightVars) brandingCss += `:root:not(.dark) #church-chat { ${lightVars} }`;
-    if (darkVars) brandingCss += ` :root.dark #church-chat { ${darkVars} }`;
+    // Use :not(.dark) and .dark to properly scope light/dark overrides.
+    // Apply to both #church-chat (the main container) AND html/body so the
+    // background color extends into iOS safe areas and any pixels outside
+    // the chat container (status bar, home indicator bar).
+    if (lightVars) {
+      brandingCss += `:root:not(.dark) #church-chat { ${lightVars} }`;
+      if (light.bg) {
+        brandingCss += ` :root:not(.dark) body { background: ${light.bg} !important; }`;
+      }
+    }
+    if (darkVars) {
+      brandingCss += ` :root.dark #church-chat { ${darkVars} }`;
+      if (dark.bg) {
+        brandingCss += ` :root.dark body { background: ${dark.bg} !important; }`;
+      }
+    }
   }
 
   // Only load custom Google Font for Enterprise
