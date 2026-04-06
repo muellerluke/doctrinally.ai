@@ -41,7 +41,7 @@ export default async function ChatLayout({
   // No church found on this subdomain/domain
   if (!church) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 p-4">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 p-4">
         <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
         <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
         <h1 className="font-heading text-2xl">Church not found</h1>
@@ -141,7 +141,7 @@ export default async function ChatLayout({
       <ChatShell>
         <div
           id="church-chat"
-          className="flex h-screen bg-background text-foreground"
+          className="flex h-dvh bg-background text-foreground overflow-hidden"
           style={{
             fontFamily:
               isEnterprise && church.fontFamily && FONT_CSS_MAP[church.fontFamily]

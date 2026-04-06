@@ -24,6 +24,6 @@ The platform is built as a multi-tenant SaaS application where each church opera
 
 ## Contact
 
-- Email: hello@doctrinally.ai
+- Email: luke@doctrinally.ai
 - Location: Austin, TX
 - Company: L&D Holdings LLC
