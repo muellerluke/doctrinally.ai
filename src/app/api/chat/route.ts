@@ -239,15 +239,16 @@ export async function POST(request: Request) {
     }
   }
 
-  // Create or reuse chat record up front so we can return chatId in stream
+  // Create or reuse chat record. Anonymous users get userId=null so their
+  // messages are still saved for analytics and topic classification.
   let chatId = existingChatId;
-  if (userId && !chatId) {
+  if (!chatId) {
     try {
       const [newChat] = await db
         .insert(chats)
         .values({
           churchId,
-          userId,
+          userId: userId ?? null,
           title:
             userQuery.length > 80
               ? userQuery.slice(0, 80) + "..."
@@ -318,8 +319,10 @@ export async function POST(request: Request) {
 
         controller.close();
 
-        // Save messages to DB asynchronously
-        if (userId && chatId) {
+        // Save messages to DB for all chats (authenticated and anonymous).
+        // Anonymous chats have userId=null but are still tracked for analytics,
+        // billing, and topic classification.
+        if (chatId) {
           try {
             const [userMsg] = await db
               .insert(messages)
