@@ -82,20 +82,11 @@ export default function RootLayout({
       <head>
         <script
           async
-          src="https://plausible.io/js/pa-OLhck3vYwRCsbi0z4VP5k.js"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
-          }}
-        />
-        <script
-          async
           src="https://www.googletagmanager.com/gtag/js?id=AW-18068029031"
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18068029031');`,
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18068029031');gtag('config','G-4PJMBW2762');`,
           }}
         />
       </head>
