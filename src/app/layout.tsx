@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Playfair_Display, Source_Serif_4, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
@@ -79,18 +80,15 @@ export default function RootLayout({
       className={`${sourceSerif.variable} ${playfair.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=AW-18068029031"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18068029031');gtag('config','G-4PJMBW2762');`,
-          }}
-        />
-      </head>
+      <head />
       <body className="min-h-full flex flex-col bg-background">
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-18068029031"
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','AW-18068029031');gtag('config','G-4PJMBW2762');`}
+        </Script>
         <AuthSessionProvider>
           <ThemeProvider>
             <TooltipProvider>{children}</TooltipProvider>
