@@ -46,9 +46,9 @@ export async function resumeCheckout(plan: "standard" | "enterprise") {
   });
   if (!sub) return { error: "No subscription found" };
 
-  // Update plan if changed. Standard still starts as a trial on resume so
-  // churches that bailed from the first checkout still get the trial offer.
-  const isTrial = plan === "standard";
+  // Both plans start as a 14-day free trial on resume so churches that
+  // bailed from the first checkout still get the trial offer.
+  const isTrial = true;
   const limits = getInitialLimits(plan, isTrial);
   await db
     .update(subscriptions)
@@ -124,9 +124,8 @@ export async function createChurch(input: {
     };
   }
 
-  // Standard signups start as a 14-day free trial with reduced limits.
-  // Enterprise goes straight to paid since it requires sales-led onboarding.
-  const isTrial = parsed.data.plan === "standard";
+  // Both plans start as a 14-day free trial.
+  const isTrial = true;
   const limits = getInitialLimits(parsed.data.plan, isTrial);
 
   const result = await db.transaction(async (tx) => {
