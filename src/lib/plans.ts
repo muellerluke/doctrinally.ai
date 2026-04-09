@@ -37,7 +37,7 @@ export const PLANS = {
 
 export type PlanType = keyof typeof PLANS;
 
-// Free trial configuration. Only Standard is trialable; Enterprise goes through sales.
+// Free trial configuration. Both plans include a 14-day free trial.
 export const TRIAL_DAYS = 14;
 export const TRIAL_LIMITS = {
   documentUploadLimit: 10,

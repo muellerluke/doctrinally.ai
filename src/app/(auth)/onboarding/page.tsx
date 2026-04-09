@@ -197,7 +197,7 @@ export default function OnboardingPage() {
           <div className="text-center">
             <h2 className="font-heading text-2xl">Choose your plan</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Standard comes with a 14-day free trial. Cancel anytime.
+              Both plans include a 14-day free trial. Cancel anytime.
             </p>
           </div>
 
@@ -214,13 +214,11 @@ export default function OnboardingPage() {
             />
           </div>
 
-          {selectedPlan === "standard" && (
-            <p className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 text-center text-xs text-muted-foreground">
-              You won&apos;t be charged today. Your card will be charged $49 in
-              14 days unless you cancel. Trial includes 10 document uploads and
-              100 messages.
-            </p>
-          )}
+          <p className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 text-center text-xs text-muted-foreground">
+            You won&apos;t be charged today. Your card will be charged $
+            {selectedPlan === "standard" ? "49" : "99"} in 14 days unless you
+            cancel. Trial includes 10 document uploads and 100 messages.
+          </p>
 
           <div className="flex gap-3">
             {!hasExistingChurch && (
@@ -239,9 +237,7 @@ export default function OnboardingPage() {
               disabled={loading}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {selectedPlan === "standard"
-                ? "Start 14-day free trial"
-                : "Continue to payment"}
+              Start 14-day free trial
             </Button>
           </div>
         </div>

@@ -83,6 +83,14 @@ export default function RootLayout({
       <head />
       <body className="min-h-full flex flex-col bg-background">
         <Script
+          id="plausible-js"
+          src="https://plausible.io/js/pa-OLhck3vYwRCsbi0z4VP5k.js"
+          strategy="afterInteractive"
+        />
+        <Script id="plausible-init" strategy="afterInteractive">
+          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`}
+        </Script>
+        <Script
           src="https://www.googletagmanager.com/gtag/js?id=AW-18068029031"
           strategy="afterInteractive"
         />
