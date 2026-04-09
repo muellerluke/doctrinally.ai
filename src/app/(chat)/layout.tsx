@@ -66,11 +66,27 @@ export default async function ChatLayout({
     }
   }
 
-  // Check if church has enterprise plan for custom branding
+  // Check subscription status
   const sub = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.churchId, church.id),
   });
-  const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
+
+  // Block access if church has no active subscription
+  const activeStatuses = ["active", "trialing", "past_due"];
+  if (!church.isActive || !sub || !activeStatuses.includes(sub.status)) {
+    return (
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 p-4">
+        <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
+        <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
+        <h1 className="font-heading text-2xl">Church not found</h1>
+        <p className="text-muted-foreground">
+          This church doesn&apos;t exist or hasn&apos;t been set up yet.
+        </p>
+      </div>
+    );
+  }
+
+  const isEnterprise = canUseCustomBranding(sub.plan);
 
   // Build branding CSS for light and dark modes
   let brandingCss = "";

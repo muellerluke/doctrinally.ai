@@ -3,7 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { getServerSession } from "next-auth";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { chats, messages, memberships, churches } from "@/db/schema";
+import { chats, messages, memberships, churches, subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { hybridSearch } from "@/lib/retrieval";
 import { incrementQuestionCount } from "@/lib/usage";
@@ -211,6 +211,15 @@ export async function POST(request: Request) {
 
   if (!churchId) {
     return new Response("churchId is required", { status: 400 });
+  }
+
+  // Block chat if church has no active subscription
+  const sub = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.churchId, churchId),
+  });
+  const activeStatuses = ["active", "trialing", "past_due"];
+  if (!sub || !activeStatuses.includes(sub.status)) {
+    return new Response("Church subscription is not active", { status: 403 });
   }
 
   const lastUserMessage = [...clientMessages]
