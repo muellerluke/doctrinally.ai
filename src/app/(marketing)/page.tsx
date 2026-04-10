@@ -180,13 +180,16 @@ export default function HomePage() {
     <div className="flex flex-col">
       {/* Announcement bar */}
       <div className="border-b bg-primary/[0.04] text-foreground/85">
-        <div className="container mx-auto flex items-center justify-center gap-2 px-4 py-2 text-center text-xs sm:text-[13px]">
-          <span className="relative flex h-2 w-2">
+        <div className="container mx-auto flex items-center justify-center gap-2 px-4 py-2 text-center text-[11px] sm:text-[13px]">
+          <span className="relative flex h-2 w-2 shrink-0">
             <span className="pulse-dot absolute inline-flex h-full w-full rounded-full bg-gold" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
           </span>
           <span className="font-medium">New:</span>
-          <span className="text-muted-foreground">
+          <span className="min-w-0 truncate text-muted-foreground sm:hidden">
+            Live in under 5 minutes
+          </span>
+          <span className="hidden min-w-0 truncate text-muted-foreground sm:inline">
             Go from signup to a live chat for your church in under 5 minutes
           </span>
           <Link
@@ -206,22 +209,25 @@ export default function HomePage() {
         <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-b from-primary/[0.06] via-background/0 to-background" />
         <div className="ember-glow" aria-hidden />
 
-        <div className="container relative mx-auto grid gap-16 px-4 pb-24 pt-20 sm:pt-28 lg:grid-cols-[1.1fr_1fr] lg:gap-20 lg:pb-32 lg:pt-36">
+        <div className="container relative mx-auto grid gap-12 px-4 pb-16 pt-14 sm:gap-16 sm:pb-24 sm:pt-28 lg:grid-cols-[1.1fr_1fr] lg:gap-20 lg:pb-32 lg:pt-36">
           {/* Left column */}
           <div className="flex max-w-2xl flex-col justify-center">
             <div className="animate-fade-up stagger-1">
               <Badge
                 variant="outline"
-                className="h-auto rounded-full border-primary/20 bg-background/80 py-1.5 pl-1.5 pr-3 text-[11px] font-medium uppercase tracking-[0.14em] text-foreground/80 shadow-sm backdrop-blur"
+                className="h-auto max-w-full rounded-full border-primary/20 bg-background/80 py-1.5 pl-1.5 pr-3 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground/80 shadow-sm backdrop-blur sm:text-[11px]"
               >
-                <span className="mr-2 flex h-5 items-center rounded-full bg-gold/15 px-2 text-[10px] text-gold">
+                <span className="mr-2 flex h-5 shrink-0 items-center rounded-full bg-gold/15 px-2 text-[10px] text-gold">
                   <Sparkles className="mr-1 h-3 w-3" /> New
                 </span>
-                Built for churches that teach the whole counsel of God
+                <span className="sm:hidden">For teaching churches</span>
+                <span className="hidden sm:inline">
+                  Built for churches that teach the whole counsel of God
+                </span>
               </Badge>
             </div>
 
-            <h1 className="animate-fade-up stagger-2 mt-7 font-heading text-[2.6rem] leading-[1.02] tracking-[-0.02em] sm:text-6xl lg:text-[4.6rem]">
+            <h1 className="animate-fade-up stagger-2 mt-6 font-heading text-[2rem] leading-[1.05] tracking-[-0.02em] sm:text-6xl sm:leading-[1.02] lg:text-[4.6rem]">
               <span className="text-gradient-ink">Every sermon.</span>
               <br />
               <span className="text-gradient-ink">Every verse.</span>
@@ -229,7 +235,7 @@ export default function HomePage() {
               <span className="italic text-primary">Instantly answered.</span>
             </h1>
 
-            <p className="animate-fade-up stagger-3 mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground">
+            <p className="animate-fade-up stagger-3 mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:mt-8 sm:text-lg">
               Doctrinally.AI turns your church&apos;s sermons, devotions, and
               documents into an AI assistant your congregation can ask anything
               &mdash; with citations back to{" "}
@@ -276,13 +282,16 @@ export default function HomePage() {
             </ul>
 
             {/* Hero stat strip */}
-            <div className="animate-fade-up stagger-6 mt-14 grid max-w-lg grid-cols-3 gap-0 divide-x divide-border/70 rounded-2xl border bg-card/40 px-1 py-5 shadow-sm backdrop-blur">
+            <div className="animate-fade-up stagger-6 mt-12 grid w-full max-w-lg grid-cols-3 gap-0 divide-x divide-border/70 rounded-2xl border bg-card/40 px-0 py-4 shadow-sm backdrop-blur sm:mt-14 sm:px-1 sm:py-5">
               {heroStats.map((s) => (
-                <div key={s.label} className="px-4 text-center">
-                  <div className="font-heading text-2xl tracking-tight text-foreground sm:text-3xl">
+                <div
+                  key={s.label}
+                  className="min-w-0 px-2 text-center sm:px-4"
+                >
+                  <div className="font-heading text-lg tracking-tight text-foreground sm:text-3xl">
                     {s.value}
                   </div>
-                  <div className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <div className="mt-1 text-[9px] uppercase tracking-wider text-muted-foreground sm:text-[11px]">
                     {s.label}
                   </div>
                 </div>
@@ -318,13 +327,13 @@ export default function HomePage() {
       </section>
 
       {/* ─── BEFORE / AFTER ───────────────────────────────────── */}
-      <section className="relative border-b py-28">
+      <section className="relative border-b py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
               The problem
             </p>
-            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
               Your best teaching{" "}
               <span className="italic text-primary">is invisible.</span>
             </h2>
@@ -334,9 +343,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-5xl gap-8 md:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:mt-16 sm:gap-8 md:grid-cols-2">
             {/* Before card */}
-            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8">
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 sm:p-8">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Before Doctrinally.AI
               </div>
@@ -354,7 +363,7 @@ export default function HomePage() {
             </div>
 
             {/* After card */}
-            <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.06] via-background to-gold/[0.05] p-8 shadow-xl shadow-primary/[0.04]">
+            <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.06] via-background to-gold/[0.05] p-6 shadow-xl shadow-primary/[0.04] sm:p-8">
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold/10 blur-3xl" />
               <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground">
                 With Doctrinally.AI
@@ -376,20 +385,20 @@ export default function HomePage() {
       </section>
 
       {/* ─── HOW IT WORKS ─────────────────────────────────────── */}
-      <section id="how-it-works" className="border-b bg-card/30 py-28">
+      <section id="how-it-works" className="border-b bg-card/30 py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
               How it works
             </p>
-            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
               From sermon archive to{" "}
               <span className="italic text-primary">searchable library</span>{" "}
               in under 5 minutes.
             </h2>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-6xl gap-6 md:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-6xl gap-6 sm:mt-16 md:grid-cols-3">
             {[
               {
                 step: "01",
@@ -412,7 +421,7 @@ export default function HomePage() {
             ].map((s, i) => (
               <div
                 key={s.step}
-                className="group relative rounded-2xl border bg-background p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/[0.06]"
+                className="group relative rounded-2xl border bg-background p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/[0.06] sm:p-8"
               >
                 <div className="absolute right-6 top-6 font-heading text-5xl italic text-muted-foreground/15">
                   {s.step}
@@ -444,25 +453,25 @@ export default function HomePage() {
       </section>
 
       {/* ─── BENTO FEATURES ───────────────────────────────────── */}
-      <section id="features" className="border-b py-28">
+      <section id="features" className="border-b py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
               Everything your church needs
             </p>
-            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
               Built for preaching.{" "}
               <span className="italic text-primary">Not for chatbots.</span>
             </h2>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-6xl auto-rows-[200px] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="mx-auto mt-12 grid max-w-6xl auto-rows-auto grid-cols-1 gap-5 sm:mt-16 sm:grid-cols-2 lg:auto-rows-[200px] lg:grid-cols-6">
             {bentoFeatures.map((f) => {
               const Icon = f.icon;
               return (
                 <div
                   key={f.title}
-                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-7 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/[0.05] ${
+                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/[0.05] sm:p-7 ${
                     f.accent
                       ? "bg-gradient-to-br from-primary/[0.07] via-background to-gold/[0.05]"
                       : "bg-card"
@@ -487,15 +496,21 @@ export default function HomePage() {
                   </div>
                   {/* Decorative corner for the big card */}
                   {f.accent && (
-                    <div className="relative z-10 mt-6 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                      <Video className="h-3.5 w-3.5" />
-                      <span>YouTube sermons</span>
-                      <span className="text-border">·</span>
-                      <FileText className="h-3.5 w-3.5" />
-                      <span>PDFs & docs</span>
-                      <span className="text-border">·</span>
-                      <Sparkles className="h-3.5 w-3.5" />
-                      <span>Rich text editor</span>
+                    <div className="relative z-10 mt-6 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] font-medium text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Video className="h-3.5 w-3.5" />
+                        YouTube sermons
+                      </span>
+                      <span className="hidden text-border sm:inline">·</span>
+                      <span className="flex items-center gap-1.5">
+                        <FileText className="h-3.5 w-3.5" />
+                        PDFs & docs
+                      </span>
+                      <span className="hidden text-border sm:inline">·</span>
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Rich text editor
+                      </span>
                     </div>
                   )}
                 </div>
@@ -506,23 +521,23 @@ export default function HomePage() {
       </section>
 
       {/* ─── TESTIMONIALS + METRICS ───────────────────────────── */}
-      <section id="testimonials" className="border-b bg-card/30 py-28">
+      <section id="testimonials" className="border-b bg-card/30 py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
               Real results from real churches
             </p>
-            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
               Pastors call it the most useful tool{" "}
               <span className="italic text-primary">we&apos;ve added in a decade.</span>
             </h2>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-5xl gap-6 md:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:mt-16 md:grid-cols-2">
             {testimonials.map((t) => (
               <figure
                 key={t.name}
-                className="group flex flex-col rounded-2xl border bg-background p-8 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/[0.05]"
+                className="group flex flex-col rounded-2xl border bg-background p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/[0.05] sm:p-8"
               >
                 <Quote className="mb-4 h-7 w-7 text-gold/60" />
                 <blockquote className="flex-1 text-base italic leading-relaxed text-foreground/90">
@@ -548,7 +563,7 @@ export default function HomePage() {
       {/* ─── PRICING ──────────────────────────────────────────── */}
       <section
         id="pricing"
-        className="parchment-texture relative border-b py-28"
+        className="parchment-texture relative border-b py-20 sm:py-28"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/[0.025] to-background" />
         <div className="container relative mx-auto px-4">
@@ -556,7 +571,7 @@ export default function HomePage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
               Transparent pricing
             </p>
-            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
               Less than the cost of{" "}
               <span className="italic text-primary">one Sunday lunch.</span>
             </h2>
@@ -565,9 +580,9 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mx-auto mt-16 grid max-w-5xl gap-6 lg:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:mt-16 lg:grid-cols-2">
             {/* Standard */}
-            <div className="relative flex flex-col rounded-2xl border bg-background p-8 shadow-sm">
+            <div className="relative flex flex-col rounded-2xl border bg-background p-6 shadow-sm sm:p-8">
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 For growing churches
               </div>
@@ -604,8 +619,8 @@ export default function HomePage() {
             </div>
 
             {/* Enterprise */}
-            <div className="relative flex flex-col overflow-visible rounded-2xl border-2 border-gold/40 bg-gradient-to-br from-primary/[0.04] via-background to-gold/[0.06] p-8 shadow-2xl shadow-primary/[0.08]">
-              <div className="absolute -top-3 left-8">
+            <div className="relative flex flex-col overflow-visible rounded-2xl border-2 border-gold/40 bg-gradient-to-br from-primary/[0.04] via-background to-gold/[0.06] p-6 shadow-2xl shadow-primary/[0.08] sm:p-8">
+              <div className="absolute -top-3 left-6 sm:left-8">
                 <Badge className="rounded-full border border-gold/50 bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-foreground shadow-md">
                   Most popular · Save 40%
                 </Badge>
@@ -678,9 +693,9 @@ export default function HomePage() {
       </section>
 
       {/* ─── GUARANTEE / RISK REVERSAL ────────────────────────── */}
-      <section className="border-b py-20">
+      <section className="border-b py-16 sm:py-20">
         <div className="container mx-auto px-4">
-          <div className="mx-auto flex max-w-4xl flex-col items-center gap-8 rounded-3xl border border-gold/30 bg-gradient-to-br from-gold/[0.06] via-background to-primary/[0.04] p-10 text-center md:flex-row md:text-left">
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-7 rounded-3xl border border-gold/30 bg-gradient-to-br from-gold/[0.06] via-background to-primary/[0.04] p-7 text-center sm:gap-8 sm:p-10 md:flex-row md:text-left">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-gold/40 bg-background shadow-inner">
               <ShieldCheck className="h-10 w-10 text-gold" />
             </div>
@@ -713,13 +728,13 @@ export default function HomePage() {
       </section>
 
       {/* ─── FAQ ──────────────────────────────────────────────── */}
-      <section id="faq" className="border-b py-28">
+      <section id="faq" className="border-b py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
               FAQ
             </p>
-            <h2 className="mt-4 font-heading text-4xl tracking-tight sm:text-5xl">
+            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
               Questions, answered.
             </h2>
             <p className="mt-5 text-lg text-muted-foreground">
@@ -774,16 +789,19 @@ export default function HomePage() {
       <section className="parchment-texture relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/[0.06] to-background" />
         <div className="ember-glow" aria-hidden />
-        <div className="container relative mx-auto flex flex-col items-center gap-8 px-4 py-32 text-center">
+        <div className="container relative mx-auto flex flex-col items-center gap-8 px-4 py-24 text-center sm:py-32">
           <Badge
             variant="outline"
-            className="rounded-full border-primary/20 bg-background/80 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur"
+            className="max-w-full rounded-full border-primary/20 bg-background/80 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur sm:text-[11px]"
           >
-            <Users className="mr-2 h-3 w-3 text-gold" />
-            Built for pastors, teaching teams, and their congregations
+            <Users className="mr-2 h-3 w-3 shrink-0 text-gold" />
+            <span className="sm:hidden">For pastors & their churches</span>
+            <span className="hidden sm:inline">
+              Built for pastors, teaching teams, and their congregations
+            </span>
           </Badge>
 
-          <h2 className="max-w-3xl font-heading text-5xl leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+          <h2 className="max-w-3xl font-heading text-[2.1rem] leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
             <span className="text-gradient-ink">Your archive is waiting.</span>
             <br />
             <span className="italic text-primary">
@@ -791,7 +809,7 @@ export default function HomePage() {
             </span>
           </h2>
 
-          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
+          <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             Add your first sermon in the next five minutes. Watch your
             congregation discover years of teaching they never knew existed.
           </p>
