@@ -9,7 +9,7 @@ export default function PrivacyPage() {
     <div className="container mx-auto max-w-3xl px-4 py-16">
       <h1 className="font-heading text-4xl tracking-tight">Privacy Policy</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Last updated: April 4, 2026
+        Last updated: April 10, 2026
       </p>
 
       <div className="prose mt-10 max-w-none text-foreground prose-headings:font-heading prose-headings:tracking-tight prose-h2:mt-10 prose-h2:text-2xl prose-h3:mt-6 prose-h3:text-lg prose-p:leading-7 prose-p:text-muted-foreground prose-li:text-muted-foreground prose-strong:text-foreground">
@@ -60,6 +60,21 @@ export default function PrivacyPage() {
           privacy policy governs the handling of your payment information.
         </p>
 
+        <h3>Checkout and Signup Information</h3>
+        <p>
+          When you begin a subscription checkout or start creating an account,
+          we may collect your name, email address, and church information
+          before the process is completed. If you do not finish signing up or
+          subscribing, we may retain this information so we can follow up with
+          you about completing your signup, answer questions, or offer
+          assistance. You can ask us to stop contacting you at any time by
+          replying to any such message or emailing{" "}
+          <a href="mailto:luke@doctrinally.ai" className="text-primary">
+            luke@doctrinally.ai
+          </a>
+          .
+        </p>
+
         <h2>3. How We Use Information</h2>
         <p>We use collected information to:</p>
         <ul>
@@ -75,6 +90,11 @@ export default function PrivacyPage() {
             classification)
           </li>
           <li>Communicate with you about your account and the Service</li>
+          <li>
+            Contact you about products or services you have shown interest in,
+            including following up on incomplete signups or checkouts and
+            responding to inquiries
+          </li>
           <li>Detect, prevent, and address security issues</li>
         </ul>
 
