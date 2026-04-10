@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Globe, ArrowLeft, ArrowRight } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { Loader2, Globe, ArrowLeft, ArrowRight, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -144,6 +145,17 @@ export default function OnboardingPage() {
 
   return (
     <>
+      <div className="mx-auto mb-4 flex w-full max-w-2xl justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => signOut({ callbackUrl: "/sign-in" })}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign out
+        </Button>
+      </div>
       {step === 1 && (
         <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
           <CardHeader className="text-center">
