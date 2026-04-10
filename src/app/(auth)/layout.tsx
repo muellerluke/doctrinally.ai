@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { AuthSignOutButton } from "@/components/layouts/auth-sign-out-button";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getServerSession(authOptions);
+
   return (
     <div className="parchment-texture flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/[0.05] via-background to-gold/[0.04] p-4">
       <Link href="/" className="relative mb-8 flex items-center gap-2.5">
@@ -20,6 +25,7 @@ export default function AuthLayout({
         </span>
       </Link>
       <div className="relative w-full">{children}</div>
+      {session?.user && <AuthSignOutButton />}
     </div>
   );
 }
