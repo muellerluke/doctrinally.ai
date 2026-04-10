@@ -180,3 +180,86 @@
 .stagger-4 { animation-delay: 360ms; }
 .stagger-5 { animation-delay: 480ms; }
 .stagger-6 { animation-delay: 600ms; }
+
+/* Hairline grid pattern background */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 8%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+.bg-grid-fade {
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 20%, black 40%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 20%, black 40%, transparent 85%);
+}
+
+/* Dotted pattern */
+.bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--foreground) 14%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 18px 18px;
+}
+
+/* Editorial gradient text */
+.text-gradient-ink {
+  background-image: linear-gradient(
+    180deg,
+    var(--foreground) 0%,
+    var(--foreground) 55%,
+    color-mix(in oklab, var(--foreground) 55%, transparent) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Warm ember glow (for hero halo) */
+.ember-glow {
+  position: absolute;
+  inset: auto 0 -30% 0;
+  height: 60%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 50%, color-mix(in oklab, var(--primary) 38%, transparent), transparent 65%),
+    radial-gradient(ellipse 40% 50% at 50% 55%, color-mix(in oklab, var(--gold) 30%, transparent), transparent 70%);
+  filter: blur(60px);
+}
+
+/* Subtle marquee for logo strip */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+.animate-marquee:hover { animation-play-state: paused; }
+
+/* Soft ring utility for conversion CTAs */
+.cta-ring {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent),
+    0 10px 30px -12px color-mix(in oklab, var(--primary) 45%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 22%, transparent);
+}
+
+/* Pulsing availability dot */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gold) 55%, transparent); }
+  70% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--gold) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--gold) 0%, transparent); }
+}
+.pulse-dot {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-fade-up,
+  .animate-fade-in,
+  .pulse-dot {
+    animation: none !important;
+  }
+}
