@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
 import { documents, memberships } from "@/db/schema";
 import { incrementDocumentUpload } from "@/lib/usage";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 // Client-direct upload via @vercel/blob/client. The browser uploads bytes
 // straight to Blob storage; this route only signs a token and receives a
@@ -192,6 +193,17 @@ export async function POST(request: Request) {
           .where(eq(documents.id, documentId));
 
         await incrementDocumentUpload(churchId);
+
+        const posthog = getPostHogClient();
+        posthog.capture({
+          distinctId: payload.userId,
+          event: "document_uploaded",
+          properties: {
+            church_id: churchId,
+            document_id: documentId,
+            document_type: docType,
+          },
+        });
 
         const taskId = TYPE_TO_TASK[docType];
         if (taskId) {

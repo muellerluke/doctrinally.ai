@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 
+import posthog from "posthog-js";
 import { createYouTubeDocument } from "@/lib/actions/documents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,10 @@ export function YouTubeUploadDialog({
         return;
       }
 
+      posthog.capture("youtube_video_added", {
+        church_id: churchId,
+        title,
+      });
       toast.success("YouTube video added successfully");
       resetForm();
       onOpenChange(false);

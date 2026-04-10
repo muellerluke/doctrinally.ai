@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { db } from "@/db";
 import { churches, subscriptions, usageRecords } from "@/db/schema";
 import { getInitialLimits, getOverageRates } from "@/lib/plans";
+import { getPostHogClient } from "@/lib/posthog-server";
 import type { PlanType } from "@/lib/plans";
 import type Stripe from "stripe";
 
@@ -140,6 +141,17 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       })
       .onConflictDoNothing();
   });
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: churchId,
+    event: "subscription_activated",
+    properties: {
+      church_id: churchId,
+      plan: session.metadata?.plan,
+      subscription_id: stripeSubscription.id,
+    },
+  });
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
@@ -200,6 +212,17 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(churches.id, churchId));
   });
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: churchId,
+    event: "subscription_canceled",
+    properties: {
+      church_id: churchId,
+      plan: subscription.metadata?.plan,
+      subscription_id: subscription.id,
+    },
+  });
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -254,6 +277,22 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
     .update(subscriptions)
     .set({ status: "past_due", updatedAt: new Date() })
     .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
+
+  const sub = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.stripeSubscriptionId, subscriptionId),
+  });
+  if (sub) {
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: sub.churchId,
+      event: "payment_failed",
+      properties: {
+        church_id: sub.churchId,
+        subscription_id: subscriptionId,
+        amount_due: invoice.amount_due,
+      },
+    });
+  }
 }
 
 async function handleInvoiceCreated(invoice: Stripe.Invoice) {

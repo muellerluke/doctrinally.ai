@@ -21,6 +21,7 @@ import {
   getExistingChurch,
   resumeCheckout,
 } from "@/lib/actions/onboarding";
+import posthog from "posthog-js";
 import { slugify } from "@/lib/utils";
 import type { PlanType } from "@/lib/plans";
 
@@ -111,6 +112,11 @@ export default function OnboardingPage() {
         }
         return;
       }
+
+      if (!hasExistingChurch) {
+        posthog.capture("church_created", { church_name: name, church_slug: slug });
+      }
+      posthog.capture("checkout_started", { plan: selectedPlan, church_name: name });
 
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;

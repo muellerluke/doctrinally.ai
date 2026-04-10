@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import posthog from "posthog-js";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +52,8 @@ export function MemberAuthModal({ open, onOpenChange }: MemberAuthModalProps) {
         toast.error("Invalid email or password");
         return;
       }
+      posthog.identify(signInEmail, { email: signInEmail });
+      posthog.capture("member_signed_in", { email: signInEmail });
       onOpenChange(false);
       router.refresh();
     } catch {
@@ -87,6 +90,8 @@ export function MemberAuthModal({ open, onOpenChange }: MemberAuthModalProps) {
         toast.error("Account created. Please sign in.");
         return;
       }
+      posthog.identify(signUpEmail, { name: signUpName, email: signUpEmail });
+      posthog.capture("member_signed_up", { name: signUpName, email: signUpEmail });
       onOpenChange(false);
       router.refresh();
     } catch {

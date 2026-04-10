@@ -7,6 +7,7 @@ import { chats, messages, memberships, churches, subscriptions } from "@/db/sche
 import { authOptions } from "@/lib/auth";
 import { hybridSearch } from "@/lib/retrieval";
 import { incrementQuestionCount } from "@/lib/usage";
+import { getPostHogClient } from "@/lib/posthog-server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { lookupByReference } from "@/lib/bible";
 import type { Citation, RetrievedChunk } from "@/lib/types/citations";
@@ -365,6 +366,20 @@ export async function POST(request: Request) {
 
             // Increment question count for billing (all chats, including admin test)
             await incrementQuestionCount(churchId);
+
+            const posthog = getPostHogClient();
+            posthog.capture({
+              distinctId: userId ?? `anon-${churchId}`,
+              event: "chat_message_sent",
+              properties: {
+                church_id: churchId,
+                chat_id: chatId,
+                has_citations: citations.length > 0,
+                citation_count: citations.length,
+                is_admin_test: isAdminTest ?? false,
+                is_authenticated: !!userId,
+              },
+            });
 
             // Classify topic in background (only for non-admin-test chats)
             if (!isAdminTest && userMsg) {
