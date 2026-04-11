@@ -30,6 +30,107 @@ export type BlogPost = {
  */
 export const blogPosts: BlogPost[] = [
   {
+    slug: "the-church-and-ai",
+    title:
+      "The Church and AI: A Pastor's Guide to Artificial Intelligence in Ministry",
+    description:
+      "A complete, Scripture-first guide to AI for churches — what it is, whether it is biblical to use, how congregations are already using it, the real risks, and the guardrails that keep it faithful.",
+    category: "Platform",
+    publishedAt: "2026-04-11",
+    readMinutes: 12,
+    author: "The Doctrinally.AI Team",
+    excerpt:
+      "Every pastor in America is going to have to answer questions about AI this year. Here is a careful, Scripture-first guide to what the church actually needs to know — and how to use AI in ministry without surrendering your pulpit.",
+    sections: [
+      {
+        paragraphs: [
+          "Artificial intelligence is no longer an abstract debate happening somewhere in Silicon Valley. It is in the pockets of every member of your congregation, in the search bar they open when they cannot sleep, and in the chatbot that answers their theological questions before you ever get the chance. Whether the church engages thoughtfully with AI or not, AI is already engaging with the church.",
+          "This guide is written for pastors, elders, and ministry leaders who want a careful, Scripture-first walk through the subject. It answers the most common questions Christians are asking about the church and AI — what it is, whether it is biblical to use, how congregations are already using it, the risks that deserve real weight, and the guardrails that separate faithful use from a theological slot machine.",
+          "Our aim is not to sell you on a particular view. Our aim is to make sure that when your members ask you about AI this year — and they will — you have thought about it longer and more honestly than the algorithm has.",
+        ],
+      },
+      {
+        heading: "What is artificial intelligence, in plain language?",
+        paragraphs: [
+          "Most of what the public calls 'AI' today is a specific kind of tool: a large language model. A large language model is a program trained on enormous amounts of text until it learns to predict, at a statistical level, what words tend to follow other words. When you type a question, the model produces an answer not by reasoning the way a pastor does, but by assembling a response that is likely, given its training.",
+          "That simple definition matters pastorally. It explains why AI sometimes sounds brilliant and sometimes hallucinates a Bible verse that does not exist. It is not lying in any conscious sense. It is producing what is statistically likely to come next — and if the most statistically likely next sentence happens to be wrong, the model will still say it with total confidence.",
+          "A faithful conversation about AI in the church has to start here. AI is not a person. It is not a mind. It is a pattern-matching tool that can be extraordinarily useful and extraordinarily misleading, depending on how it is built and how it is used.",
+        ],
+      },
+      {
+        heading: "Is it biblical for a church to use AI?",
+        paragraphs: [
+          "Scripture does not mention artificial intelligence. It does, however, speak clearly about technology, tools, stewardship, truth-telling, and the responsibility of teachers. From those principles, most thoughtful Christians land in roughly the same place: AI is a tool, and like every tool in history, it can be used faithfully or foolishly.",
+          "The Bible repeatedly treats human-made tools as morally neutral in themselves and morally weighty in their use. A plow can feed a family or be left to rust. A printing press can distribute Bibles or propaganda. A microphone can carry a sermon to a shut-in or amplify a false teacher. AI belongs in that same family of tools: powerful, flexible, and always answerable to the character of the person using it.",
+          "Where Scripture speaks most directly is on the character side of the equation. Teachers will be judged more strictly (James 3:1). The Lord detests lying lips (Proverbs 12:22). Shepherds are called to feed the flock with knowledge and understanding (Jeremiah 3:15). None of those verses forbid the use of a new tool. All of them constrain how it can be used. A church that adopts AI without thinking about truth, accuracy, and accountability is not being neutral. It is being careless.",
+          "The short answer to 'is it biblical to use AI?' is the same short answer Scripture gives for most tools: yes, with wisdom, with honesty, and under submission to the same standards of truth-telling that apply to everything else that comes out of the church.",
+        ],
+      },
+      {
+        heading: "How churches are already using AI in 2026",
+        paragraphs: [
+          "AI in ministry has moved from hype to habit in a very short window. It is worth knowing what churches are actually doing with it today, not in theory but in practice, because the gap between the two has narrowed quickly.",
+          "The most common uses fall into a handful of categories. Some pastors use AI for research — quickly pulling together cross-references, summarizing a theological position for a sermon, or surfacing passages on a given topic. Others use it for communication — drafting announcements, editing a newsletter, or translating a bulletin into Spanish or Korean. A growing number are using it for retrieval — turning their church's own sermon archive into something members can search in plain English.",
+          "The last category is the one that has surprised pastors the most. Most churches have years of teaching sitting on a hard drive or a YouTube channel, functionally invisible to the people who would benefit from it most. A retrieval-focused AI tool does not generate new theology; it surfaces what your church has already taught and links the member back to the original source. A question that would have disappeared into the internet now returns your pastor's actual voice.",
+          "What is not working as well: using AI to write sermons from scratch, to counsel people in crisis, or to answer theological questions from the open internet with no guardrails. Every pastor who has tried those uses has a story about where the model went wrong, and most of them have quietly pulled back.",
+        ],
+      },
+      {
+        heading: "The real risks of AI in the church",
+        paragraphs: [
+          "Every honest conversation about AI in ministry needs to name the risks, because they are real and they deserve weight. The goal is not to scare anyone away from the technology. It is to make sure the church adopts it with eyes open.",
+          "The first risk is hallucination. A language model trained on the open internet will, at some point, invent a Bible verse, misattribute a quote to a theologian who never said it, or fabricate a fact with total confidence. In a ministry context, that is not a harmless quirk. It is a teacher saying something that is not true in a place where trust matters.",
+          "The second risk is theological drift. Most general-purpose AI tools are trained on a broad mix of sources and will answer a theological question using whatever the internet has most loudly said about it. A member who asks a generic chatbot, 'What does your church believe about baptism?' will not get an answer rooted in your church. They will get an average of the internet. That is not neutrality. That is theological outsourcing.",
+          "The third risk is the loss of the pastoral relationship. AI cannot sit with a grieving widow. It cannot show up at the hospital. It cannot recognize when the real question behind the question is a confession waiting to happen. Any use of AI that nudges a church toward replacing relationships with convenience is a use the church should refuse.",
+          "The fourth risk is privacy. Many AI tools log, store, or even train on the content people type into them. A pastor who pastes a sensitive counseling note into a general-purpose chatbot has just exposed a member's story to a system whose data practices they may not fully understand. Any church use of AI needs to take that risk seriously.",
+        ],
+      },
+      {
+        heading: "What healthy AI guardrails look like",
+        paragraphs: [
+          "Most of the churches using AI well have converged on a small set of principles. These are not rules handed down from on high. They are the lessons people learned the hard way, and they are worth stating plainly.",
+          "First, known sources. The AI should be grounded in content your church has actually produced — sermons, devotions, documents, Scripture — rather than the open internet. If the model can only draw from material you control, the risk of theological drift drops dramatically.",
+          "Second, visible citations. Every answer the AI gives should be traceable back to a specific source, so a member can verify it, a pastor can audit it, and no claim is accepted on the model's word alone. Citations are the difference between AI as a research assistant and AI as a rumor mill.",
+          "Third, honest silence. A faithful church AI should be willing to say, 'Your church has not spoken to this yet,' rather than making something up to fill the gap. A model that cannot say 'I don't know' is a model that will eventually teach your people something you never said.",
+          "Fourth, human accountability. AI should surface what your church has taught; it should never pretend to be the one teaching it. The member should always be able to trace the answer back to a human pastor and a real message. That is what distinguishes an AI that extends ministry from an AI that impersonates it.",
+        ],
+      },
+      {
+        heading: "How to choose an AI tool for your church",
+        paragraphs: [
+          "If your church is weighing whether to adopt an AI tool, there are a handful of questions worth asking before you sign up for anything. These questions apply regardless of which vendor you are evaluating, including ours.",
+          "Where does the tool get its answers? If the answer is 'the open internet,' you are not choosing a church AI; you are choosing a general chatbot with a church logo pasted on it. Look for tools that are grounded in content you upload and control.",
+          "Can you see the sources? Any answer that cannot be traced back to a specific sermon, document, or Scripture passage should be treated with suspicion. Transparency is not a feature; it is a prerequisite.",
+          "Who owns the content? If you upload years of sermons and then decide to leave the platform, can you take that content with you? A healthy vendor relationship treats your teaching as yours, not as their proprietary dataset.",
+          "What happens when the AI doesn't know? A good church AI will say so. A bad one will hallucinate. Ask for a demo and try to break it with a question your church has never addressed. The answer you get will tell you everything.",
+          "How are members' questions handled? Are they stored, logged, anonymized, or used to train future models? Your congregation's private questions are not training data, and a serious church AI vendor will be clear about that.",
+        ],
+      },
+      {
+        heading: "Frequently asked questions about the church and AI",
+        paragraphs: [
+          "Will AI replace pastors? No serious Christian thinker believes it will, and the churches using AI well are not trying to. A language model cannot baptize, preside at a table, sit with the grieving, confront sin, or love a congregation into maturity. AI can extend the reach of a pastor's teaching into hours the pastor cannot physically be in the room. It cannot replace the pastor in that room.",
+          "Is it wrong to use AI to help write a sermon? Most pastors who have thought carefully about this draw a distinction between using AI as a research assistant — surfacing cross-references, reminding you of a historical quote, helping you outline — and using AI as a ghostwriter that produces the sermon you then read aloud. The first is the same kind of help a commentary or a concordance gives. The second is something every pastor should wrestle with honestly, because the pulpit is a place where your own wrestling with Scripture is part of the offering.",
+          "Can AI answer theological questions accurately? Only to the degree that it is grounded in a trustworthy source. A general chatbot trained on the open internet will give a confident answer to almost any theological question, and that answer will sometimes be wrong in ways a member cannot detect. An AI grounded only in your church's own teaching, with visible citations, is a very different tool — less impressive in breadth, much more trustworthy in depth.",
+          "Is using AI in the church 'playing God'? This is a real concern and it is worth taking seriously rather than waving away. The short answer is that the church has used tools for two thousand years — scrolls, codices, printing presses, radios, projectors, live streams — without believing that any of them were usurping God's role. AI belongs on that list, not on a separate moral plane. What matters is that the tool stays a tool, and that the teaching stays accountable to Scripture and to a human shepherd.",
+          "What does Scripture say about AI specifically? Nothing — which is part of why this conversation has to happen pastorally rather than proof-textually. What Scripture does say, over and over, is that teachers are accountable, that truth matters, that the sheep belong to the Shepherd, and that any tool the church uses must serve those things rather than compete with them. Those principles are enough to guide almost every decision a church will need to make about AI in the years ahead.",
+        ],
+      },
+      {
+        heading: "The shift that is actually happening",
+        paragraphs: [
+          "Strip away the hype and the hand-wringing, and the real story of AI in the church is smaller and more hopeful than either the enthusiasts or the alarmists say. For the first time, a church's own teaching — not a generic average of the internet, but the specific voice of a specific shepherd — can travel with its members into the hours between Sundays. A question at 2 a.m. can get an answer rooted in a sermon from three years ago. A visitor in the parking lot can explore what your church actually believes before they ever meet a staff member. A pastor can see, for the first time, what their people are actually wrestling with in private.",
+          "That is not a replacement for discipleship. It is not a replacement for pastoring. It is not a replacement for the slow, hard, sacred work of knowing real people by name. It is a quiet extension of the teaching ministry your church is already doing, into the hours when nobody can physically be in the room. Used with wisdom, that is a gift. Used without it, it is a risk the church has always known how to name: a teacher without accountability.",
+          "Either way, AI is not waiting for the church to decide. It is already in your members' hands. The only question is whether your voice is the one they hear when they use it.",
+        ],
+      },
+    ],
+    churchRelevance: {
+      title: "Your church's voice, grounded in your church's teaching",
+      body: "Doctrinally.AI is built around one conviction: when a member of your congregation asks a question, the first voice they hear should be yours. We ingest your sermons, devotions, YouTube videos, and documents, and turn them into a chat experience grounded in what your church has actually taught. Every answer is cited back to the original source. Nothing is invented. Nothing comes from the open internet. When your church has not spoken to a question, we say so — honestly. It is the same guardrail every pastor wishes every tool their members used would honor.",
+    },
+  },
+  {
     slug: "what-does-the-bible-say-about-money",
     title: "What Does the Bible Say About Money and Wealth?",
     description:
