@@ -25,71 +25,71 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "The AI Assistant for Your Church's Sermons — Doctrinally.AI",
+  title: "Your Church's Own AI Assistant — Doctrinally.AI",
   description:
-    "Turn every sermon, devotion, and document into instant, cited answers for your congregation. Set up in under 5 minutes. 14-day free trial.",
+    "Give your church its own custom AI assistant — trained on your pastor's sermons, devotions, and teaching. Launch in under 5 minutes. 14-day free trial.",
   alternates: { canonical: "https://www.doctrinally.ai" },
 };
 
 // ─── Data ──────────────────────────────────────────────────────────────────
 
 const heroStats = [
-  { value: "< 5 min", label: "Average setup" },
-  { value: "24/7", label: "Answers for your members" },
-  { value: "0", label: "Training required" },
+  { value: "< 5 min", label: "To launch your AI" },
+  { value: "24/7", label: "For every member" },
+  { value: "100%", label: "Your church's voice" },
 ];
 
 const bentoFeatures = [
   {
     icon: Upload,
-    title: "Add sermons, devotions, and documents in seconds",
+    title: "Teach your AI everything your church has taught",
     description:
-      "Paste a YouTube link, upload a video or PDF, or write new devotions in our built-in editor. Your library is ready for questions right away.",
+      "Paste a YouTube sermon link, upload a video or PDF, or write new devotions in our built-in editor. Your AI starts learning from your teaching the moment you add it.",
     span: "lg:col-span-4 lg:row-span-2",
     accent: true,
   },
   {
     icon: BookOpen,
-    title: "Grounded in your pastor's teaching",
+    title: "Trained on your pastor, not the internet",
     description:
-      "Answers come from YOUR church's own sermons and writings first — not a generic model guessing at theology.",
+      "Your AI answers from YOUR church's own teaching first — not a generic model guessing at theology from the open web.",
     span: "lg:col-span-2 lg:row-span-1",
   },
   {
     icon: Video,
     title: "Citations that play",
     description:
-      "Sermons embed inline. Videos jump to the exact moment. PDFs link straight to the page.",
+      "Your AI embeds sermon videos inline, jumps to the exact moment it's quoting, and links PDFs straight to the page.",
     span: "lg:col-span-2 lg:row-span-1",
   },
   {
     icon: BarChart3,
-    title: "See what your people are asking",
+    title: "See what your church is really asking",
     description:
-      "A clean dashboard shows trending topics, unanswered questions, and content gaps — so you know what to preach next.",
+      "A clean dashboard shows what your congregation is asking the AI, the questions it couldn't answer yet, and where your teaching has gaps.",
     span: "lg:col-span-3 lg:row-span-1",
   },
   {
     icon: Globe,
-    title: "Share with a QR code",
+    title: "Share your AI with a QR code",
     description:
-      "Drop a QR code on Sunday's bulletin. Members scan and ask — no login required.",
+      "Drop a QR code on Sunday's bulletin. Members scan it and talk to your church's AI — no login, no friction.",
     span: "lg:col-span-3 lg:row-span-1",
   },
 ];
 
 const beforeAfter = {
   before: [
-    "Sermons disappear into a YouTube channel nobody searches",
-    "Members text the pastor the same question five times a week",
-    "New visitors can't find what you teach on baptism, marriage, or suffering",
-    "Years of faithful teaching sit on a hard drive no one opens",
+    "Members ask ChatGPT questions you should be answering",
+    "Visitors Google your doctrine and get answers no one at your church wrote",
+    "New believers get discipled by whatever AI happens to be loudest",
+    "Your church has no voice in the conversations your members are already having",
   ],
   after: [
-    "Every sermon becomes instantly searchable by topic or verse",
-    "Members get 24/7 answers cited to your pastor's exact teaching",
-    "Visitors explore what your church believes before they ever visit",
-    "Your archive becomes your most valuable discipleship tool",
+    "Your church has its own AI, grounded in your pastor's teaching",
+    "Members ask anything and hear your voice back, with citations to the source",
+    "Visitors explore what YOUR church actually believes — not a stranger's take",
+    "The AI your congregation is already using is finally the one you built",
   ],
 };
 
@@ -147,9 +147,9 @@ const faqs = [
       "YouTube sermon videos (as links), video files, PDF documents, Word documents, and rich text documents created in our built-in editor. YouTube playlist uploads are coming soon — for now, just add videos one at a time.",
   },
   {
-    question: "How does the AI stay 'on doctrine'?",
+    question: "How is this different from ChatGPT?",
     answer:
-      "Every answer is grounded in the content YOU upload — your sermons, your devotions, your teaching. The AI searches your content first and cites it directly. It's your pastor's voice, not a generic chatbot guessing at theology.",
+      "ChatGPT answers from the open internet. Doctrinally.AI gives your church its own private AI, trained only on the sermons, devotions, and documents you upload. Every answer is grounded in what YOUR pastors have actually taught, and every quote is cited back to the source. Your doctrine, your voice — not a stranger's guess at theology.",
   },
   {
     question: "What happens if I go over my monthly limits?",
@@ -187,10 +187,10 @@ export default function HomePage() {
           </span>
           <span className="font-medium">New:</span>
           <span className="min-w-0 truncate text-muted-foreground sm:hidden">
-            Live in under 5 minutes
+            Launch your church&apos;s AI in under 5 minutes
           </span>
           <span className="hidden min-w-0 truncate text-muted-foreground sm:inline">
-            Go from signup to a live chat for your church in under 5 minutes
+            Launch your church&apos;s own custom AI assistant in under 5 minutes
           </span>
           <Link
             href="/sign-up"
@@ -220,29 +220,29 @@ export default function HomePage() {
                 <span className="mr-2 flex h-5 shrink-0 items-center rounded-full bg-gold/15 px-2 text-[10px] text-gold">
                   <Sparkles className="mr-1 h-3 w-3" /> New
                 </span>
-                <span className="sm:hidden">For teaching churches</span>
+                <span className="sm:hidden">Your church&apos;s own AI</span>
                 <span className="hidden sm:inline">
-                  Built for churches that teach the whole counsel of God
+                  A private AI trained on your church&apos;s teaching
                 </span>
               </Badge>
             </div>
 
             <h1 className="animate-fade-up stagger-2 mt-6 font-heading text-[2rem] leading-[1.05] tracking-[-0.02em] sm:text-6xl sm:leading-[1.02] lg:text-[4.6rem]">
-              <span className="text-gradient-ink">Every sermon.</span>
+              <span className="text-gradient-ink">Your church.</span>
               <br />
-              <span className="text-gradient-ink">Every verse.</span>
+              <span className="text-gradient-ink">Your doctrine.</span>
               <br />
-              <span className="italic text-primary">Instantly answered.</span>
+              <span className="italic text-primary">Its own AI.</span>
             </h1>
 
             <p className="animate-fade-up stagger-3 mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:mt-8 sm:text-lg">
-              Doctrinally.AI turns your church&apos;s sermons, devotions, and
-              documents into an AI assistant your congregation can ask anything
-              &mdash; with citations back to{" "}
+              Doctrinally.AI gives your church its own custom AI assistant
+              &mdash; trained on{" "}
               <span className="font-semibold text-foreground">
-                your pastor&apos;s own teaching
-              </span>{" "}
-              and the Bible.
+                every sermon, devotion, and document your pastors have taught
+              </span>
+              . Members ask anything, and the answers come back in your voice,
+              cited to the source.
             </p>
 
             {/* CTA row */}
@@ -308,18 +308,18 @@ export default function HomePage() {
             {/* Floating badges */}
             <div className="pointer-events-none absolute -left-4 top-8 hidden rotate-[-4deg] rounded-xl border bg-background/90 px-3 py-2 text-[11px] shadow-lg backdrop-blur md:block">
               <div className="flex items-center gap-1.5 font-semibold">
-                <Zap className="h-3 w-3 text-gold" /> Answers in seconds
+                <Zap className="h-3 w-3 text-gold" /> Trained on your church
               </div>
               <div className="text-[10px] text-muted-foreground">
-                24/7, for every member
+                Nothing generic
               </div>
             </div>
             <div className="pointer-events-none absolute -right-2 bottom-12 hidden rotate-[3deg] rounded-xl border bg-background/90 px-3 py-2 text-[11px] shadow-lg backdrop-blur md:block">
               <div className="flex items-center gap-1.5 font-semibold">
-                <ShieldCheck className="h-3 w-3 text-primary" /> Cited to your sermons
+                <ShieldCheck className="h-3 w-3 text-primary" /> Your doctrine
               </div>
               <div className="text-[10px] text-muted-foreground">
-                Grounded in your teaching
+                In your pastor&apos;s voice
               </div>
             </div>
           </div>
@@ -334,12 +334,13 @@ export default function HomePage() {
               The problem
             </p>
             <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Your best teaching{" "}
-              <span className="italic text-primary">is invisible.</span>
+              Your church needs{" "}
+              <span className="italic text-primary">its own AI.</span>
             </h2>
             <p className="mt-5 text-lg text-muted-foreground">
-              Years of faithful preaching — buried in a YouTube playlist nobody
-              searches and a hard drive nobody opens.
+              Because the alternative is letting a generic chatbot &mdash;
+              trained on the open internet &mdash; disciple your congregation
+              for you.
             </p>
           </div>
 
@@ -347,7 +348,7 @@ export default function HomePage() {
             {/* Before card */}
             <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-6 sm:p-8">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Before Doctrinally.AI
+                Without a church AI
               </div>
               <ul className="space-y-4">
                 {beforeAfter.before.map((item) => (
@@ -366,7 +367,7 @@ export default function HomePage() {
             <div className="relative overflow-hidden rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.06] via-background to-gold/[0.05] p-6 shadow-xl shadow-primary/[0.04] sm:p-8">
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold/10 blur-3xl" />
               <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary-foreground">
-                With Doctrinally.AI
+                With your church&apos;s AI
               </div>
               <ul className="space-y-4">
                 {beforeAfter.after.map((item) => (
@@ -392,9 +393,8 @@ export default function HomePage() {
               How it works
             </p>
             <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              From sermon archive to{" "}
-              <span className="italic text-primary">searchable library</span>{" "}
-              in under 5 minutes.
+              Your church&apos;s own AI, live in{" "}
+              <span className="italic text-primary">under 5 minutes.</span>
             </h2>
           </div>
 
@@ -403,20 +403,20 @@ export default function HomePage() {
               {
                 step: "01",
                 icon: Upload,
-                title: "Add your sermons and documents",
+                title: "Teach your AI what your church believes",
                 body: "Paste YouTube sermon links, drop in videos and PDFs, or write new devotions directly in our built-in editor.",
               },
               {
                 step: "02",
                 icon: Sparkles,
-                title: "We do the heavy lifting",
-                body: "Your content becomes searchable automatically — your pastor's teaching, ready for every question your congregation can ask.",
+                title: "Your AI learns your voice",
+                body: "Your pastor's teaching becomes the foundation for every answer — ready for any question your congregation can ask.",
               },
               {
                 step: "03",
                 icon: MessageSquare,
-                title: "Share a QR code",
-                body: "Members scan, ask, and get cited answers 24/7 — no login required for them.",
+                title: "Share it with a QR code",
+                body: "Members scan, ask your church's AI anything, and get cited answers 24/7 — no login required.",
               },
             ].map((s, i) => (
               <div
@@ -442,7 +442,7 @@ export default function HomePage() {
 
           <div className="mt-14 text-center">
             <Button size="lg" className="cta-ring h-12 px-7 font-semibold" render={<Link href="/sign-up" />}>
-              Get set up in 5 minutes
+              Launch your church&apos;s AI
               <ArrowRight className="h-4 w-4" />
             </Button>
             <p className="mt-3 text-[12px] text-muted-foreground">
@@ -460,8 +460,8 @@ export default function HomePage() {
               Everything your church needs
             </p>
             <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Built for preaching.{" "}
-              <span className="italic text-primary">Not for chatbots.</span>
+              An AI that sounds like{" "}
+              <span className="italic text-primary">your church.</span>
             </h2>
           </div>
 
@@ -528,8 +528,8 @@ export default function HomePage() {
               Real results from real churches
             </p>
             <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Pastors call it the most useful tool{" "}
-              <span className="italic text-primary">we&apos;ve added in a decade.</span>
+              The AI their church{" "}
+              <span className="italic text-primary">actually needed.</span>
             </h2>
           </div>
 
@@ -572,7 +572,7 @@ export default function HomePage() {
               Transparent pricing
             </p>
             <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Less than the cost of{" "}
+              Your own AI for less than{" "}
               <span className="italic text-primary">one Sunday lunch.</span>
             </h2>
             <p className="mt-5 text-lg text-muted-foreground">
@@ -594,7 +594,7 @@ export default function HomePage() {
                 <span className="text-muted-foreground">/month</span>
               </div>
               <p className="mt-2 text-[13px] text-muted-foreground">
-                That&apos;s <span className="font-semibold text-foreground">$1.63/day</span> — less than your church&apos;s coffee budget.
+                That&apos;s <span className="font-semibold text-foreground">$1.63/day</span> for your church&apos;s own AI assistant.
               </p>
 
               <ul className="mt-7 space-y-3.5">
@@ -638,7 +638,7 @@ export default function HomePage() {
                 <span className="text-muted-foreground">/month</span>
               </div>
               <p className="mt-2 text-[13px] text-muted-foreground">
-                Custom branding, 2× content, 2× messages, your own domain.
+                Your AI on your own domain, with your church&apos;s branding and 2× the capacity.
               </p>
 
               <ul className="mt-7 space-y-3.5">
@@ -679,9 +679,9 @@ export default function HomePage() {
             <p className="text-[13px] text-muted-foreground">
               <TrendingUp className="mr-1 inline h-3.5 w-3.5 text-primary" />
               <span className="font-semibold text-foreground">$49/month</span>{" "}
-              is less than one hour of a pastor&apos;s salary &mdash; and saves
-              you that many hours{" "}
-              <span className="italic">every week.</span>
+              for an AI trained on your church &mdash; and it answers the
+              questions{" "}
+              <span className="italic">your pastors would be answering anyway.</span>
             </p>
           </div>
 
@@ -701,12 +701,13 @@ export default function HomePage() {
             </div>
             <div className="flex-1">
               <h3 className="font-heading text-2xl tracking-tight sm:text-3xl">
-                Free for 14 days. Keep your content forever.
+                Try your church&apos;s AI free for 14 days.
               </h3>
               <p className="mt-3 text-[0.95rem] leading-relaxed text-muted-foreground">
-                Try every feature free for two weeks. If it&apos;s not a fit,
-                cancel in one click &mdash; and you can export every document
-                you uploaded. No hostage situations.
+                Launch it, load it with your teaching, let your congregation
+                ask it anything. If it&apos;s not a fit, cancel in one click
+                &mdash; and you keep every document you uploaded. No hostage
+                situations.
               </p>
             </div>
             <div className="flex shrink-0 flex-col items-stretch gap-2">
@@ -795,23 +796,24 @@ export default function HomePage() {
             className="max-w-full rounded-full border-primary/20 bg-background/80 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur sm:text-[11px]"
           >
             <Users className="mr-2 h-3 w-3 shrink-0 text-gold" />
-            <span className="sm:hidden">For pastors & their churches</span>
+            <span className="sm:hidden">Your church&apos;s own AI</span>
             <span className="hidden sm:inline">
-              Built for pastors, teaching teams, and their congregations
+              A custom AI for pastors, teaching teams, and their congregations
             </span>
           </Badge>
 
           <h2 className="max-w-3xl font-heading text-[2.1rem] leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-            <span className="text-gradient-ink">Your archive is waiting.</span>
+            <span className="text-gradient-ink">Give your church</span>
             <br />
             <span className="italic text-primary">
-              Let your church ask it anything.
+              an AI it can call its own.
             </span>
           </h2>
 
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Add your first sermon in the next five minutes. Watch your
-            congregation discover years of teaching they never knew existed.
+            Launch your church&apos;s custom AI in the next five minutes. Let
+            your congregation ask anything &mdash; and hear your pastor&apos;s
+            voice answer back.
           </p>
 
           <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
