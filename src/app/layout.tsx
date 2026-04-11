@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { GtagPageView } from "@/components/analytics/gtag-page-view";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -106,6 +107,7 @@ export default function RootLayout({
             <Toaster />
           </ThemeProvider>
         </AuthSessionProvider>
+        <GtagPageView />
       </body>
     </html>
   );
