@@ -52,28 +52,28 @@ const bentoFeatures = [
     icon: BookOpen,
     title: "Trained on your pastor, not the internet",
     description:
-      "Your AI answers from YOUR church's own teaching first — not a generic model guessing at theology from the open web.",
+      "Answers come from your own sermons — not a generic model guessing at theology.",
     span: "lg:col-span-2 lg:row-span-1",
   },
   {
     icon: Video,
     title: "Citations that play",
     description:
-      "Your AI embeds sermon videos inline, jumps to the exact moment it's quoting, and links PDFs straight to the page.",
+      "Sermons embed inline. Videos jump to the moment. PDFs link to the page.",
     span: "lg:col-span-2 lg:row-span-1",
   },
   {
     icon: BarChart3,
     title: "See what your church is really asking",
     description:
-      "A clean dashboard shows what your congregation is asking the AI, the questions it couldn't answer yet, and where your teaching has gaps.",
+      "Analytics show trending questions, ones the AI couldn't answer, and where your teaching has gaps.",
     span: "lg:col-span-3 lg:row-span-1",
   },
   {
     icon: Globe,
     title: "Share your AI with a QR code",
     description:
-      "Drop a QR code on Sunday's bulletin. Members scan it and talk to your church's AI — no login, no friction.",
+      "Drop it on Sunday's bulletin. Members scan and ask — no login required.",
     span: "lg:col-span-3 lg:row-span-1",
   },
 ];
