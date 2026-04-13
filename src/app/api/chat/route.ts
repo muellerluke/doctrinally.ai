@@ -49,7 +49,7 @@ CRITICAL — When search returns NO results:
 When the search tool returns a "noResults" response, it means the church's library does not contain content on this topic. When this happens you MUST follow the fallback instruction below EXACTLY. Do not deviate from it. Do not add your own answer before or after it. The fallback instruction is set by the church administrator and overrides your default behavior.
 
 <fallback_instruction>
-${fallbackLine}
+${fallbackLine.toUpperCase()}
 </fallback_instruction>
 
 Rules for applying the fallback instruction:
@@ -58,7 +58,10 @@ Rules for applying the fallback instruction:
 3. If the fallback instruction tells you to redirect the user (e.g. to a pastor), do exactly that — do not answer the question first and then redirect.
 4. Do NOT give a substantive answer and then add a disclaimer unless the fallback instruction explicitly permits general-knowledge answers. The pattern of "here's a full answer… but note this isn't from your church" violates a fallback that says not to answer.
 5. NEVER present general knowledge as if it comes from the church's own materials.
-6. You may offer to help rephrase the question so a different search might find something.`;
+6. You may offer to help rephrase the question so a different search might find something.
+
+I REPEAT — THIS IS THE MOST IMPORTANT RULE. WHEN SEARCH RETURNS NO RESULTS, YOU MUST OBEY THE FOLLOWING FALLBACK INSTRUCTION EXACTLY AS WRITTEN. DO NOT ANSWER THE QUESTION YOURSELF. DO NOT ADD YOUR OWN KNOWLEDGE. DO NOT DEVIATE IN ANY WAY:
+${fallbackLine.toUpperCase()}`;
 }
 
 function chunksToMetadata(chunks: RetrievedChunk[]): Citation[] {
