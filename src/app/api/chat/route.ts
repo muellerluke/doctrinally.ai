@@ -11,6 +11,7 @@ import { getPostHogClient } from "@/lib/posthog-server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { lookupByReference } from "@/lib/bible";
 import type { Citation, RetrievedChunk } from "@/lib/types/citations";
+import { logger } from "@/lib/logger";
 
 interface ClientMessage {
   role: "user" | "assistant";
@@ -61,7 +62,17 @@ Rules for applying the fallback instruction:
 }
 
 function chunksToMetadata(chunks: RetrievedChunk[]): Citation[] {
-  return chunks.map((chunk, i) => ({
+  // Deduplicate by documentId — keep only the first (most relevant) chunk
+  // per document so the same source doesn't appear as multiple citations.
+  const seenDocs = new Set<string>();
+  const unique: RetrievedChunk[] = [];
+  for (const chunk of chunks) {
+    if (seenDocs.has(chunk.documentId)) continue;
+    seenDocs.add(chunk.documentId);
+    unique.push(chunk);
+  }
+
+  return unique.map((chunk, i) => ({
     index: i + 1,
     documentId: chunk.documentId,
     documentTitle: chunk.documentTitle,
@@ -106,6 +117,20 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
           typeof c.similarity === "number" &&
           c.similarity >= RELEVANCE_THRESHOLD
       );
+
+      logger.info("[chat] search executed", {
+        churchId,
+        query,
+        totalResults: results.length,
+        relevantResults: relevant.length,
+        threshold: RELEVANCE_THRESHOLD,
+        scores: results.map((r) => ({
+          docId: r.documentId,
+          title: r.documentTitle,
+          similarity: r.similarity != null ? Math.round(r.similarity * 100) / 100 : null,
+          passed: typeof r.similarity === "number" && r.similarity >= RELEVANCE_THRESHOLD,
+        })),
+      });
 
       if (relevant.length === 0) {
         return {
@@ -311,12 +336,33 @@ export async function POST(request: Request) {
     content: m.content,
   }));
 
+  const systemPrompt = buildSystemPrompt(
+    church?.name || churchName || "this church",
+    church?.aiFallbackInstruction
+  );
+
+  logger.info("[chat] request started", {
+    churchId,
+    chatId: chatId ?? null,
+    userId: userId ?? null,
+    isAdminTest: isAdminTest ?? false,
+    model: process.env.AI_MODEL || "gpt-5.4-mini",
+    messageCount: coreMessages.length,
+  });
+
+  logger.debug("[chat] system prompt", {
+    churchId,
+    systemPrompt,
+  });
+
+  logger.debug("[chat] messages sent to model", {
+    churchId,
+    messages: coreMessages,
+  });
+
   const result = streamText({
     model: getModel(),
-    system: buildSystemPrompt(
-      church?.name || churchName || "this church",
-      church?.aiFallbackInstruction
-    ),
+    system: systemPrompt,
     messages: coreMessages,
     tools: {
       search: createSearchTool(churchId),
@@ -338,8 +384,49 @@ export async function POST(request: Request) {
 
         // Extract tool results for citations
         const steps = await result.steps;
+
+        // Log all tool calls and their results
+        for (const [stepIdx, step] of (steps as Record<string, unknown>[]).entries()) {
+          const toolCalls = step.toolCalls as Array<Record<string, unknown>> | undefined;
+          const toolResults = step.toolResults as Array<Record<string, unknown>> | undefined;
+
+          if (toolCalls && toolCalls.length > 0) {
+            logger.info("[chat] tool calls", {
+              churchId,
+              chatId: chatId ?? null,
+              step: stepIdx,
+              calls: toolCalls.map((tc) => ({
+                toolName: tc.toolName,
+                args: tc.args,
+              })),
+            });
+          }
+
+          if (toolResults && toolResults.length > 0) {
+            logger.debug("[chat] tool results", {
+              churchId,
+              chatId: chatId ?? null,
+              step: stepIdx,
+              results: toolResults.map((tr) => ({
+                toolName: tr.toolName,
+                resultLength: JSON.stringify(tr.output ?? tr.result).length,
+              })),
+            });
+          }
+        }
+
         const searchResults = extractSearchResults(steps as unknown[]);
         const citations = chunksToMetadata(searchResults);
+
+        logger.info("[chat] response completed", {
+          churchId,
+          chatId: chatId ?? null,
+          responseLength: fullText.length,
+          totalSteps: steps.length,
+          searchResultsRaw: searchResults.length,
+          citationsDeduped: citations.length,
+          citationDocIds: citations.map((c) => c.documentId),
+        });
 
         // Append chatId sentinel (so client can track the conversation)
         if (chatId) {
