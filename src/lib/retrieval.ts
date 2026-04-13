@@ -164,10 +164,25 @@ export async function hybridSearch(
     }
   });
 
-  return Array.from(scores.values())
+  const ranked = Array.from(scores.values())
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ chunk }) => chunk);
+    .slice(0, limit);
+
+  if (ranked.length === 0) return [];
+
+  // Normalise RRF scores to 0-1 range so the system prompt's relevance
+  // threshold is meaningful. The highest-ranked result gets 1.0 and the
+  // rest are scaled proportionally.
+  const maxScore = ranked[0].score;
+
+  return ranked.map(({ score, chunk }) => ({
+    ...chunk,
+    // Overwrite the raw cosine/ts_rank value with the normalised RRF score.
+    // This gives the AI (and the search tool) a single, consistent
+    // relevance number regardless of whether the chunk came from semantic
+    // search, keyword search, or both.
+    similarity: maxScore > 0 ? score / maxScore : 0,
+  }));
 }
 
 function mapRowToChunk(row: Record<string, unknown>): RetrievedChunk {

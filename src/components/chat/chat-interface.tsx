@@ -16,6 +16,7 @@ interface ChatInterfaceProps {
   chatId?: string;
   initialMessages?: ChatMessage[];
   isAuthenticated?: boolean;
+  isDemo?: boolean;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -33,6 +34,7 @@ export function ChatInterface({
   chatId: initialChatId,
   initialMessages,
   isAuthenticated,
+  isDemo,
 }: ChatInterfaceProps) {
   const router = useRouter();
   const { toggleSidebar } = useChatShell();
@@ -142,6 +144,11 @@ export function ChatInterface({
         onChange={setInput}
         onSubmit={sendMessage}
         isLoading={isLoading}
+        placeholder={
+          isDemo
+            ? "Try: \"What does the Bible say about anxiety?\""
+            : undefined
+        }
       />
     </div>
   );

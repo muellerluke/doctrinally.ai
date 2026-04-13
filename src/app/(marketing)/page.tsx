@@ -263,6 +263,21 @@ export default function HomePage() {
               >
                 See how it works
               </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 px-5 text-[0.95rem]"
+                render={
+                  <a
+                    href="https://example.doctrinally.ai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                <MessageSquare className="h-4 w-4" />
+                Try a live demo
+              </Button>
             </div>
 
             {/* Trust row */}

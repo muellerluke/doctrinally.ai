@@ -24,6 +24,7 @@ export default async function ChatPage() {
       churchLogoUrl={church.logoUrl}
       welcomeMessage={church.welcomeMessage ?? undefined}
       isAuthenticated={!!session?.user?.id}
+      isDemo={church.slug === "example"}
     />
   );
 }

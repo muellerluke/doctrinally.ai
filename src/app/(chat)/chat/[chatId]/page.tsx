@@ -48,6 +48,7 @@ export default async function ChatHistoryPage({
       chatId={chatId}
       initialMessages={initialMessages}
       isAuthenticated
+      isDemo={church.slug === "example"}
     />
   );
 }

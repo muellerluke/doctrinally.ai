@@ -27,8 +27,8 @@ function buildSystemPrompt(
   fallbackInstruction?: string | null
 ): string {
   const fallbackLine = fallbackInstruction
-    ? `- ${fallbackInstruction}`
-    : `- If your searches don't find relevant church-specific information, draw on general biblical knowledge but clearly say so.`;
+    ? fallbackInstruction
+    : `If your searches don't find relevant church-specific information, draw on general biblical knowledge but clearly say so.`;
 
   return `You are a helpful, knowledgeable assistant for ${churchName}. Your role is to answer questions using the Bible and the church's own teachings, sermons, and documents.
 
@@ -44,12 +44,20 @@ Guidelines:
 - When referencing Bible passages, include the book, chapter, and verse.
 - Keep responses focused and concise unless the user asks for a detailed explanation.
 
-CRITICAL — Handling search results:
-- Each search result includes a "relevanceScore" between 0 and 1. Only cite and use results with a relevanceScore of 0.35 or higher. Ignore results below this threshold — they are noise, not relevant content.
-- If the search returns NO results, or ALL results have a relevanceScore below 0.35, the church's library does not contain content on this topic. In that case:
+CRITICAL — When search returns NO results:
+When the search tool returns a "noResults" response, it means the church's library does not contain content on this topic. When this happens you MUST follow the fallback instruction below EXACTLY. Do not deviate from it. Do not add your own answer before or after it. The fallback instruction is set by the church administrator and overrides your default behavior.
+
+<fallback_instruction>
 ${fallbackLine}
-- NEVER fabricate, invent, or guess what the church teaches on a topic. If you don't have church-specific content, say so explicitly. Do not present general knowledge as if it comes from the church's own materials.
-- It is much better to say "I don't have specific content from ${churchName} on this topic" than to give an answer that isn't grounded in the church's actual documents.`;
+</fallback_instruction>
+
+Rules for applying the fallback instruction:
+1. Read the fallback instruction carefully. If it tells you NOT to answer, you must NOT answer — not even with a disclaimer attached.
+2. If the fallback instruction permits answering from general knowledge, you may do so, but clearly distinguish it from church-specific content.
+3. If the fallback instruction tells you to redirect the user (e.g. to a pastor), do exactly that — do not answer the question first and then redirect.
+4. Do NOT give a substantive answer and then add a disclaimer unless the fallback instruction explicitly permits general-knowledge answers. The pattern of "here's a full answer… but note this isn't from your church" violates a fallback that says not to answer.
+5. NEVER present general knowledge as if it comes from the church's own materials.
+6. You may offer to help rephrase the question so a different search might find something.`;
 }
 
 function chunksToMetadata(chunks: RetrievedChunk[]): Citation[] {
@@ -86,15 +94,35 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       required: ["query"],
     }),
     execute: async ({ query }) => {
+      const RELEVANCE_THRESHOLD = 0.35;
       const results = await hybridSearch(churchId, query, 6);
 
-      if (results.length === 0) {
-        return { noResults: true, message: "No relevant content found in the church's library for this query." };
+      // Hard-filter results below the relevance threshold in code so the
+      // AI never even sees them. Previously we relied on a prompt
+      // instruction ("ignore results below 0.35") which the model often
+      // ignored, producing answers without any grounding.
+      const relevant = results.filter(
+        (c) =>
+          typeof c.similarity === "number" &&
+          c.similarity >= RELEVANCE_THRESHOLD
+      );
+
+      if (relevant.length === 0) {
+        return {
+          noResults: true,
+          message:
+            "No relevant content was found in the church's library for this query. " +
+            "You MUST follow the fallback instructions in your system prompt. " +
+            "Do NOT answer from your own knowledge as if it comes from this church.",
+        };
       }
 
-      return results.map((chunk, i) => ({
+      return relevant.map((chunk, i) => ({
         resultNumber: i + 1,
-        relevanceScore: chunk.similarity != null ? Math.round(chunk.similarity * 100) / 100 : null,
+        relevanceScore:
+          chunk.similarity != null
+            ? Math.round(chunk.similarity * 100) / 100
+            : null,
         documentId: chunk.documentId,
         documentTitle: chunk.documentTitle,
         documentType: chunk.documentType,
