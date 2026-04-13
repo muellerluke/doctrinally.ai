@@ -31,119 +31,172 @@ export type BlogPost = {
 export const blogPosts: BlogPost[] = [
   {
     slug: "best-ai-tools-for-churches",
-    title: "Best AI Tools for Churches in 2026: What Actually Works and What to Skip",
+    title:
+      "The 10 Best AI Tools for Churches in 2026: An Honest Ranking",
     description:
-      "A practical, honest comparison of the best AI tools for churches — what each one does, where it falls short, and how to pick the right one for your ministry without wasting money or trust.",
+      "A ranked list of the best AI tools for churches in 2026 — including Pulpit AI, Gloo, Pastors.ai, and more — with honest pros, cons, pricing, and the doctrinal risk most reviews ignore.",
     category: "Platform",
     publishedAt: "2026-04-12",
-    readMinutes: 14,
+    readMinutes: 15,
     author: "The Doctrinally.AI Team",
     excerpt:
-      "There are dozens of AI tools now marketed to churches. Most of them are general-purpose chatbots with a cross on the landing page. Here is an honest breakdown of what actually works, what to avoid, and what questions to ask before you hand your pulpit to an algorithm.",
+      "There are dozens of AI tools marketed to churches right now. We ranked the ten that matter, named the ones that are dangerous, and explained why the most important question is not 'which one is cheapest?' but 'who controls what it says to your congregation?'",
     sections: [
       {
         paragraphs: [
-          "If you have searched 'best AI tools for churches' in the last six months, you have probably noticed that the results are a mix of genuinely useful products, repackaged consumer chatbots, and vaporware landing pages that promise to revolutionize your ministry for $29 a month. Telling them apart is harder than it should be.",
-          "This guide is written by a team that builds AI for churches, so we are transparent about our bias. We also believe an honest comparison — including naming the things we do not do well — is more useful to a pastor than a marketing page. What follows is a practical breakdown of the categories of AI tools churches are using in 2026, what each category is genuinely good for, where the pitfalls are, and how to decide what your church actually needs.",
+          "AI is no longer optional for churches that want to reach their people between Sundays. It is a tool for enormous good — extending the reach of faithful teaching into every hour of the week, making years of sermons searchable in seconds, and giving visitors a private, low-pressure way to explore what your church actually believes.",
+          "But AI is also a tool that can do real doctrinal harm. A language model trained on the open internet does not know the difference between your church's position on baptism and a Reddit thread about baptism. It does not care about your denomination's confession. It will answer a member's question with total confidence using theology your elders have never reviewed, and it will never tell the member it is guessing. That is not a hypothetical risk. It is the default behavior of every general-purpose chatbot on the market.",
+          "This is why the most important question when evaluating AI tools for your church is not features or pricing. It is: who controls what this tool says to my congregation? A tool that lets you completely influence every answer — grounding it in your sermons, your documents, your doctrinal convictions — is a tool for discipleship. A tool that answers from the open internet with a Christian-sounding wrapper is a tool for doctrinal drift, and most pastors will not realize it until the damage is done.",
+          "What follows is an honest, ranked list of the best AI tools for churches in 2026. We build one of them, so we are transparent about our bias. We also name the things we do not do, the places where competitors are genuinely strong, and the tools you should approach with caution.",
         ],
       },
       {
-        heading: "The categories that matter",
+        heading: "How we evaluated these tools",
         paragraphs: [
-          "Not all AI tools for churches do the same thing, even though they all use the word 'AI' on their homepage. The market has settled into a handful of distinct categories, and understanding which one you need is more important than comparing feature lists.",
-          "The five categories worth knowing are: church-specific retrieval tools, general-purpose chatbots, sermon preparation assistants, administrative and communication tools, and content generation platforms. Each one solves a different problem. Each one has a different failure mode. And most churches only need one or two of them — not all five.",
+          "We ranked every tool on five criteria. First, doctrinal control: can your church control what the AI says, or does the model answer from the open internet? Second, source transparency: can a member see exactly where an answer came from? Third, practical usefulness: does the tool actually save a church meaningful time or expand meaningful reach? Fourth, pricing fairness: is the cost reasonable for a church budget? Fifth, risk profile: what is the worst thing this tool can do if nobody is watching?",
+          "No tool scores perfectly in every category. The list below is ordered by how much we trust the tool to speak to a congregation without causing harm.",
         ],
       },
       {
-        heading: "Church-specific retrieval tools",
+        heading:
+          "1. Doctrinally.AI — Best for member-facing doctrinal Q&A",
         paragraphs: [
-          "This is the category we build in, so we will name our bias up front and then try to be fair. A church-specific retrieval tool takes content your church has actually produced — sermons, devotions, uploaded documents, YouTube videos — and makes it searchable through a chat interface grounded in that content. When a member asks a question, the answer comes from your pastor's teaching, cited back to the original source.",
-          "The strength of this category is trust. Because the AI can only draw from material you have uploaded and approved, the risk of hallucination and theological drift is dramatically lower than with a general-purpose chatbot. The member gets your church's voice, not an average of the internet.",
-          "The weakness is scope. A retrieval tool can only surface what your church has already said. If you have never preached on a topic, the tool cannot invent an answer — which is actually a feature, not a bug, but it means the tool gets better the more content you feed it. A church with three uploaded sermons will have a thinner experience than a church with three years of indexed teaching.",
-          "Tools in this category include Doctrinally.AI, Sermon AI, and a handful of newer entrants. The key questions to ask any vendor here are: where does the AI get its answers, can the member see the citation, and what happens when there is no answer?",
+          "We are listing ourselves first, so let us be direct about what we do and what we do not do. Doctrinally.AI is a church-specific retrieval tool. You upload your sermons, devotions, YouTube videos, PDFs, and documents. We index them and turn them into a chat interface your members can use. Every answer is grounded entirely in your church's content and cited back to the original source — the exact sermon, the exact timestamp, the exact document.",
+          "The core principle is total doctrinal control. Your church decides what the AI can say by deciding what content to upload. If your church has not spoken to a question, the AI says so honestly instead of inventing an answer from the internet. That is the single most important difference between a tool built for churches and a tool marketed to churches.",
+          "What we do not do: we do not generate sermons, write newsletters, create social media clips, or schedule volunteers. We are deliberately narrow. We believe the member-facing experience — the thing your congregation actually touches when they ask a hard question at 2 a.m. — is the place where doctrinal accuracy matters most and where a wrong answer costs the most.",
+          "Pricing: Standard plan at $49/month, Enterprise at $99/month with custom domain and full branding control. Best for: any church that wants its own teaching to be the first voice members hear when they have a question.",
         ],
       },
       {
-        heading: "General-purpose chatbots with a church wrapper",
+        heading:
+          "2. Pulpit AI — Best for sermon-to-content repurposing",
         paragraphs: [
-          "This is the largest and most dangerous category. A general-purpose chatbot — ChatGPT, Gemini, Claude, Copilot — is trained on the open internet and answers questions from whatever it has learned. A 'church AI tool' in this category is essentially a prompt layer on top of one of those models, instructing it to answer in a Christian tone.",
-          "These tools can feel impressive in a demo. They are fluent, fast, and confident. The problem is that they are also ungrounded. Ask one what your church believes about baptism and it will give you an answer — but it will be an answer assembled from the internet, not from your pastor. It will cite no source. It will not tell you when it is guessing. And it will occasionally invent a Bible verse or attribute a quote to a theologian who never said it.",
-          "For personal research and brainstorming, general chatbots are fine. For anything you point your congregation at, they are a liability. A pastor who puts a generic chatbot on the church website and calls it 'our AI' has effectively handed the pulpit to a language model trained on Reddit, Wikipedia, and ten thousand blogs of varying quality.",
-          "If a vendor is selling you a 'church chatbot' and you cannot upload your own content or see where the answers come from, you are almost certainly in this category. Proceed with extreme caution.",
+          "Pulpit AI is one of the most popular AI tools in the church space right now, and for good reason. You upload a sermon recording and Pulpit AI generates over 20 pieces of derivative content: social media clips with captions, small group discussion guides, five-day devotionals, blog posts, newsletter drafts, and sermon summaries with timestamps. It also includes a sermon writing assistant that helps with openers, metaphors, and Scripture references.",
+          "For a busy pastor or communications director who spends hours every week turning Sunday's message into Monday's content, Pulpit AI is a genuine time-saver. The output quality is solid and improves when you edit it rather than publishing raw. The sermon clip generation is particularly strong — it identifies high-engagement moments and formats them for TikTok, Reels, and Shorts.",
+          "The limitation is that Pulpit AI is a content creation tool, not a doctrinal Q&A tool. It repurposes what you have already preached into new formats, but it does not create a searchable, member-facing chat experience grounded in your full teaching library. If a member has a question at 11 p.m., Pulpit AI does not answer it — it helps you post about the sermon, not search it.",
+          "Pricing: Free trial with 2 uploads. Plans start at $39/month for 5 sermon uploads, $59/month for 10, and $129/month for 25. Best for: churches that produce great sermons but struggle to turn them into content throughout the week.",
         ],
       },
       {
-        heading: "Sermon preparation assistants",
+        heading:
+          "3. Gloo + Faith Assistant — Best for large multi-site churches",
         paragraphs: [
-          "A growing number of tools are designed to help pastors during the sermon preparation process. These range from cross-reference finders and commentary aggregators to full-blown sermon outline generators powered by large language models.",
-          "The useful end of this spectrum looks like a better concordance. You type a passage and the tool surfaces related Scripture, historical context, original-language notes, and quotes from trusted commentators. It saves research time without pretending to do the theological work for you. Tools like Logos Bible Software have been doing versions of this for years and have added AI-powered features that are genuinely helpful.",
-          "The risky end of the spectrum is the tool that generates a complete sermon from a passage and a prompt. These tools produce fluent, well-structured, theologically plausible sermons — and that is exactly the problem. A sermon that sounds right but was never wrestled with by the pastor who delivers it is a strange thing to put in front of a congregation. Most pastors who have tried this approach and been honest about it will tell you that the output is competent and soulless.",
-          "The honest advice here is to use AI the way you would use a commentary: as input to your thinking, not as a substitute for it. If the tool is doing work you would have done with a stack of books, it is saving you time. If the tool is doing work you are skipping entirely, something important is being lost.",
+          "Gloo is a faith-ecosystem platform that partnered with Faith Assistant to build custom AI chatbots trained on a church's own sermons, Bible studies, and event information. Their AI Studio platform is model-agnostic — it works across OpenAI, Anthropic, and Google models — and includes denominational perspective toggles that can shape responses toward Catholic, Evangelical, or Mainline Protestant viewpoints.",
+          "The denominational toggle feature is notable. It is one of the few tools that acknowledges outright that different traditions answer the same question differently, and it gives the church a measure of control over which theological lens the AI uses. For large, multi-site operations that need enterprise-grade infrastructure and have staff to manage the configuration, Gloo is a serious option.",
+          "The tradeoff is complexity and cost. Gloo is built for organizations with dedicated tech staff or agencies. A 200-member church without a communications director will find the setup overhead significant. The free tier is available through Gloo+ membership, but the features that matter most for doctrinal control live in the paid tiers.",
+          "Best for: large churches and denominations that need enterprise infrastructure and have technical staff to manage it.",
         ],
       },
       {
-        heading: "Administrative and communication tools",
+        heading:
+          "4. Pastors.ai — Best budget option for sermon chat",
         paragraphs: [
-          "This is the category where AI delivers the most unambiguous value with the fewest theological risks. Tools that help churches draft newsletters, schedule social media posts, translate announcements into multiple languages, manage volunteer scheduling, summarize meeting notes, or automate follow-up emails are genuinely useful and mostly harmless.",
-          "Products like Tithe.ly, Subsplash, and Planning Center have added AI features for communication and administration. Standalone tools like Jasper, Copy.ai, and even the built-in AI in Google Workspace can handle church communications competently. The main thing to watch for is tone — AI-generated communication can feel generic if you do not edit it — but the stakes are lower here than in any category that touches theology.",
-          "A church that is skeptical of AI in the pulpit but wants to save ten hours a week on administrative tasks should start here. The learning curve is low, the risk is low, and the time savings are real.",
+          "Pastors.ai lets you submit a YouTube link or sermon manuscript and generates clips, study guides, five-day devotionals, and — importantly — a per-sermon chatbot that your congregation can query. The embeddable church chatbot pulls from all your uploaded sermons and your church website content, giving members a way to ask questions grounded in your teaching.",
+          "At $30/month for the Pastor plan, it is one of the most affordable tools that includes a member-facing chat experience. The free tier gives you 4 sermons per month, which is enough to test whether your congregation will actually use it. The interface is clean and the onboarding is fast.",
+          "The main limitation is depth. The retrieval is scoped to sermons and website content, not the full range of documents, PDFs, devotions, and video libraries that a more comprehensive tool can ingest. For a smaller church with a modest content library, that may be perfectly sufficient. For a church with years of accumulated teaching across many formats, it can feel thin.",
+          "Pricing: Free plan with 4 sermons/month. $30/month Pastor plan, $75/month Team plan. Best for: small to mid-size churches that want a member-facing chatbot without a large budget.",
         ],
       },
       {
-        heading: "Content generation platforms",
+        heading:
+          "5. Church.tech — Best for video-first churches",
         paragraphs: [
-          "A newer category of tools helps churches produce visual and written content at scale: social media graphics, devotional content, small group discussion guides, Bible reading plans, and even children's ministry curriculum.",
-          "The best tools in this space treat AI as a first draft that a human refines. The worst treat AI as a finished product that gets published without review. The difference matters. A discussion guide generated by AI and edited by a pastor is a reasonable use of the technology. A year of devotional content published without anyone on staff reading it is a risk no church should take.",
-          "The question to ask with any content generation tool is: who reviews this before it reaches people? If the answer is 'nobody,' the tool is not saving you time. It is borrowing against your credibility.",
+          "Church.tech focuses on the sermon-to-content pipeline with a strong emphasis on video. It handles auto-transcription, social media clip generation for TikTok, Reels, and Shorts, sermon summaries, and YouTube chapter generation. The 'Playground' feature lets you generate unlimited derivative content from any uploaded sermon — devotionals, marketing copy, social posts, and more.",
+          "If your church's primary content format is video and your biggest bottleneck is turning a 45-minute sermon into a week's worth of social content, Church.tech is purpose-built for that workflow. The clip detection is competitive with standalone tools like OpusClip, and the church-specific formatting saves time over a general-purpose video editor.",
+          "Like Pulpit AI, this is a content creation tool rather than a doctrinal retrieval tool. It does not give members a way to ask questions. It gives your communications team a way to produce content faster. Both are valuable — but they solve different problems.",
+          "Pricing: Tiered plans with a free trial; pricing is not publicly listed. Best for: churches that produce video sermons and need to maximize their reach across social platforms.",
         ],
       },
       {
-        heading: "What to look for in any AI tool for your church",
+        heading: "6. Logos Bible Software — Best for sermon preparation",
         paragraphs: [
-          "Regardless of category, there are a handful of qualities that separate the tools worth your money from the ones that will waste it. These apply whether you are evaluating a retrieval platform, a sermon assistant, or an admin tool.",
-          "Transparency about sources. Can you see where the answer came from? If not, you cannot verify it, and your members cannot trust it. This is non-negotiable for anything that touches theology.",
-          "Honest failure. What does the tool do when it does not know? A good tool says so. A bad tool guesses with confidence. Test this in every demo by asking a question you know the tool should not be able to answer well.",
-          "Data ownership. If you upload your sermons, who owns them? Can you export and leave? A vendor that holds your content hostage is not a partner.",
-          "Privacy. Are your members' questions logged? Shared? Used to train models? A church chat tool that feeds member queries into a training pipeline has crossed a line most congregations would not be comfortable with if they knew about it.",
-          "Pricing clarity. Some tools charge per question, per member, per document, or per month. Make sure you understand what happens when you exceed included limits. Surprise invoices erode trust faster than bad theology.",
+          "Logos has been the gold standard for pastoral study software for over a decade, and their AI features have made it even more useful. The AI-powered search lets you ask questions in plain English and get results from across your entire library — commentaries, original-language tools, theological dictionaries, and cross-references. It is the best sermon preparation assistant on the market.",
+          "Logos is not a member-facing tool. Your congregation will never interact with it. But for the pastor who spends 15 to 20 hours a week in sermon preparation, the AI features can save hours of cross-referencing and surface connections you might have missed. It uses AI the way a concordance does — as a research accelerant, not a replacement for the pastor's own thinking.",
+          "The tradeoff is cost. Logos packages range from free to well over $1,000 depending on the library size. The AI features are included in most modern packages, but the real value comes from the depth of the library you invest in. Think of it as a long-term tool purchase, not a monthly subscription.",
+          "Best for: pastors who want AI to enhance their study process without touching the congregation-facing experience.",
         ],
       },
       {
-        heading: "A realistic comparison of approaches",
+        heading: "7. MinistryAI — Best all-in-one for solo pastors",
         paragraphs: [
-          "If your church has never preached on a topic and a member asks about it, here is what each category of tool will do. A church retrieval tool will say it does not have an answer from your church and may point the member to Scripture. A general chatbot will give a fluent, confident answer sourced from the internet. A sermon prep tool was not designed for this situation at all. An admin tool is irrelevant. A content generator might produce something plausible but unchecked.",
-          "That single test case reveals the core tradeoff. General tools are broader but less trustworthy. Church-specific tools are narrower but more honest. The right choice depends on what you are optimizing for: breadth of coverage or fidelity to your church's actual teaching.",
-          "Most churches that have thought carefully about this end up using a combination. A church-specific retrieval tool for anything member-facing. A general chatbot for the pastor's own research and brainstorming. An admin tool for communications. And a healthy skepticism toward anything that claims to do all three.",
+          "MinistryAI offers a 'Ministry Pack' suite covering sermon preparation, Bible study generation, event planning, and administrative tasks. At $39/month per user, it is positioned as a one-tool solution for the pastor who wears every hat — preacher, administrator, communications director, and volunteer coordinator.",
+          "The breadth is both the strength and the weakness. It does a lot of things adequately rather than one thing excellently. For a solo pastor at a church of 100 who needs help across every area of ministry operations, that breadth is valuable. For a church with a staff of five that needs a specialized tool for one specific pain point, a more focused product will outperform it.",
+          "You get 20 free interactions before subscribing, which is enough to evaluate whether the outputs match your expectations. The sermon prep features are solid. The event planning tools are functional. The generated content still needs a human editor before publishing.",
+          "Pricing: $39/month or $390/year. Best for: solo pastors and small church staffs that need a little help across many categories.",
         ],
       },
       {
-        heading: "Common mistakes churches make when choosing AI tools",
+        heading:
+          "8. FaithBased.ai — Best white-label chatbot for church websites",
         paragraphs: [
-          "The first mistake is choosing based on the demo instead of the edge case. Every AI tool looks great when it answers a question it was designed to handle. The real test is what it does with a question it was not. Always test a tool with hard cases, ambiguous topics, and questions your church has deliberately not taken a public position on.",
-          "The second mistake is treating AI as a set-and-forget solution. Every tool in every category requires ongoing attention — uploading new content, reviewing outputs, monitoring what members are asking, and adjusting when something is not working. A church that buys an AI tool, sets it up once, and never looks at it again will eventually be embarrassed by something it says.",
-          "The third mistake is letting cost drive the decision entirely. Free tools are free because your data is the product, or because the tool is a loss leader for something else. The cheapest option is almost never the most trustworthy option for something that speaks to your congregation on your behalf.",
-          "The fourth mistake is buying more tools than you need. Most churches need one, maybe two AI tools. The rest is overhead. Start with the problem you actually have — members cannot find your teaching, your admin team is drowning, your sermon prep takes too long — and buy only what solves that problem.",
+          "FaithBased.ai builds white-label AI assistants that churches can embed on their websites. The chatbot is custom-trained on your church's content, and the branding is yours — visitors see your church's name and logo, not a third-party product.",
+          "For churches that want an AI presence on their website without it feeling like a tech product, the white-label approach is appealing. The chatbot can handle common visitor questions — service times, beliefs, directions, and basic theological questions grounded in your uploaded content.",
+          "The risk with any white-label chatbot is the depth of the grounding. Ask the vendor exactly what happens when a visitor asks a question your church has not addressed. If the answer is 'it falls back to a general model,' you have the same doctrinal risk as a general chatbot wearing your church's brand. Verify this in a demo before committing.",
+          "Pricing: Custom; contact for a quote. Best for: churches that want a branded chatbot on their website for visitor engagement.",
         ],
       },
       {
-        heading: "Where Doctrinally.AI fits",
+        heading:
+          "9. ACS Technologies (Realm) — Best for large church administration",
         paragraphs: [
-          "We are a church-specific retrieval tool. We ingest your sermons, devotions, YouTube videos, and uploaded documents, and turn them into a chat experience your congregation can use. Every answer is grounded in your content and cited back to the original source. When your church has not spoken to a question, we say so instead of inventing an answer.",
-          "We do not generate sermons. We do not write your newsletter. We do not schedule your volunteers. We are deliberately narrow because we believe the member-facing experience — the thing your congregation actually touches — is the place where trust matters most and where a wrong answer costs the most.",
-          "We are not the right tool for every church. If your primary pain is administrative overhead, an admin tool will serve you better. If you want a sermon research assistant, Logos or a similar tool is purpose-built for that. If you want your congregation to be able to ask a question and hear your voice back, with a citation to the exact sermon or document it came from, that is what we built.",
+          "Realm is a full church management system from ACS Technologies, and they have added AI-assist features for member communication, giving analytics, and administrative automation. This is not an AI-first product — it is a church management platform with AI bolted on to make existing workflows faster.",
+          "For churches already using Realm for member management, the AI features are a natural extension. Automated giving insights, communication drafts, and reporting summaries save real administrative time. But if you are not already a Realm customer, you would not buy it for the AI features alone.",
+          "Best for: churches already using Realm that want AI to streamline their existing administrative workflows.",
         ],
       },
       {
-        heading: "Questions to ask before you buy anything",
+        heading:
+          "10. OpusClip — Best general-purpose sermon clip tool",
         paragraphs: [
-          "Before committing to any AI tool for your church, sit with these questions. What problem am I actually trying to solve? Who will this tool speak to — my staff, or my congregation? What happens when it is wrong? Who reviews the output? Can I see where every answer comes from? What do my members' data practices look like? Can I leave and take my content with me?",
-          "If a vendor cannot answer those questions clearly, they are selling you confidence, not competence. And in a ministry context, those are not the same thing.",
+          "OpusClip is not a church-specific tool, but it has been widely adopted by church media teams for one reason: it is very good at identifying the most engaging moments in a long video and cutting them into short-form clips optimized for social media. You upload a sermon recording and it returns a set of clips ranked by predicted engagement.",
+          "The output still needs review — it occasionally picks moments that are emotionally intense but theologically incomplete, which can strip context in ways a pastor would not choose. But as a starting point for a social media workflow, it saves hours of manual scrubbing through footage.",
+          "Pricing: Free tier with limited exports. Pro plans start around $15/month. Best for: church media teams that need a fast, affordable way to generate social clips from sermon recordings.",
+        ],
+      },
+      {
+        heading: "The tools we left off this list and why",
+        paragraphs: [
+          "There are products in the church AI space that we deliberately did not include. Tools that are essentially ChatGPT with a Christian system prompt — no church content upload, no source citations, no doctrinal control — are not church AI tools. They are consumer chatbots with a cross on the landing page. We have also excluded novelty products like AI avatar services that let members 'talk to Jesus' for $1.99 a minute. These are not ministry tools. They are distractions at best and deeply misleading at worst.",
+          "If a product does not let your church control the source of the answers or does not cite where those answers come from, it does not belong on a list of tools you should trust with your congregation.",
+        ],
+      },
+      {
+        heading:
+          "Why doctrinal control is the question that matters most",
+        paragraphs: [
+          "Every tool on this list has strengths. But the single most important dividing line in the church AI market is not price, not features, and not design. It is this: does the tool let your church completely control what it says to your people?",
+          "AI is an extraordinary tool for good. It can make a sermon from three years ago answer a member's question at 2 a.m. It can give a visitor a private, low-pressure way to explore your church's beliefs. It can help a pastor see what their congregation is actually wrestling with. These are genuine gifts to ministry.",
+          "But AI is also capable of real doctrinal harm. A model trained on the open internet will answer a question about the sovereignty of God using a blend of Reformed theology, open theism, process theology, and pop-level blog posts — and it will present that answer as confident, settled truth. A member who does not know better will walk away thinking their church teaches something it has never said. Multiply that by a hundred members and a thousand questions, and you have a slow, invisible doctrinal drift that no elder board approved.",
+          "This is not theoretical. It is the default behavior of every general-purpose AI chatbot. The only defense is a tool that grounds its answers in content your church has actually produced and reviewed — your sermons, your documents, your confessions, your teaching. That is what doctrinal control means. Not censorship. Not rigidity. Simply that the first voice your members hear should be yours, and that you should be able to verify every word of it.",
+          "Doctrinally.AI was built around this conviction. Every response is grounded in your content. Every answer is cited to a specific source. When your church has not addressed a topic, we say so instead of filling the gap with internet theology. You control the doctrine because it is your church, your pulpit, and your responsibility to the people who trust you with it.",
+        ],
+      },
+      {
+        heading: "Quick comparison table",
+        paragraphs: [
+          "Doctrinally.AI — Type: Doctrinal retrieval and member Q&A. Doctrinal control: Full (your content only). Citations: Yes, to exact source. Member-facing chat: Yes. Pricing: From $49/month.",
+          "Pulpit AI — Type: Sermon content repurposing. Doctrinal control: Partial (repurposes your sermons). Citations: No. Member-facing chat: No. Pricing: From $39/month.",
+          "Gloo + Faith Assistant — Type: Enterprise church chatbot platform. Doctrinal control: High (denominational toggles). Citations: Varies by config. Member-facing chat: Yes. Pricing: Free tier; enterprise pricing on request.",
+          "Pastors.ai — Type: Sermon chat and content generation. Doctrinal control: Moderate (sermon-scoped). Citations: Limited. Member-facing chat: Yes. Pricing: Free tier; from $30/month.",
+          "Church.tech — Type: Video sermon repurposing. Doctrinal control: Partial (repurposes your video). Citations: No. Member-facing chat: No. Pricing: Tiered; free trial.",
+          "Logos Bible Software — Type: Pastoral study and sermon prep. Doctrinal control: N/A (research tool). Citations: Source-linked. Member-facing chat: No. Pricing: Free to $1,000+.",
+          "MinistryAI — Type: All-in-one pastor assistant. Doctrinal control: Low (general model). Citations: No. Member-facing chat: No. Pricing: $39/month.",
+          "FaithBased.ai — Type: White-label church chatbot. Doctrinal control: Moderate (custom-trained). Citations: Varies. Member-facing chat: Yes. Pricing: Custom.",
+          "ACS Realm — Type: Church management with AI features. Doctrinal control: N/A (admin tool). Citations: N/A. Member-facing chat: No. Pricing: Enterprise.",
+          "OpusClip — Type: Video clip generation. Doctrinal control: N/A (editing tool). Citations: N/A. Member-facing chat: No. Pricing: Free tier; from ~$15/month.",
+        ],
+      },
+      {
+        heading: "Final advice: start with the problem, not the tool",
+        paragraphs: [
+          "Most churches need one, maybe two AI tools. Not ten. Before evaluating any product, name the specific problem you are trying to solve. If the problem is 'my members cannot find our teaching when they need it most,' you need a retrieval and doctrinal Q&A tool. If the problem is 'we spend 15 hours a week turning sermons into social content,' you need a content repurposing tool. If the problem is 'our admin team is drowning in communication tasks,' you need an admin assistant.",
+          "Buy the tool that solves the problem you actually have. Ignore the tool that solves ten problems you do not have. And for anything that speaks to your congregation on your behalf — anything member-facing, anything that answers theological questions, anything that uses the name of your church — demand full doctrinal control, visible citations, and honest silence when the answer is not there. Your people deserve at least that much.",
         ],
       },
     ],
     churchRelevance: {
-      title: "Try the tool this article is about",
-      body: "Doctrinally.AI turns your sermons, devotions, and documents into a chat experience your members can actually use — grounded in your teaching, cited to the source, honest when there is no answer. If you have been reading this article and wondering what a church-specific retrieval tool actually feels like, the fastest way to find out is to try it. Upload a few sermons, ask a question, and see whether the answer sounds like your church.",
+      title: "See what full doctrinal control actually looks like",
+      body: "Doctrinally.AI gives your church complete control over every answer your members receive. Upload your sermons, devotions, and documents. Every response is grounded in your content and cited to the exact source. When your church has not addressed a topic, we say so — no internet theology, no hallucinated verses, no doctrinal drift. If you want to see what it feels like when a member asks a hard question and hears your pastor's voice back instead of an algorithm's, try it with a few sermons and decide for yourself.",
     },
   },
   {
