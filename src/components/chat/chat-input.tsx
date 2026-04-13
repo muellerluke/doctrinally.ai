@@ -64,7 +64,6 @@ export function ChatInput({
           </button>
         </div>
         <p className="mt-1.5 text-center text-[10px] leading-tight text-muted-foreground/40">
-          AI can make mistakes.{" "}
           <a href="/privacy" target="_blank" className="underline hover:text-muted-foreground/60">Privacy Policy</a>
           {" · "}
           <a href="/terms" target="_blank" className="underline hover:text-muted-foreground/60">Terms of Use</a>
