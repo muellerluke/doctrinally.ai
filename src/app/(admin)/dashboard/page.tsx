@@ -13,12 +13,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { DateRangeSelector } from "@/components/analytics/date-range-selector";
 import { TrendChart } from "@/components/analytics/trend-chart";
 import { TopicsList } from "@/components/analytics/topics-list";
-import { UnansweredList } from "@/components/analytics/unanswered-list";
+import { UncoveredTopicsList } from "@/components/analytics/unanswered-list";
 import {
   getAnalyticsSummary,
   getQuestionTrend,
   getTopTopics,
-  getRecentUnanswered,
+  getUncoveredTopics,
   type DateRange,
 } from "@/lib/actions/analytics";
 
@@ -35,11 +35,11 @@ export default async function DashboardPage({
 
   const churchId = membership.churchId;
 
-  const [summary, questionTrend, topics, unanswered] = await Promise.all([
+  const [summary, questionTrend, topics, uncoveredTopics] = await Promise.all([
     getAnalyticsSummary(churchId, range),
     getQuestionTrend(churchId, range),
     getTopTopics(churchId, range),
-    getRecentUnanswered(churchId),
+    getUncoveredTopics(churchId, range),
   ]);
 
   const isEmpty =
@@ -92,7 +92,7 @@ export default async function DashboardPage({
               delta={summary?.visitorsDelta}
             />
             <StatCard
-              title="Unanswered"
+              title="Uncovered Topics"
               value={summary?.unanswered ?? 0}
               description="vs previous period"
               icon={HelpCircle}
@@ -106,7 +106,7 @@ export default async function DashboardPage({
           {/* Bottom grid */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <TopicsList topics={topics} />
-            <UnansweredList questions={unanswered} />
+            <UncoveredTopicsList topics={uncoveredTopics} />
           </div>
         </>
       )}

@@ -47,10 +47,10 @@ export interface TopicCount {
   count: number;
 }
 
-export interface UnansweredQuestion {
-  id: string;
-  content: string;
-  createdAt: Date;
+export interface UncoveredTopic {
+  topic: string;
+  count: number;
+  lastAskedAt: Date;
 }
 
 // ---- Helpers ----
@@ -357,42 +357,53 @@ export async function getTopTopics(
   }
 }
 
-// ---- Unanswered ----
+// ---- Uncovered Topics ----
 
-export async function getRecentUnanswered(
+export async function getUncoveredTopics(
   churchId: string,
-  limit = 5
-): Promise<UnansweredQuestion[]> {
+  range: DateRange,
+  limit = 8
+): Promise<UncoveredTopic[]> {
   if (!(await requireAdmin(churchId))) return [];
 
+  const { start, end } = getDateBounds(range);
+
   try {
+    // Find topics where questions were asked but the AI had no citations
+    // to draw from. These represent gaps in the church's content library.
+    // Only topic labels are shown — never verbatim member questions.
     const rows = await db.execute(sql`
-      SELECT DISTINCT ON (um.id)
-        um.id,
-        um.content,
-        um.created_at
+      SELECT
+        t.label AS topic,
+        count(*)::int AS cnt,
+        max(um.created_at) AS last_asked_at
       FROM messages um
       JOIN chats c ON c.id = um.chat_id
       JOIN messages am ON am.chat_id = um.chat_id
         AND am.role = 'assistant'
         AND am.has_citations = false
         AND am.created_at > um.created_at
+      JOIN topics t ON t.id = um.topic_id
       WHERE c.church_id = ${churchId}
         AND c.is_admin_test = false
         AND um.role = 'user'
-      ORDER BY um.id, um.created_at DESC
+        AND um.topic_id IS NOT NULL
+        AND um.created_at >= ${start.toISOString()}::timestamptz
+        AND um.created_at <= ${end.toISOString()}::timestamptz
+      GROUP BY t.label
+      ORDER BY cnt DESC
       LIMIT ${limit}
     `);
 
-    return (rows as unknown as { id: string; content: string; created_at: Date }[]).map(
+    return (rows as unknown as { topic: string; cnt: number; last_asked_at: Date }[]).map(
       (r) => ({
-        id: r.id,
-        content: r.content,
-        createdAt: new Date(r.created_at),
+        topic: r.topic,
+        count: r.cnt,
+        lastAskedAt: new Date(r.last_asked_at),
       })
     );
   } catch (err) {
-    console.error("getRecentUnanswered failed:", err);
+    console.error("getUncoveredTopics failed:", err);
     return [];
   }
 }
