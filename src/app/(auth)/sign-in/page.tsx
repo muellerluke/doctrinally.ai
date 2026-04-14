@@ -16,7 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import posthog from "posthog-js";
 import { signInSchema } from "@/lib/validations/auth";
 
 export default function SignInPage() {
@@ -64,9 +63,6 @@ function SignInContent() {
         toast.error("Invalid email or password");
         return;
       }
-
-      posthog.identify(email, { email });
-      posthog.capture("sign_in", { email });
 
       router.push(callbackUrl);
       router.refresh();

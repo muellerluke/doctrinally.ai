@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import posthog from "posthog-js";
 import { createBillingPortalSession } from "@/lib/actions/billing";
 
 interface BillingPortalButtonProps {
@@ -25,7 +24,6 @@ export function BillingPortalButton({
         return;
       }
       if (result.url) {
-        posthog.capture("billing_portal_opened");
         window.location.href = result.url;
       }
     } catch {

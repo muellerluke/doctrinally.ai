@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { PlanCard } from "@/components/billing/plan-card";
 import { churchInfoSchema } from "@/lib/validations/onboarding";
 import { createChurch, resumeCheckout } from "@/lib/actions/onboarding";
-import posthog from "posthog-js";
 import { slugify } from "@/lib/utils";
 import type { PlanType } from "@/lib/plans";
 
@@ -100,15 +99,8 @@ export function OnboardingClient({
       }
 
       if (!hasExistingChurch) {
-        posthog.capture("church_created", {
-          church_name: name,
-          church_slug: slug,
-        });
+        window.plausible?.("Onboarding Complete", { props: { plan: selectedPlan } });
       }
-      posthog.capture("checkout_started", {
-        plan: selectedPlan,
-        church_name: name,
-      });
 
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;

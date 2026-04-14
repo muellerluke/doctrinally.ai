@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import posthog from "posthog-js";
 import { Loader2, Send, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,7 +35,6 @@ export function ContactForm() {
         return;
       }
 
-      posthog.capture("contact_form_submitted");
       setSent(true);
     } catch {
       setError("Something went wrong. Please try again.");

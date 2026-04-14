@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import posthog from "posthog-js";
 import { signUpSchema } from "@/lib/validations/auth";
 import {
   signUp,
@@ -98,12 +97,7 @@ export default function SignUpPage() {
         return;
       }
 
-      posthog.identify(email, { name, email });
-      posthog.capture("sign_up", {
-        email,
-        name,
-        via_invite: !!inviteToken,
-      });
+      window.plausible?.("Sign Up", { props: { via_invite: !!inviteToken } });
 
       if (inviteToken) {
         const accept = await acceptInvitationForCurrentUser(inviteToken);

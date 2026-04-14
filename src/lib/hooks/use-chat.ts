@@ -212,6 +212,8 @@ export function useChat({
         }
         return updated;
       });
+
+      window.plausible?.("Chat Message");
     } catch (err) {
       if ((err as Error).name === "AbortError") return;
       setError((err as Error).message);

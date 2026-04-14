@@ -162,6 +162,7 @@ export function FileUploadDialog({
 
       setLoading(false);
       onUploadComplete?.(uploadId);
+      window.plausible?.("Document Upload", { props: { type: "file" } });
       toast.success("File uploaded successfully");
     } catch (err) {
       setLoading(false);
