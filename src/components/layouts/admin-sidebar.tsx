@@ -44,6 +44,8 @@ interface AdminSidebarProps {
   uploadLimit?: number;
   membershipRole?: string;
   trialEndsAt?: Date | null;
+  messageOverageEnabled?: boolean;
+  messageOverageCap?: number;
 }
 
 export function AdminSidebar({
@@ -56,6 +58,8 @@ export function AdminSidebar({
   uploadLimit = 0,
   membershipRole,
   trialEndsAt,
+  messageOverageEnabled = false,
+  messageOverageCap = 0,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const isOwner = membershipRole === "owner";
@@ -92,14 +96,18 @@ export function AdminSidebar({
         )
       : null;
 
+  const effectiveQuestionLimit = messageOverageEnabled
+    ? questionLimit + messageOverageCap
+    : questionLimit;
+
   const questionPercentage =
-    questionLimit > 0
-      ? Math.min((questionUsage / questionLimit) * 100, 100)
+    effectiveQuestionLimit > 0
+      ? Math.min((questionUsage / effectiveQuestionLimit) * 100, 100)
       : 0;
   const uploadPercentage =
     uploadLimit > 0 ? Math.min((uploadUsage / uploadLimit) * 100, 100) : 0;
 
-  const isQuestionOver = questionUsage > questionLimit && questionLimit > 0;
+  const isQuestionOver = questionUsage > effectiveQuestionLimit && effectiveQuestionLimit > 0;
   const isUploadOver = uploadUsage > uploadLimit && uploadLimit > 0;
 
   return (
@@ -175,7 +183,7 @@ export function AdminSidebar({
               <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
                 <span>Messages</span>
                 <span className={cn(isQuestionOver && "text-red-400 font-medium")}>
-                  {questionUsage.toLocaleString()} / {questionLimit.toLocaleString()}
+                  {questionUsage.toLocaleString()} / {effectiveQuestionLimit.toLocaleString()}
                 </span>
               </div>
               <Progress

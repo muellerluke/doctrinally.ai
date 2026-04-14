@@ -137,6 +137,24 @@ export function useChat({
       });
 
       if (!response.ok) {
+        if (response.status === 403) {
+          try {
+            const body = await response.json();
+            if (body.error === "message_limit_reached") {
+              setError(body.message ?? "Monthly message limit reached.");
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant" && !last.content) {
+                  return prev.slice(0, -1);
+                }
+                return prev;
+              });
+              return;
+            }
+          } catch {
+            // Not JSON — fall through to generic error
+          }
+        }
         throw new Error(`Chat request failed: ${response.status}`);
       }
 

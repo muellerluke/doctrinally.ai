@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { UsageDisplay } from "@/components/billing/usage-display";
+import { OverageControl } from "@/components/billing/overage-control";
 import { BillingPortalButton } from "./billing-portal-button";
 
 export default async function BillingPage() {
@@ -209,6 +210,14 @@ export default async function BillingPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Message Overage Control */}
+      <OverageControl
+        churchId={membership.churchId}
+        enabled={data.messageOverageEnabled}
+        cap={data.messageOverageCap}
+        questionLimit={data.questionLimit}
+      />
 
       {/* Plan Comparison for Standard (hidden during trial to keep focus on conversion) */}
       {data.plan === "standard" && data.status !== "trialing" && (

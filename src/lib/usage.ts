@@ -109,6 +109,33 @@ export async function getOverageReport(churchId: string) {
   };
 }
 
+/**
+ * Returns the effective message limit for a church, accounting for the
+ * overage switch and cap. When overage is disabled the limit equals the
+ * plan's questionLimit. When enabled it equals questionLimit + cap.
+ */
+export async function getEffectiveMessageLimit(churchId: string) {
+  const sub = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.churchId, churchId),
+    columns: {
+      questionLimit: true,
+      messageOverageEnabled: true,
+      messageOverageCap: true,
+    },
+  });
+
+  if (!sub) return null;
+
+  return {
+    limit: sub.questionLimit,
+    overageEnabled: sub.messageOverageEnabled,
+    overageCap: sub.messageOverageCap,
+    effectiveMax: sub.messageOverageEnabled
+      ? sub.questionLimit + sub.messageOverageCap
+      : sub.questionLimit,
+  };
+}
+
 export async function canUseService(churchId: string): Promise<boolean> {
   const sub = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.churchId, churchId),

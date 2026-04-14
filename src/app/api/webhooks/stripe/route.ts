@@ -323,7 +323,13 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice) {
     0,
     usage.documentUploads - sub.documentUploadLimit
   );
-  const questionOverage = Math.max(0, usage.questions - sub.questionLimit);
+  // Only charge message overage if the church has opted in. When enabled,
+  // cap the overage at the admin-configured maximum.
+  let questionOverage = 0;
+  if (sub.messageOverageEnabled) {
+    const rawOverage = Math.max(0, usage.questions - sub.questionLimit);
+    questionOverage = Math.min(rawOverage, sub.messageOverageCap);
+  }
 
   if (uploadOverage <= 0 && questionOverage <= 0) return;
 
@@ -342,7 +348,7 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice) {
     await stripe.invoiceItems.create({
       customer: sub.stripeCustomerId,
       invoice: invoice.id,
-      description: `Message overage (${questionOverage} over ${sub.questionLimit} limit)`,
+      description: `Message overage (${questionOverage} over ${sub.questionLimit} limit, capped at ${sub.messageOverageCap})`,
       amount: Math.round(questionOverage * rates.question * 100),
       currency: "usd",
     });

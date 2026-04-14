@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgEnum,
   pgTable,
@@ -29,6 +30,8 @@ export const subscriptions = pgTable("subscriptions", {
   status: subscriptionStatusEnum("status").notNull().default("incomplete"),
   documentUploadLimit: integer("document_upload_limit").notNull(),
   questionLimit: integer("question_limit").notNull(),
+  messageOverageEnabled: boolean("message_overage_enabled").notNull().default(false),
+  messageOverageCap: integer("message_overage_cap").notNull().default(0),
   currentPeriodStart: timestamp("current_period_start", { mode: "date" }),
   currentPeriodEnd: timestamp("current_period_end", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

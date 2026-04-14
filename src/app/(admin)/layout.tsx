@@ -77,6 +77,8 @@ export default async function AdminLayout({
         trialEndsAt={
           sub?.status === "trialing" ? sub?.currentPeriodEnd ?? null : null
         }
+        messageOverageEnabled={sub?.messageOverageEnabled ?? false}
+        messageOverageCap={sub?.messageOverageCap ?? 0}
       />
       <SidebarInset>
         <AdminHeader userName={session.user.name} />

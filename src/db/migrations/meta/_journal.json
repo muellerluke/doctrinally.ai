@@ -78,6 +78,13 @@
       "when": 1775433906836,
       "tag": "0010_green_stick",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1776164976215,
+      "tag": "0011_closed_ego",
+      "breakpoints": true
     }
   ]
 }

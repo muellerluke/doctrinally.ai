@@ -202,6 +202,8 @@ export function OnboardingClient({
             You won&apos;t be charged today. Your card will be charged $
             {selectedPlan === "standard" ? "49" : "99"} in 14 days unless you
             cancel. Trial includes 10 document uploads and 100 messages.
+            Message limits are enforced &mdash; you&apos;ll never be charged
+            for overages unless you explicitly enable them in billing settings.
           </p>
 
           <div className="flex gap-3">

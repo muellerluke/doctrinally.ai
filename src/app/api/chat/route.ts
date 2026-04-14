@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { chats, messages, memberships, churches, subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { hybridSearch } from "@/lib/retrieval";
-import { incrementQuestionCount } from "@/lib/usage";
+import { incrementQuestionCount, getCurrentUsage, getEffectiveMessageLimit } from "@/lib/usage";
 import { getPostHogClient } from "@/lib/posthog-server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { lookupByReference } from "@/lib/bible";
@@ -292,6 +292,29 @@ export async function POST(request: Request) {
   const activeStatuses = ["active", "trialing", "past_due"];
   if (!sub || !activeStatuses.includes(sub.status)) {
     return new Response("Church subscription is not active", { status: 403 });
+  }
+
+  // Enforce hard message limit
+  const [msgLimit, currentUsage] = await Promise.all([
+    getEffectiveMessageLimit(churchId),
+    getCurrentUsage(churchId),
+  ]);
+
+  if (msgLimit && currentUsage && currentUsage.questions >= msgLimit.effectiveMax) {
+    logger.info("[chat] message limit reached", {
+      churchId,
+      currentUsage: currentUsage.questions,
+      effectiveMax: msgLimit.effectiveMax,
+      overageEnabled: msgLimit.overageEnabled,
+      overageCap: msgLimit.overageCap,
+    });
+    return new Response(
+      JSON.stringify({
+        error: "message_limit_reached",
+        message: "Your church has reached its monthly message limit. Contact your church admin for more information.",
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   const lastUserMessage = [...clientMessages]

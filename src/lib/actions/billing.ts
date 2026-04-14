@@ -192,5 +192,43 @@ export async function getSubscriptionWithUsage(churchId: string) {
       uploadOverage * rates.documentUpload +
       questionOverage * rates.question,
     features: planDetails.features,
+    messageOverageEnabled: sub.messageOverageEnabled,
+    messageOverageCap: sub.messageOverageCap,
   };
+}
+
+export async function updateOverageSettings(
+  churchId: string,
+  settings: { enabled: boolean; cap: number }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { error: "You must be signed in" };
+  }
+
+  // Only owners can change overage settings
+  const membership = await db.query.memberships.findFirst({
+    where: and(
+      eq(memberships.userId, session.user.id),
+      eq(memberships.churchId, churchId)
+    ),
+  });
+
+  if (!membership || membership.role !== "owner") {
+    return { error: "Only owners can change overage settings" };
+  }
+
+  // Validate cap range: 0–5000 in steps of 100
+  const cap = Math.max(0, Math.min(5000, Math.round(settings.cap / 100) * 100));
+
+  await db
+    .update(subscriptions)
+    .set({
+      messageOverageEnabled: settings.enabled,
+      messageOverageCap: settings.enabled ? cap : 0,
+      updatedAt: new Date(),
+    })
+    .where(eq(subscriptions.churchId, churchId));
+
+  return { success: true };
 }

@@ -1,0 +1,2 @@
+ALTER TABLE "subscriptions" ADD COLUMN "message_overage_enabled" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD COLUMN "message_overage_cap" integer DEFAULT 0 NOT NULL;

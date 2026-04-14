@@ -154,7 +154,7 @@ const faqs = [
   {
     question: "What happens if I go over my monthly limits?",
     answer:
-      "Nothing breaks. Overages are billed at $0.25 per additional upload and $0.25 per additional message — no surprise fees, no service interruptions. You can also upgrade to Enterprise any time.",
+      "By default, message limits are hard-enforced — members simply see a friendly notice when the limit is reached, and your church is never charged extra. If you want to allow additional messages, you can opt in to overage from your billing settings and set a maximum cap so you always stay in control. Extra messages are $0.25 each, capped at whatever limit you choose. No surprises, ever.",
   },
   {
     question: "Can I cancel anytime?",
@@ -701,8 +701,9 @@ export default function HomePage() {
           </div>
 
           <p className="mx-auto mt-6 max-w-lg text-center text-[12px] text-muted-foreground">
-            Over your limit? Just $0.25 per extra upload and $0.25 per extra
-            message. No surprises.
+            Message limits are enforced by default &mdash; you&apos;ll never be
+            charged for overages unless you opt in. If enabled, extra messages
+            are just $0.25 each with a cap you control.
           </p>
         </div>
       </section>
