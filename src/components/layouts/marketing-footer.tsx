@@ -34,6 +34,14 @@ export function MarketingFooter() {
         </div>
         <div className="flex flex-col items-center gap-2 sm:items-end">
           <ThemeSelector />
+          <div className="flex items-center gap-4 text-xs">
+            <a href="mailto:hello@doctrinally.ai" className="transition-colors hover:text-foreground">
+              hello@doctrinally.ai
+            </a>
+            <a href="tel:+12622242807" className="transition-colors hover:text-foreground">
+              (262) 224-2807
+            </a>
+          </div>
           <p>
             &copy; {new Date().getFullYear()} Doctrinally.AI
           </p>
