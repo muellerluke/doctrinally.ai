@@ -137,12 +137,23 @@ export async function hybridSearch(
   // Filter out low-similarity semantic results before fusion. Without this,
   // irrelevant chunks (e.g., a query about "pizza" matching sermons about
   // "peace") still appear as results and the model treats them as relevant.
-  const SIMILARITY_THRESHOLD = 0.3;
+  const SIMILARITY_THRESHOLD = 0.5;
   const filteredSemantic = semanticResults.filter(
     (c) => typeof c.similarity === "number" && c.similarity >= SIMILARITY_THRESHOLD
   );
 
-  // Reciprocal rank fusion
+  // Build a map of raw cosine similarities from semantic search so we can
+  // preserve them through RRF. The raw cosine score is the only meaningful
+  // relevance signal — the RRF score is only used for ranking order.
+  const rawSimilarityMap = new Map<string, number>();
+  for (const chunk of filteredSemantic) {
+    if (typeof chunk.similarity === "number") {
+      rawSimilarityMap.set(chunk.chunkId, chunk.similarity);
+    }
+  }
+
+  // Reciprocal rank fusion — used only for ordering, not for the returned
+  // similarity value.
   const k = 60; // RRF constant
   const scores = new Map<string, { score: number; chunk: RetrievedChunk }>();
 
@@ -170,18 +181,13 @@ export async function hybridSearch(
 
   if (ranked.length === 0) return [];
 
-  // Normalise RRF scores to 0-1 range so the system prompt's relevance
-  // threshold is meaningful. The highest-ranked result gets 1.0 and the
-  // rest are scaled proportionally.
-  const maxScore = ranked[0].score;
-
-  return ranked.map(({ score, chunk }) => ({
+  return ranked.map(({ chunk }) => ({
     ...chunk,
-    // Overwrite the raw cosine/ts_rank value with the normalised RRF score.
-    // This gives the AI (and the search tool) a single, consistent
-    // relevance number regardless of whether the chunk came from semantic
-    // search, keyword search, or both.
-    similarity: maxScore > 0 ? score / maxScore : 0,
+    // Use the raw cosine similarity as the similarity value. This gives
+    // an honest measure of how relevant each chunk actually is, rather
+    // than a normalized RRF score where the top result is always 1.0.
+    // Keyword-only results keep their ts_rank score as-is.
+    similarity: rawSimilarityMap.get(chunk.chunkId) ?? chunk.similarity,
   }));
 }
 

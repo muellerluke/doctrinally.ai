@@ -108,13 +108,11 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       required: ["query"],
     }),
     execute: async ({ query }) => {
-      const RELEVANCE_THRESHOLD = 0.35;
+      const RELEVANCE_THRESHOLD = 0.55;
       const results = await hybridSearch(churchId, query, 6);
 
-      // Hard-filter results below the relevance threshold in code so the
-      // AI never even sees them. Previously we relied on a prompt
-      // instruction ("ignore results below 0.35") which the model often
-      // ignored, producing answers without any grounding.
+      // Filter using raw cosine similarity. Only results that genuinely
+      // match the query should reach the AI.
       const relevant = results.filter(
         (c) =>
           typeof c.similarity === "number" &&
@@ -132,6 +130,7 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
           title: r.documentTitle,
           similarity: r.similarity != null ? Math.round(r.similarity * 100) / 100 : null,
           passed: typeof r.similarity === "number" && r.similarity >= RELEVANCE_THRESHOLD,
+          contentPreview: r.content?.slice(0, 100) ?? "(empty)",
         })),
       });
 
@@ -145,7 +144,7 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
         };
       }
 
-      return relevant.map((chunk, i) => ({
+      const toolOutput = relevant.map((chunk, i) => ({
         resultNumber: i + 1,
         relevanceScore:
           chunk.similarity != null
@@ -161,6 +160,22 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
         pageNumber: chunk.pageNumber,
         content: chunk.content,
       }));
+
+      logger.info("[chat] search tool output sent to model", {
+        churchId,
+        query,
+        resultCount: toolOutput.length,
+        results: toolOutput.map((r) => ({
+          resultNumber: r.resultNumber,
+          documentId: r.documentId,
+          documentTitle: r.documentTitle,
+          relevanceScore: r.relevanceScore,
+          contentLength: r.content?.length ?? 0,
+          contentPreview: r.content?.slice(0, 200) ?? "(empty)",
+        })),
+      });
+
+      return toolOutput;
     },
   };
 }
@@ -412,7 +427,7 @@ export async function POST(request: Request) {
               step: stepIdx,
               results: toolResults.map((tr) => ({
                 toolName: tr.toolName,
-                resultLength: JSON.stringify(tr.output ?? tr.result).length,
+                output: tr.output ?? tr.result,
               })),
             });
           }
