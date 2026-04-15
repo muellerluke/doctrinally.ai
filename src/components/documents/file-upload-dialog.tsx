@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { upload } from "@vercel/blob/client";
-import { FileUp, Loader2, Upload } from "lucide-react";
+import { FileUp, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { UploadItem } from "@/components/documents/upload-provider";
@@ -40,6 +40,16 @@ function filenameWithoutExtension(name: string) {
   return dotIndex > 0 ? name.substring(0, dotIndex) : name;
 }
 
+function formatSize(bytes: number) {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
+interface FileEntry {
+  file: File;
+  title: string;
+}
+
 interface FileUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,33 +73,42 @@ export function FileUploadDialog({
 }: FileUploadDialogProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [file, setFile] = React.useState<File | null>(null);
+  const [entries, setEntries] = React.useState<FileEntry[]>([]);
   const [dragOver, setDragOver] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-
-  const [title, setTitle] = React.useState("");
   const [tags, setTags] = React.useState("");
 
   function resetForm() {
-    setFile(null);
-    setTitle("");
+    setEntries([]);
     setTags("");
     setDragOver(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function handleFileSelect(selectedFile: File) {
-    setFile(selectedFile);
-    if (!title) {
-      setTitle(filenameWithoutExtension(selectedFile.name));
-    }
+  function addFiles(fileList: FileList) {
+    const newEntries: FileEntry[] = Array.from(fileList).map((f) => ({
+      file: f,
+      title: filenameWithoutExtension(f.name),
+    }));
+    setEntries((prev) => [...prev, ...newEntries]);
+  }
+
+  function removeEntry(index: number) {
+    setEntries((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateTitle(index: number, title: string) {
+    setEntries((prev) =>
+      prev.map((entry, i) => (i === index ? { ...entry, title } : entry))
+    );
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) handleFileSelect(droppedFile);
+    if (e.dataTransfer.files.length > 0) {
+      addFiles(e.dataTransfer.files);
+    }
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -103,75 +122,74 @@ export function FileUploadDialog({
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) handleFileSelect(selectedFile);
+    if (e.target.files && e.target.files.length > 0) {
+      addFiles(e.target.files);
+    }
+    // Reset input so the same file(s) can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (entries.length === 0) return;
 
     setLoading(true);
 
-    const uploadId = crypto.randomUUID();
-    const currentFile = file;
-    const fileType = resolveFileType(currentFile);
     const tagList = tags
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
 
-    onUploadStart?.({
-      id: uploadId,
-      filename: currentFile.name,
-      progress: 0,
-      status: "uploading",
-    });
-
-    // Close dialog immediately so the user can queue more uploads
+    // Snapshot the entries and close immediately so user can keep working
+    const batch = [...entries];
     resetForm();
     onOpenChange(false);
 
-    try {
-      // Client-direct upload to Vercel Blob. The browser streams bytes
-      // straight to Blob storage, bypassing Vercel's serverless body
-      // size limit. Our /api/documents/upload route only signs a token
-      // and receives an async webhook when the upload completes.
-      await upload(
-        `documents/${churchId}/${currentFile.name}`,
-        currentFile,
-        {
-          access: "public",
-          handleUploadUrl: "/api/documents/upload",
-          // Chunk large files into parallel multipart pieces. Without this,
-          // @vercel/blob/client does a single PUT which 413s on files over
-          // ~100 MB. With multipart, sermon videos up to 2 GB stream fine.
-          multipart: true,
-          clientPayload: JSON.stringify({
-            title,
-            tags: tagList.join(","),
-            folderId: folderId ?? null,
-            fileType: currentFile.type,
-            fileSize: currentFile.size,
-          }),
-          onUploadProgress: (event) => {
-            onUploadProgress?.(uploadId, Math.round(event.percentage));
-          },
-        }
-      );
+    // Fire all uploads concurrently
+    for (const entry of batch) {
+      const uploadId = crypto.randomUUID();
+      const fileType = resolveFileType(entry.file);
 
-      setLoading(false);
-      onUploadComplete?.(uploadId);
-      window.plausible?.("Document Upload", { props: { type: "file" } });
-      toast.success("File uploaded successfully");
-    } catch (err) {
-      setLoading(false);
-      const errorMsg =
-        err instanceof Error ? err.message : "Upload failed";
-      onUploadError?.(uploadId, errorMsg);
-      toast.error(errorMsg);
+      onUploadStart?.({
+        id: uploadId,
+        filename: entry.file.name,
+        progress: 0,
+        status: "uploading",
+      });
+
+      // Don't await — let uploads run in parallel
+      upload(`documents/${churchId}/${entry.file.name}`, entry.file, {
+        access: "public",
+        handleUploadUrl: "/api/documents/upload",
+        multipart: true,
+        clientPayload: JSON.stringify({
+          title: entry.title,
+          tags: tagList.join(","),
+          folderId: folderId ?? null,
+          fileType: entry.file.type,
+          fileSize: entry.file.size,
+        }),
+        onUploadProgress: (event) => {
+          onUploadProgress?.(uploadId, Math.round(event.percentage));
+        },
+      })
+        .then(() => {
+          onUploadComplete?.(uploadId);
+          window.plausible?.("Document Upload", { props: { type: "file" } });
+          toast.success(`Uploaded: ${entry.file.name}`);
+        })
+        .catch((err) => {
+          const errorMsg =
+            err instanceof Error ? err.message : "Upload failed";
+          onUploadError?.(uploadId, errorMsg);
+          toast.error(`${entry.file.name}: ${errorMsg}`);
+        });
     }
+
+    setLoading(false);
   }
+
+  const hasFiles = entries.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -179,10 +197,10 @@ export function FileUploadDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileUp className="size-5 text-amber-600" />
-            Upload File
+            Upload {entries.length > 1 ? `${entries.length} Files` : "Files"}
           </DialogTitle>
           <DialogDescription>
-            Upload a PDF, Word document, or video file. Content will be
+            Upload PDFs, Word documents, or video files. Content will be
             processed and indexed for AI retrieval.
           </DialogDescription>
         </DialogHeader>
@@ -201,33 +219,29 @@ export function FileUploadDialog({
               ${
                 dragOver
                   ? "border-primary bg-primary/5"
-                  : file
-                    ? "border-green-500/50 bg-green-500/5"
+                  : hasFiles
+                    ? "border-green-500/50 bg-green-500/5 py-4"
                     : "border-muted-foreground/25 hover:border-muted-foreground/50"
               }
             `}
           >
             <Upload
               className={`size-8 ${
-                file
-                  ? "text-green-600"
+                hasFiles
+                  ? "size-5 text-green-600"
                   : dragOver
                     ? "text-primary"
                     : "text-muted-foreground/50"
               }`}
             />
-            {file ? (
-              <div>
-                <p className="text-sm font-medium">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(file.size / (1024 * 1024)).toFixed(1)} MB &middot; Click or
-                  drop to replace
-                </p>
-              </div>
+            {hasFiles ? (
+              <p className="text-xs text-muted-foreground">
+                Click or drop to add more files
+              </p>
             ) : (
               <div>
                 <p className="text-sm font-medium">
-                  Drop your file here, or{" "}
+                  Drop your files here, or{" "}
                   <span className="text-primary underline underline-offset-2">
                     browse files
                   </span>
@@ -243,35 +257,65 @@ export function FileUploadDialog({
               accept={ACCEPTED_TYPES}
               onChange={handleInputChange}
               className="hidden"
+              multiple
             />
           </div>
 
-          {/* Metadata fields shown after file selection */}
-          {file && (
-            <>
-              <div className="grid gap-2">
-                <Label htmlFor="file-title">Title *</Label>
-                <Input
-                  id="file-title"
-                  placeholder="Document title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
+          {/* File list with per-file titles */}
+          {hasFiles && (
+            <div className="max-h-[240px] space-y-3 overflow-y-auto">
+              {entries.map((entry, i) => (
+                <div
+                  key={`${entry.file.name}-${i}`}
+                  className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3"
+                >
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Input
+                      value={entry.title}
+                      onChange={(e) => updateTitle(i, e.target.value)}
+                      placeholder="Document title"
+                      required
+                      disabled={loading}
+                      className="h-8 text-sm"
+                    />
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {entry.file.name} &middot; {formatSize(entry.file.size)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeEntry(i);
+                    }}
+                    className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
-              <div className="grid gap-2">
-                <Label htmlFor="file-tags">Tags</Label>
-                <Input
-                  id="file-tags"
-                  placeholder="sermon, faith, grace (comma-separated)"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
-            </>
+          {/* Shared tags */}
+          {hasFiles && (
+            <div className="grid gap-2">
+              <Label htmlFor="file-tags">
+                Tags{" "}
+                {entries.length > 1 && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (applied to all files)
+                  </span>
+                )}
+              </Label>
+              <Input
+                id="file-tags"
+                placeholder="sermon, faith, grace (comma-separated)"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                disabled={loading}
+              />
+            </div>
           )}
 
           <DialogFooter>
@@ -286,9 +330,9 @@ export function FileUploadDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !file}>
+            <Button type="submit" disabled={loading || !hasFiles}>
               {loading && <Loader2 className="animate-spin" />}
-              Upload
+              Upload{entries.length > 1 ? ` ${entries.length} files` : ""}
             </Button>
           </DialogFooter>
         </form>
