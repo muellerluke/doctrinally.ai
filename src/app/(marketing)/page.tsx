@@ -4,25 +4,18 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
+import { TestimonialCard } from "@/components/marketing/testimonial-card";
+import { CTASection } from "@/components/marketing/cta-section";
 import {
   ArrowRight,
   Check,
   MessageSquare,
   Upload,
   BarChart3,
-  FileText,
-  Video,
   Sparkles,
-  ShieldCheck,
-  Clock,
-  Quote,
-  BookOpen,
   Zap,
-  Globe,
-  Users,
-  TrendingUp,
-  ChevronDown,
 } from "lucide-react";
+import { heroStats, beforeAfter, testimonials } from "@/content/marketing/data";
 
 export const metadata: Metadata = {
   title: "Your Church's Own AI Assistant — Doctrinally.AI",
@@ -31,149 +24,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://www.doctrinally.ai" },
 };
 
-// ─── Data ──────────────────────────────────────────────────────────────────
-
-const heroStats = [
-  { value: "< 5 min", label: "To launch your AI" },
-  { value: "24/7", label: "For every member" },
-  { value: "100%", label: "Your church's voice" },
-];
-
-const bentoFeatures = [
-  {
-    icon: Upload,
-    title: "Teach your AI everything your church has taught",
-    description:
-      "Paste a YouTube sermon link, upload a video or PDF, or write new devotions in our built-in editor. Your AI starts learning from your teaching the moment you add it.",
-    span: "lg:col-span-4 lg:row-span-2",
-    accent: true,
-  },
-  {
-    icon: BookOpen,
-    title: "Trained on your pastor, not the internet",
-    description:
-      "Answers come from your own sermons — not a generic model guessing at theology.",
-    span: "lg:col-span-2 lg:row-span-1",
-  },
-  {
-    icon: Video,
-    title: "Citations that play",
-    description:
-      "Sermons embed inline. Videos jump to the moment. PDFs link to the page.",
-    span: "lg:col-span-2 lg:row-span-1",
-  },
-  {
-    icon: BarChart3,
-    title: "See what your church is really asking",
-    description:
-      "Analytics show trending questions, ones the AI couldn't answer, and where your teaching has gaps.",
-    span: "lg:col-span-3 lg:row-span-1",
-  },
-  {
-    icon: Globe,
-    title: "Share your AI with a QR code",
-    description:
-      "Drop it on Sunday's bulletin. Members scan and ask — no login required.",
-    span: "lg:col-span-3 lg:row-span-1",
-  },
-];
-
-const beforeAfter = {
-  before: [
-    "Members ask ChatGPT questions you should be answering",
-    "Visitors Google your doctrine and get answers no one at your church wrote",
-    "New believers get discipled by whatever AI happens to be loudest",
-    "Your church has no voice in the conversations your members are already having",
-  ],
-  after: [
-    "Your church has its own AI, grounded in your pastor's teaching",
-    "Members ask anything and hear your voice back, with citations to the source",
-    "Visitors explore what YOUR church actually believes — not a stranger's take",
-    "The AI your congregation is already using is finally the one you built",
-  ],
-};
-
-const testimonials = [
-  {
-    quote:
-      "Our congregation loves being able to ask questions and hear answers drawn directly from what we've actually taught from the pulpit. It's like giving every member a private appointment with the teaching team — any time, day or night.",
-    name: "Zach Neumann",
-    role: "Vicar",
-    church: "Messiah Lutheran Church, Johns Creek",
-    initial: "Z",
-  },
-  {
-    quote:
-      "Doctrinally.AI has quickly become part of how we disciple our people. Members are exploring sermons they missed, and visitors are getting a real sense of what we believe before they ever walk in the door. It's been a genuine gift to our church.",
-    name: "Kostia Skorenkyi",
-    role: "Pastor",
-    church: "North Cross Church",
-    initial: "K",
-  },
-];
-
-const standardFeatures = [
-  "Your own doctrinally.ai subdomain",
-  "Up to 50 document uploads / month",
-  "1,000 member questions / month",
-  "Analytics dashboard",
-  "Unlimited members",
-  "Email support",
-];
-
-const enterpriseFeatures = [
-  "Everything in Standard, plus:",
-  "Use your own custom domain",
-  "Your church's logo and branding",
-  "100 document uploads / month",
-  "2,000 member questions / month",
-  "Priority support & onboarding",
-];
-
-const faqs = [
-  {
-    question: "Do I need technical skills to set this up?",
-    answer:
-      "No. If you can paste a YouTube link and drag a PDF, you can set up Doctrinally.AI. Most churches are fully live in under 5 minutes — our onboarding walks you through each step and we'll help over email if you get stuck.",
-  },
-  {
-    question: "Do members need an account to use the chat?",
-    answer:
-      "Never. Members just scan the QR code or visit your link and start asking questions. Accounts are optional — they only enable saved chat history for members who want it.",
-  },
-  {
-    question: "What types of content can I upload?",
-    answer:
-      "YouTube sermon videos (as links), video files, PDF documents, Word documents, and rich text documents created in our built-in editor. YouTube playlist uploads are coming soon — for now, just add videos one at a time.",
-  },
-  {
-    question: "How is this different from ChatGPT?",
-    answer:
-      "ChatGPT answers from the open internet. Doctrinally.AI gives your church its own private AI, trained only on the sermons, devotions, and documents you upload. Every answer is grounded in what YOUR pastors have actually taught, and every quote is cited back to the source. Your doctrine, your voice — not a stranger's guess at theology.",
-  },
-  {
-    question: "What happens if I go over my monthly limits?",
-    answer:
-      "By default, message limits are hard-enforced — members simply see a friendly notice when the limit is reached, and your church is never charged extra. If you want to allow additional messages, you can opt in to overage from your billing settings and set a maximum cap so you always stay in control. Extra messages are $0.25 each, capped at whatever limit you choose. No surprises, ever.",
-  },
-  {
-    question: "Can I cancel anytime?",
-    answer:
-      "Yes. There's no long-term contract. Cancel with one click from the billing page and you won't be charged again. You can also export your content at any time.",
-  },
-  {
-    question: "Is my church's data private?",
-    answer:
-      "Yes. Every church's content is fully isolated — members of one church cannot access another church's data. All content is encrypted in transit and at rest.",
-  },
-  {
-    question: "Can I use my own domain?",
-    answer:
-      "Yes, on the Enterprise plan. Standard churches use a subdomain like yourchurch.doctrinally.ai; Enterprise churches can use ai.yourchurch.com with full custom branding.",
-  },
-];
-
-// ─── Page ──────────────────────────────────────────────────────────────────
+// ─── Page ──────────────────────────────────────────────────────────
 
 export default function HomePage() {
   return (
@@ -257,14 +108,6 @@ export default function HomePage() {
               </Button>
               <Button
                 size="lg"
-                variant="ghost"
-                className="h-12 px-5 text-[0.95rem] text-foreground/80 hover:text-foreground"
-                render={<Link href="#how-it-works" />}
-              >
-                See how it works
-              </Button>
-              <Button
-                size="lg"
                 variant="outline"
                 className="h-12 px-5 text-[0.95rem]"
                 render={
@@ -317,26 +160,7 @@ export default function HomePage() {
           {/* Right column – live chat preview */}
           <div className="relative flex items-center justify-center">
             <div className="absolute -inset-8 -z-10 rounded-[2rem] bg-gradient-to-br from-primary/10 via-transparent to-gold/10 blur-2xl" />
-            <div className="animate-fade-up stagger-4 w-full max-w-lg">
-              <HeroChatPreview />
-            </div>
-            {/* Floating badges */}
-            <div className="pointer-events-none absolute -left-4 top-8 hidden rotate-[-4deg] rounded-xl border bg-background/90 px-3 py-2 text-[11px] shadow-lg backdrop-blur md:block">
-              <div className="flex items-center gap-1.5 font-semibold">
-                <Zap className="h-3 w-3 text-gold" /> Trained on your church
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                Nothing generic
-              </div>
-            </div>
-            <div className="pointer-events-none absolute -right-2 bottom-12 hidden rotate-[3deg] rounded-xl border bg-background/90 px-3 py-2 text-[11px] shadow-lg backdrop-blur md:block">
-              <div className="flex items-center gap-1.5 font-semibold">
-                <ShieldCheck className="h-3 w-3 text-primary" /> Your doctrine
-              </div>
-              <div className="text-[10px] text-muted-foreground">
-                In your pastor&apos;s voice
-              </div>
-            </div>
+            <HeroChatPreview />
           </div>
         </div>
       </section>
@@ -400,143 +224,67 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── HOW IT WORKS ─────────────────────────────────────── */}
-      <section id="how-it-works" className="border-b bg-card/30 py-20 sm:py-28">
+      {/* ─── EXPLORE CARDS ───────────────────────────────────────── */}
+      <section className="border-b bg-card/30 py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
-              How it works
+              Learn more
             </p>
             <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Your church&apos;s own AI, live in{" "}
-              <span className="italic text-primary">under 5 minutes.</span>
+              See what Doctrinally.AI{" "}
+              <span className="italic text-primary">can do.</span>
             </h2>
           </div>
 
-          <div className="mx-auto mt-12 grid max-w-6xl gap-6 sm:mt-16 md:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 sm:mt-16 md:grid-cols-3">
             {[
               {
-                step: "01",
+                icon: Zap,
+                title: "How It Works",
+                description:
+                  "Three steps. Under five minutes. No tech skills required.",
+                href: "/how-it-works",
+              },
+              {
                 icon: Upload,
-                title: "Teach your AI what your church believes",
-                body: "Paste YouTube sermon links, drop in videos and PDFs, or write new devotions directly in our built-in editor.",
+                title: "Features",
+                description:
+                  "Upload sermons, get cited answers, track what your church is asking.",
+                href: "/features",
               },
               {
-                step: "02",
-                icon: Sparkles,
-                title: "Your AI learns your voice",
-                body: "Your pastor's teaching becomes the foundation for every answer — ready for any question your congregation can ask.",
+                icon: BarChart3,
+                title: "Pricing",
+                description:
+                  "From $49/month with a 14-day free trial. No setup fees, no contracts.",
+                href: "/pricing",
               },
-              {
-                step: "03",
-                icon: MessageSquare,
-                title: "Share it with a QR code",
-                body: "Members scan, ask your church's AI anything, and get cited answers 24/7 — no login required.",
-              },
-            ].map((s, i) => (
-              <div
-                key={s.step}
-                className="group relative rounded-2xl border bg-background p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/[0.06] sm:p-8"
+            ].map((card) => (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="group flex flex-col rounded-2xl border bg-background p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/[0.06]"
               >
-                <div className="absolute right-6 top-6 font-heading text-5xl italic text-muted-foreground/15">
-                  {s.step}
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <card.icon className="h-5 w-5" />
                 </div>
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                  <s.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 font-heading text-xl">{s.title}</h3>
-                <p className="text-[0.93rem] leading-relaxed text-muted-foreground">
-                  {s.body}
+                <h3 className="font-heading text-xl">{card.title}</h3>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">
+                  {card.description}
                 </p>
-                {i < 2 && (
-                  <div className="absolute right-[-14px] top-1/2 hidden h-px w-7 -translate-y-1/2 bg-border md:block" />
-                )}
-              </div>
+                <div className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-primary">
+                  Learn more
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                </div>
+              </Link>
             ))}
           </div>
-
-          <div className="mt-14 text-center">
-            <Button size="lg" className="cta-ring h-12 px-7 font-semibold" render={<Link href="/sign-up" />}>
-              Launch your church&apos;s AI
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <p className="mt-3 text-[12px] text-muted-foreground">
-              14 days free. Cancel anytime.
-            </p>
-          </div>
         </div>
       </section>
 
-      {/* ─── BENTO FEATURES ───────────────────────────────────── */}
-      <section id="features" className="border-b py-20 sm:py-28">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
-              Everything your church needs
-            </p>
-            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              An AI that sounds like{" "}
-              <span className="italic text-primary">your church.</span>
-            </h2>
-          </div>
-
-          <div className="mx-auto mt-12 grid max-w-6xl auto-rows-auto grid-cols-1 gap-5 sm:mt-16 sm:grid-cols-2 lg:auto-rows-[200px] lg:grid-cols-6">
-            {bentoFeatures.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div
-                  key={f.title}
-                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/[0.05] sm:p-7 ${
-                    f.accent
-                      ? "bg-gradient-to-br from-primary/[0.07] via-background to-gold/[0.05]"
-                      : "bg-card"
-                  } ${f.span}`}
-                >
-                  {f.accent && (
-                    <>
-                      <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
-                      <div className="absolute bottom-0 left-0 right-0 h-24 bg-dots opacity-30" />
-                    </>
-                  )}
-                  <div className="relative z-10">
-                    <div className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-xl border bg-background text-primary shadow-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-heading text-lg leading-snug tracking-tight sm:text-xl">
-                      {f.title}
-                    </h3>
-                    <p className="mt-2 max-w-md text-[0.9rem] leading-relaxed text-muted-foreground">
-                      {f.description}
-                    </p>
-                  </div>
-                  {/* Decorative corner for the big card */}
-                  {f.accent && (
-                    <div className="relative z-10 mt-6 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[11px] font-medium text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Video className="h-3.5 w-3.5" />
-                        YouTube sermons
-                      </span>
-                      <span className="hidden text-border sm:inline">·</span>
-                      <span className="flex items-center gap-1.5">
-                        <FileText className="h-3.5 w-3.5" />
-                        PDFs & docs
-                      </span>
-                      <span className="hidden text-border sm:inline">·</span>
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Rich text editor
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── TESTIMONIALS + METRICS ───────────────────────────── */}
-      <section id="testimonials" className="border-b bg-card/30 py-20 sm:py-28">
+      {/* ─── TESTIMONIALS ────────────────────────────────────────── */}
+      <section className="border-b py-20 sm:py-28">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
@@ -550,321 +298,14 @@ export default function HomePage() {
 
           <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:mt-16 md:grid-cols-2">
             {testimonials.map((t) => (
-              <figure
-                key={t.name}
-                className="group flex flex-col rounded-2xl border bg-background p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/[0.05] sm:p-8"
-              >
-                <Quote className="mb-4 h-7 w-7 text-gold/60" />
-                <blockquote className="flex-1 text-base italic leading-relaxed text-foreground/90">
-                  &ldquo;{t.quote}&rdquo;
-                </blockquote>
-                <figcaption className="mt-7 flex items-center gap-4 border-t pt-5">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 font-heading text-base text-primary">
-                    {t.initial}
-                  </div>
-                  <div>
-                    <div className="font-heading text-[0.95rem]">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t.role}, {t.church}
-                    </div>
-                  </div>
-                </figcaption>
-              </figure>
+              <TestimonialCard key={t.name} testimonial={t} />
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── PRICING ──────────────────────────────────────────── */}
-      <section
-        id="pricing"
-        className="parchment-texture relative border-b py-20 sm:py-28"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/[0.025] to-background" />
-        <div className="container relative mx-auto px-4">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
-              Transparent pricing
-            </p>
-            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Your own AI for less than{" "}
-              <span className="italic text-primary">one Sunday lunch.</span>
-            </h2>
-            <p className="mt-5 text-lg text-muted-foreground">
-              No setup fees. No contracts. 14-day free trial on every plan.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:mt-16 lg:grid-cols-2">
-            {/* Standard */}
-            <div className="relative flex flex-col rounded-2xl border bg-background p-6 shadow-sm sm:p-8">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                For growing churches
-              </div>
-              <h3 className="font-heading text-2xl tracking-tight">Standard</h3>
-              <div className="mt-5 flex items-baseline gap-1.5">
-                <span className="font-heading text-5xl tracking-tight">
-                  $49
-                </span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <p className="mt-2 text-[13px] text-muted-foreground">
-                That&apos;s <span className="font-semibold text-foreground">$1.63/day</span> for your church&apos;s own AI assistant.
-              </p>
-
-              <ul className="mt-7 space-y-3.5">
-                {standardFeatures.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[0.92rem]">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span className="text-foreground/90">{f}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className="mt-8 h-11 w-full font-semibold"
-                variant="outline"
-                render={<Link href="/sign-up" />}
-              >
-                Start free trial
-              </Button>
-              <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                14 days free · Cancel anytime
-              </p>
-            </div>
-
-            {/* Enterprise */}
-            <div className="relative flex flex-col overflow-visible rounded-2xl border-2 border-gold/40 bg-gradient-to-br from-primary/[0.04] via-background to-gold/[0.06] p-6 shadow-2xl shadow-primary/[0.08] sm:p-8">
-              <div className="absolute -top-3 left-6 sm:left-8">
-                <Badge className="rounded-full border border-gold/50 bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-foreground shadow-md">
-                  Most popular · Save 40%
-                </Badge>
-              </div>
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-gold">
-                For established churches
-              </div>
-              <h3 className="font-heading text-2xl tracking-tight">
-                Enterprise
-              </h3>
-              <div className="mt-5 flex items-baseline gap-1.5">
-                <span className="font-heading text-5xl tracking-tight">
-                  $99
-                </span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <p className="mt-2 text-[13px] text-muted-foreground">
-                Your AI on your own domain, with your church&apos;s branding and 2× the capacity.
-              </p>
-
-              <ul className="mt-7 space-y-3.5">
-                {enterpriseFeatures.map((f, i) => (
-                  <li
-                    key={f}
-                    className={`flex items-start gap-2.5 text-[0.92rem] ${
-                      i === 0 ? "font-semibold text-foreground" : ""
-                    }`}
-                  >
-                    {i === 0 ? (
-                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                    ) : (
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                    )}
-                    <span className={i === 0 ? "" : "text-foreground/90"}>
-                      {f}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                className="cta-ring mt-8 h-11 w-full font-semibold"
-                render={<Link href="/sign-up" />}
-              >
-                Start free trial
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                14 days free · Cancel anytime
-              </p>
-            </div>
-          </div>
-
-          {/* Value anchor bar */}
-          <div className="mx-auto mt-10 max-w-3xl rounded-xl border bg-background/60 px-6 py-4 text-center backdrop-blur">
-            <p className="text-[13px] text-muted-foreground">
-              <TrendingUp className="mr-1 inline h-3.5 w-3.5 text-primary" />
-              <span className="font-semibold text-foreground">$49/month</span>{" "}
-              for an AI trained on your church &mdash; and it answers the
-              questions{" "}
-              <span className="italic">your pastors would be answering anyway.</span>
-            </p>
-          </div>
-
-          <p className="mx-auto mt-6 max-w-lg text-center text-[12px] text-muted-foreground">
-            Message limits are enforced by default &mdash; you&apos;ll never be
-            charged for overages unless you opt in. If enabled, extra messages
-            are just $0.25 each with a cap you control.
-          </p>
-        </div>
-      </section>
-
-      {/* ─── GUARANTEE / RISK REVERSAL ────────────────────────── */}
-      <section className="border-b py-16 sm:py-20">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto flex max-w-4xl flex-col items-center gap-7 rounded-3xl border border-gold/30 bg-gradient-to-br from-gold/[0.06] via-background to-primary/[0.04] p-7 text-center sm:gap-8 sm:p-10 md:flex-row md:text-left">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-gold/40 bg-background shadow-inner">
-              <ShieldCheck className="h-10 w-10 text-gold" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-heading text-2xl tracking-tight sm:text-3xl">
-                Try your church&apos;s AI free for 14 days.
-              </h3>
-              <p className="mt-3 text-[0.95rem] leading-relaxed text-muted-foreground">
-                Launch it, load it with your teaching, let your congregation
-                ask it anything. If it&apos;s not a fit, cancel in one click
-                &mdash; and you keep every document you uploaded. No hostage
-                situations.
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col items-stretch gap-2">
-              <Button
-                size="lg"
-                className="cta-ring h-12 px-7 font-semibold"
-                render={<Link href="/sign-up" />}
-              >
-                Start free trial
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                Set up in under 5 minutes
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FAQ ──────────────────────────────────────────────── */}
-      <section id="faq" className="border-b py-20 sm:py-28">
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
-              FAQ
-            </p>
-            <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Questions, answered.
-            </h2>
-            <p className="mt-5 text-lg text-muted-foreground">
-              Still unsure? Email us anytime — we answer every message
-              personally.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-14 max-w-3xl space-y-3">
-            {faqs.map((faq, i) => (
-              <details
-                key={faq.question}
-                className="group rounded-xl border bg-card/40 p-5 transition-colors open:bg-card/80 hover:bg-card/60"
-                {...(i === 0 ? { open: true } : {})}
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-[0.98rem] font-medium text-foreground">
-                  <span>{faq.question}</span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
-                </summary>
-                <div className="mt-4 pr-8 text-[0.92rem] leading-relaxed text-muted-foreground">
-                  {faq.answer}
-                </div>
-              </details>
-            ))}
-          </div>
-
-          <div className="mt-14 flex flex-col items-center justify-center gap-4">
-            <Button
-              size="lg"
-              className="cta-ring h-12 px-7 font-semibold"
-              render={<Link href="/sign-up" />}
-            >
-              Start your free trial
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-6 text-[12px] text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5 text-gold" /> 14 days free
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5 text-gold" /> Cancel anytime
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5 text-gold" /> Export your data
-              </span>
-            </div>
           </div>
         </div>
       </section>
 
       {/* ─── FINAL CTA ────────────────────────────────────────── */}
-      <section className="parchment-texture relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/[0.06] to-background" />
-        <div className="ember-glow" aria-hidden />
-        <div className="container relative mx-auto flex flex-col items-center gap-8 px-4 py-24 text-center sm:py-32">
-          <Badge
-            variant="outline"
-            className="max-w-full rounded-full border-primary/20 bg-background/80 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground backdrop-blur sm:text-[11px]"
-          >
-            <Users className="mr-2 h-3 w-3 shrink-0 text-gold" />
-            <span className="sm:hidden">Your church&apos;s own AI</span>
-            <span className="hidden sm:inline">
-              A custom AI for pastors, teaching teams, and their congregations
-            </span>
-          </Badge>
-
-          <h2 className="max-w-3xl font-heading text-[2.1rem] leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-            <span className="text-gradient-ink">Give your church</span>
-            <br />
-            <span className="italic text-primary">
-              an AI it can call its own.
-            </span>
-          </h2>
-
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Launch your church&apos;s custom AI in the next five minutes. Let
-            your congregation ask anything &mdash; and hear your pastor&apos;s
-            voice answer back.
-          </p>
-
-          <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
-            <Button
-              size="lg"
-              className="cta-ring h-14 px-9 text-base font-semibold"
-              render={<Link href="/sign-up" />}
-            >
-              Start your 14-day free trial
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="h-14 px-6 text-[0.95rem] text-foreground/80 hover:text-foreground"
-              render={<Link href="#pricing" />}
-            >
-              See pricing
-            </Button>
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[12px] text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <Check className="h-3.5 w-3.5 text-gold" /> 14 days free
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="h-3.5 w-3.5 text-gold" /> Live in under 5
-              minutes
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="h-3.5 w-3.5 text-gold" /> Cancel anytime
-            </span>
-          </div>
-        </div>
-      </section>
+      <CTASection secondaryHref="/pricing" secondaryLabel="See pricing" />
     </div>
   );
 }

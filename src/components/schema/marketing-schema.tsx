@@ -55,7 +55,7 @@ const softwareApplication = {
         priceCurrency: "USD",
         unitCode: "MON",
       },
-      url: "https://www.doctrinally.ai/#pricing",
+      url: "https://www.doctrinally.ai/pricing",
     },
     {
       "@type": "Offer",
@@ -68,7 +68,7 @@ const softwareApplication = {
         priceCurrency: "USD",
         unitCode: "MON",
       },
-      url: "https://www.doctrinally.ai/#pricing",
+      url: "https://www.doctrinally.ai/pricing",
     },
   ],
 };

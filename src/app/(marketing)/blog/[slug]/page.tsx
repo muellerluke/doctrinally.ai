@@ -156,7 +156,7 @@ export default async function BlogPostPage({
                 </Button>
                 <Button
                   variant="outline"
-                  render={<Link href="/#how-it-works" />}
+                  render={<Link href="/how-it-works" />}
                 >
                   See how it works
                 </Button>
