@@ -18,11 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signUpSchema } from "@/lib/validations/auth";
-import {
-  signUp,
-  validateInvitationToken,
-  acceptInvitationForCurrentUser,
-} from "@/lib/actions/auth";
+import { signUp } from "@/lib/actions/auth";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -34,26 +30,12 @@ export default function SignUpPage() {
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [inviteToken, setInviteToken] = useState<string | null>(null);
 
   useEffect(() => {
     const token = searchParams.get("invite");
     if (!token) return;
-    let cancelled = false;
-    (async () => {
-      const result = await validateInvitationToken(token);
-      if (cancelled) return;
-      if (result.error || !result.invitation) {
-        toast.error(result.error || "Invalid invitation");
-        return;
-      }
-      setEmail(result.invitation.email);
-      setInviteToken(token);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams]);
+    router.replace(`/invite?token=${token}`);
+  }, [searchParams, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,10 +62,6 @@ export default function SignUpPage() {
       const result = await signUp({ name, email, password });
 
       if (result.error) {
-        if (inviteToken) {
-          router.replace(`/invite?token=${inviteToken}`);
-          return;
-        }
         toast.error(result.error);
         return;
       }
@@ -101,19 +79,9 @@ export default function SignUpPage() {
         return;
       }
 
-      window.plausible?.("Sign Up", { props: { via_invite: !!inviteToken } });
+      window.plausible?.("Sign Up");
 
-      if (inviteToken) {
-        const accept = await acceptInvitationForCurrentUser(inviteToken);
-        if (accept.error) {
-          toast.error(accept.error);
-          router.push("/onboarding");
-        } else {
-          router.push("/dashboard");
-        }
-      } else {
-        router.push("/onboarding");
-      }
+      router.push("/onboarding");
       router.refresh();
     } catch {
       toast.error("Something went wrong. Please try again.");
@@ -155,7 +123,7 @@ export default function SignUpPage() {
               placeholder="you@church.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              disabled={loading || !!inviteToken}
+              disabled={loading}
             />
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email}</p>
