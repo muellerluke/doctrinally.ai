@@ -30,6 +30,93 @@ export type BlogPost = {
  */
 export const blogPosts: BlogPost[] = [
   {
+    slug: "opus-4-7-and-the-church",
+    title:
+      "Opus 4.7 Drops Today: What a Smarter Model Actually Means for the Church",
+    description:
+      "Anthropic released Claude Opus 4.7 today. Here is a plain-language look at what is new, why it matters for ministry, and how churches can adopt the next generation of AI without surrendering their pulpit.",
+    category: "Platform",
+    publishedAt: "2026-04-16",
+    readMinutes: 8,
+    author: "The Doctrinally.AI Team",
+    excerpt:
+      "Anthropic released Claude Opus 4.7 today. Here is what actually changes for churches — better reasoning, longer context, stronger citation discipline — and the one thing that still has to stay true no matter how smart the model gets.",
+    sections: [
+      {
+        paragraphs: [
+          "Today, April 16, 2026, Anthropic released Claude Opus 4.7 — the newest flagship in the Claude 4 family and, at the moment of this writing, the most capable general-purpose language model available. For most of the internet, it is another model announcement in a year that has already had too many. For the church, it is worth pausing on.",
+          "Every meaningful jump in model quality reshapes what members expect their chatbot to do, what visitors assume a church website can answer, and what pastors need to understand in order to shepherd their people well. Opus 4.7 is a meaningful jump. This is a plain-language walk through what is new, why it matters for ministry, and — most importantly — the one thing that still has to stay true no matter how smart the model gets.",
+        ],
+      },
+      {
+        heading: "What is actually new in Opus 4.7",
+        paragraphs: [
+          "Opus 4.7 is, at its core, an incremental release on top of the Claude 4 family that has been setting the pace for the last year. It is not a new paradigm. It is a sharper instrument. But the places where it has sharpened matter pastorally, which is why it is worth naming them.",
+          "The first improvement is reasoning on long, complex documents. Opus 4.7 holds a substantially longer effective context window and — more importantly — keeps its reasoning coherent across that whole window. For a church, that is the difference between asking a question and getting an answer grounded in a single paragraph versus an answer that has actually weighed a twelve-sermon series, an elders' position paper, and three devotional entries together. The same question can now produce a much more faithful answer because the model is weighing more of what your church has said at once.",
+          "The second improvement is instruction following, especially around citations and refusal. Earlier models could be coaxed into inventing a verse or attributing a quote to the wrong pastor if the prompt was ambiguous. Opus 4.7 is measurably more disciplined about grounding its answers in the sources it was given, saying 'I don't know' when the sources do not answer the question, and declining to speculate beyond what the text supports. For an application like ours, where every answer has to be traceable back to a sermon or a document, that discipline matters more than raw fluency.",
+          "The third improvement is latency for complex reasoning tasks. Opus 4.7 is not the fastest model in the Claude family — Haiku 4.5 is still the speed champion — but it is noticeably quicker on the kinds of retrieval-augmented workloads that power church chat. A member asking a hard question at 10 p.m. will feel the difference.",
+        ],
+      },
+      {
+        heading: "Why any of this matters for a church",
+        paragraphs: [
+          "It is fair to ask, 'Why should a pastor care about a model release?' Most of the news cycle around AI is aimed at engineers and investors. The honest answer is that each model release quietly raises the floor for what your members will assume is possible.",
+          "In 2023, members did not expect much from a church chatbot. In 2024, they started expecting it to remember the last thing they asked. In 2025, they started expecting it to cite sources. In 2026, with Opus 4.7 in the wild, they will start expecting answers that read like a thoughtful pastor wrote them. That is not a hype claim — it is simply where the technology now sits. Church tools that do not keep up will feel, very quickly, like the 2019 version of the same product.",
+          "The second reason it matters is subtler. Every time the frontier models get better at generic theology, the gap between a general chatbot and a church-specific one gets more dangerous. A more fluent, more confident, more articulate Opus 4.7 answering a question about baptism from the open internet will sound even more authoritative than its predecessors — and will still be giving an answer your elders never approved. The case for church-specific, source-grounded AI does not weaken as models get smarter. It gets stronger.",
+        ],
+      },
+      {
+        heading: "What Opus 4.7 changes inside Doctrinally.AI",
+        paragraphs: [
+          "We have spent the last several weeks evaluating Opus 4.7 against our existing retrieval stack, and we are rolling it out to churches on the platform this week. A few things will change, and a few things emphatically will not.",
+          "What will change: answers will be noticeably more coherent across long sermon series. A member asking, 'What has our church taught about forgiveness?' will get a response that weighs a year's worth of relevant teaching at once, rather than summarizing a single message. Citations will be tighter — the model is better at pointing to the specific paragraph, timestamp, or page reference, rather than the document as a whole. Admin-side testing in the Document Management area will feel more responsive, especially for complex follow-up questions.",
+          "What will not change: the grounding. Every answer your members receive is still drawn exclusively from the content your church has uploaded, plus Scripture. Opus 4.7 is a better reader of that content. It is not a source of new theology. If your church has not spoken to a topic, the platform still says so — honestly, plainly, without filling the gap with internet theology, no matter how confidently a newer model could pretend to.",
+          "This is the part of the architecture that is worth belaboring, because it is the part that matters most. A smarter model is not a reason to loosen the guardrails. It is a reason to tighten them. The whole point of Doctrinally.AI is that the model serves the church, not the other way around.",
+        ],
+      },
+      {
+        heading: "A practical note on cost and the Standard plan",
+        paragraphs: [
+          "Opus is the most capable and, historically, the most expensive tier of the Claude family. We want to be transparent about how that shows up in the product. On the Standard plan ($49/month), most member-facing chat responses will continue to use a carefully tuned blend of Haiku 4.5 and Sonnet 4.6 — the right trade-off for 500 questions a month at that price point. Opus 4.7 is used selectively for the longest, most complex retrieval tasks where reasoning quality materially changes the answer.",
+          "On the Enterprise plan ($99/month), Opus 4.7 is available as the default reasoning model for all chat traffic, with the broader 2,000-question monthly limit and the custom domain and branding features that larger churches ask for. We built the plans this way because we did not want churches to have to choose between honest pricing and access to the best reasoning available.",
+          "None of this changes the thing that actually distinguishes us: the grounding, the citations, and the honest silence when your church has not spoken to a question. Those do not depend on the model tier. They depend on the architecture.",
+        ],
+      },
+      {
+        heading: "Six ways churches can put a smarter model to work",
+        paragraphs: [
+          "With Opus 4.7 now generally available, here are six uses we are seeing churches genuinely benefit from — each of which becomes meaningfully better with the new model, and none of which require the pastor to surrender control of the pulpit.",
+          "First, cross-series synthesis. A member asks, 'How has our church taught on anxiety over the years?' Opus 4.7 can now weave together threads from a 2022 sermon, a 2024 devotional, and a recent small-group document — with citations — in a way earlier models could not. The output reads less like a summary and more like a pastor walking the member through the arc.",
+          "Second, visitor exploration. A first-time visitor scans the QR code on Sunday's bulletin and asks a nervous, imprecise question about what the church believes. A more capable model handles imprecise questions gracefully, routes to the right sources, and answers with warmth rather than stiffness. The visitor gets an answer that sounds like the church, not a FAQ.",
+          "Third, content-gap discovery. The admin dashboard has always shown which questions members ask most. With Opus 4.7's improved topic clustering, those analytics become sharper. Pastors can see not just 'people are asking about suffering' but 'people are asking specifically about the suffering of children and we have only addressed it once.' That is sermon-planning gold.",
+          "Fourth, Platejs-created document reasoning. For churches that build their own documents inside the app using the rich-text editor, Opus 4.7 is substantially better at reasoning over heavily-structured content — nested outlines, footnotes, and internal references. If your catechism or membership class material lives inside Doctrinally.AI, it just got more useful.",
+          "Fifth, Bible passage integration. When a member asks a question that crosses church-specific teaching and Scripture directly, the new model is better at citing the passage, surfacing the relevant verse preview, and linking out to the full text. The handoff between church content and Bible content feels more natural.",
+          "Sixth, multilingual pastoral care. Opus 4.7's multilingual capabilities are a real step forward for churches serving immigrant and bilingual congregations. A Spanish-speaking member can ask a question in Spanish and receive an answer drawn from the same English sermon library, with citations preserved. This is one of the improvements we expect to matter most in the long run.",
+        ],
+      },
+      {
+        heading: "The one thing that still has to stay true",
+        paragraphs: [
+          "It would be easy to turn a model-release post into a hype piece. That is not what this is. Opus 4.7 is a better instrument, and better instruments are worth celebrating. But a better instrument does not change the fundamental pastoral question about AI in the church, and we want to be clear about that.",
+          "The question is still: who controls what this tool says to my congregation? A model that reasons more coherently is more useful to you if it is grounded in your teaching, and more dangerous to you if it is not. The same capability that lets Opus 4.7 weave a compelling answer from your sermons also lets it weave a compelling answer from an internet full of bad theology — and the member on the other end cannot tell the difference.",
+          "This is why the architecture matters more than the model. Doctrinally.AI is built so that every answer your members receive is drawn from content you chose, cited to sources they can verify, and honestly limited to topics your church has actually addressed. Opus 4.7 makes that architecture work better. It does not — and it should not — replace it.",
+        ],
+      },
+      {
+        heading: "What to do this week",
+        paragraphs: [
+          "If your church is already on Doctrinally.AI, you do not have to do anything. The Opus 4.7 rollout is automatic. You will notice the difference in answer quality over the next several days, especially for complex, multi-sermon questions.",
+          "If you have been evaluating AI tools for your church and holding out for something worth committing to, this is a reasonable week to start. The model powering the best church AI is now meaningfully better than it was a month ago. The guardrails that keep it faithful are the same ones that mattered before any of these model releases existed. Upload a few sermons, ask it hard questions, and see for yourself whether your pastor's voice is the one that comes back.",
+          "And if you are a pastor wondering whether any of this belongs in ministry at all, the honest answer has not changed. AI is a tool. It is more capable today than it was yesterday. It is still just a tool. What matters is that when your members reach for it at 2 a.m., the voice they hear is yours.",
+        ],
+      },
+    ],
+    churchRelevance: {
+      title: "A smarter model, the same conviction",
+      body: "Opus 4.7 is live inside Doctrinally.AI this week. Your church's answers will be more coherent, more carefully cited, and more responsive to the long, layered questions your members actually ask. What will not change is the thing that matters most: every response is still grounded in the sermons, devotions, and documents you upload, cited back to the source, and honestly silent when your church has not addressed a question. A better model, serving the same conviction — that the first voice your people hear should be yours.",
+    },
+  },
+  {
     slug: "best-ai-tools-for-churches",
     title:
       "The 10 Best AI Tools for Churches in 2026: An Honest Ranking",
