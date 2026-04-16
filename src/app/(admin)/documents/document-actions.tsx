@@ -35,25 +35,37 @@ import { useUploads } from "@/components/documents/upload-provider";
 interface DocumentActionsProps {
   churchId: string;
   currentFolderId?: string | null;
+  /** Called after an upload or folder creation succeeds so the library can
+   *  reload data for the *current* folder instead of resetting to root. */
+  onContentChanged?: () => void;
 }
 
 export function DocumentActions({
   churchId,
   currentFolderId,
+  onContentChanged,
 }: DocumentActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { addUpload, updateProgress, completeUpload, failUpload } =
     useUploads();
 
+  const refreshContent = useCallback(() => {
+    if (onContentChanged) {
+      onContentChanged();
+    } else {
+      router.refresh();
+    }
+  }, [onContentChanged, router]);
+
   // Refresh the document list when an upload finishes so the new row appears
   // immediately, even if the user navigated into a subfolder or has filters.
   const handleUploadComplete = useCallback(
     (id: string) => {
       completeUpload(id);
-      router.refresh();
+      refreshContent();
     },
-    [completeUpload, router]
+    [completeUpload, refreshContent]
   );
 
   const [newFolderOpen, setNewFolderOpen] = useState(false);
@@ -76,7 +88,7 @@ export function DocumentActions({
         toast.success("Folder created");
         setFolderName("");
         setNewFolderOpen(false);
-        router.refresh();
+        refreshContent();
       }
     });
   }
@@ -152,6 +164,7 @@ export function DocumentActions({
         onOpenChange={setYoutubeOpen}
         churchId={churchId}
         folderId={currentFolderId}
+        onSuccess={refreshContent}
       />
       <FileUploadDialog
         open={fileUploadOpen}

@@ -45,28 +45,43 @@ import {
 } from "@/lib/actions/folders";
 import { getDocuments } from "@/lib/actions/documents";
 
-interface FolderItem {
+export interface FolderItem {
   id: string;
   name: string;
   parentId: string | null;
   createdAt: Date;
 }
 
+export { type DocumentRow };
+
 interface DocumentLibraryProps {
   initialDocuments: DocumentRow[];
   initialFolders: FolderItem[];
   churchId: string;
+  currentFolderId?: string | null;
+  onFolderChange?: (folderId: string | null) => void;
+  /** Expose a stable refresh handle so sibling components (e.g. upload
+   *  actions) can reload the current folder's contents without router.refresh(),
+   *  which would clobber client-side folder state with root-level server data. */
+  onRefreshReady?: (refresh: () => Promise<void>) => void;
 }
 
 export function DocumentLibrary({
   initialDocuments,
   initialFolders,
   churchId,
+  currentFolderId: controlledFolderId,
+  onFolderChange,
+  onRefreshReady,
 }: DocumentLibraryProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [internalFolderId, setInternalFolderId] = useState<string | null>(null);
+
+  // Use controlled props when provided, otherwise fall back to internal state.
+  const currentFolderId = controlledFolderId !== undefined ? controlledFolderId : internalFolderId;
+  const setCurrentFolderId = onFolderChange ?? setInternalFolderId;
   const [breadcrumbs, setBreadcrumbs] = useState<
     { id: string; name: string }[]
   >([]);
@@ -74,9 +89,19 @@ export function DocumentLibrary({
   const [documents, setDocuments] = useState<DocumentRow[]>(initialDocuments);
   const [allFolders, setAllFolders] = useState<FolderItem[]>([]);
 
-  // Sync server-provided props into state after router.refresh()
-  useEffect(() => setDocuments(initialDocuments), [initialDocuments]);
-  useEffect(() => setFolders(initialFolders), [initialFolders]);
+  // Only sync server props when at the root folder (where the server data
+  // matches). When inside a subfolder the server still sends root-level
+  // data, so syncing would clobber the current view.
+  useEffect(() => {
+    if (currentFolderId === null) {
+      setDocuments(initialDocuments);
+    }
+  }, [initialDocuments, currentFolderId]);
+  useEffect(() => {
+    if (currentFolderId === null) {
+      setFolders(initialFolders);
+    }
+  }, [initialFolders, currentFolderId]);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -140,6 +165,11 @@ export function DocumentLibrary({
       );
     }
   }, [churchId, currentFolderId, debouncedSearch, typeFilter, statusFilter]);
+
+  // Expose refreshData to parent so sibling components can trigger it.
+  useEffect(() => {
+    onRefreshReady?.(refreshData);
+  }, [refreshData, onRefreshReady]);
 
   useEffect(() => {
     refreshData();

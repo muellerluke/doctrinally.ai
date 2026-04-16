@@ -23,6 +23,7 @@ interface YouTubeUploadDialogProps {
   onOpenChange: (open: boolean) => void;
   churchId: string;
   folderId?: string | null;
+  onSuccess?: () => void;
 }
 
 export function YouTubeUploadDialog({
@@ -30,6 +31,7 @@ export function YouTubeUploadDialog({
   onOpenChange,
   churchId,
   folderId,
+  onSuccess,
 }: YouTubeUploadDialogProps) {
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
@@ -70,7 +72,11 @@ export function YouTubeUploadDialog({
       toast.success("YouTube video added successfully");
       resetForm();
       onOpenChange(false);
-      router.refresh();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.refresh();
+      }
     } catch {
       toast.error("Failed to add YouTube video");
     } finally {

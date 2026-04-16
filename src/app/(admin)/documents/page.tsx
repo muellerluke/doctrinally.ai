@@ -1,14 +1,9 @@
-import { FileText } from "lucide-react";
-import { eq, and, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { documents as documentsTable } from "@/db/schema";
 import { requireMembership } from "@/lib/auth-guards";
 import { getDocuments } from "@/lib/actions/documents";
 import { getFolders } from "@/lib/actions/folders";
-import { PageHeader } from "@/components/shared/page-header";
-import { EmptyState } from "@/components/shared/empty-state";
-import { DocumentLibrary } from "@/components/documents/document-library";
-import { DocumentActions } from "./document-actions";
+import { DocumentsShell } from "@/components/documents/documents-shell";
 import { AdminChatTester } from "@/components/documents/admin-chat-tester";
 
 export default async function DocumentsPage() {
@@ -55,25 +50,12 @@ export default async function DocumentsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Documents"
-        description="Manage your church's content library"
-        actions={<DocumentActions churchId={churchId} />}
+      <DocumentsShell
+        churchId={churchId}
+        initialDocuments={documents}
+        initialFolders={folders}
+        isEmpty={isEmpty}
       />
-
-      {isEmpty ? (
-        <EmptyState
-          icon={FileText}
-          title="No documents yet"
-          description="Upload your first document to get started. The AI will index it automatically for chat retrieval."
-        />
-      ) : (
-        <DocumentLibrary
-          initialDocuments={documents}
-          initialFolders={folders}
-          churchId={churchId}
-        />
-      )}
 
       <AdminChatTester
         churchId={churchId}
