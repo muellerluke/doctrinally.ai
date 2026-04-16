@@ -14,15 +14,19 @@ export async function setActiveChurch(churchId: string) {
     return { error: "Not authenticated" };
   }
 
-  const membership = await db.query.memberships.findFirst({
-    where: and(
-      eq(memberships.userId, session.user.id),
-      eq(memberships.churchId, churchId)
-    ),
-  });
+  // In dev mode, allow switching to any church (for impersonation).
+  // In production, require a real membership.
+  if (process.env.NODE_ENV !== "development") {
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, session.user.id),
+        eq(memberships.churchId, churchId)
+      ),
+    });
 
-  if (!membership) {
-    return { error: "You do not belong to this church" };
+    if (!membership) {
+      return { error: "You do not belong to this church" };
+    }
   }
 
   const cookieStore = await cookies();

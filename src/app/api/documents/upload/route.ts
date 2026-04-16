@@ -7,7 +7,6 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
 import { getActiveMembershipForUser } from "@/lib/active-church";
-import { incrementDocumentUpload } from "@/lib/usage";
 
 // Client-direct upload via @vercel/blob/client. The browser uploads bytes
 // straight to Blob storage; this route only signs a token and receives a
@@ -190,8 +189,6 @@ export async function POST(request: Request) {
             updatedAt: new Date(),
           })
           .where(eq(documents.id, documentId));
-
-        await incrementDocumentUpload(churchId);
 
         const taskId = TYPE_TO_TASK[docType];
         if (taskId) {

@@ -146,7 +146,7 @@ export const testimonials: Testimonial[] = [
 
 export const standardFeatures = [
   "Your own doctrinally.ai subdomain",
-  "Up to 50 document uploads / month",
+  "Unlimited document uploads",
   "1,000 member questions / month",
   "Analytics dashboard",
   "Unlimited members",
@@ -157,7 +157,6 @@ export const enterpriseFeatures = [
   "Everything in Standard, plus:",
   "Use your own custom domain",
   "Your church's logo and branding",
-  "100 document uploads / month",
   "2,000 member questions / month",
   "Priority support & onboarding",
 ];

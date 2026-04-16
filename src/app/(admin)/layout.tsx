@@ -31,8 +31,9 @@ export default async function AdminLayout({
 
   const { membership, church, availableChurches } = active;
 
-  // If church exists but isn't active, redirect to complete onboarding
-  if (church && !church.isActive) {
+  // If church exists but isn't active, redirect to complete onboarding.
+  // Skip for dev-synthetic memberships so devs can view inactive churches.
+  if (membership.id !== "dev-synthetic" && church && !church.isActive) {
     const sub = await db.query.subscriptions.findFirst({
       where: eq(subscriptions.churchId, church.id),
     });
@@ -68,8 +69,6 @@ export default async function AdminLayout({
         subscriptionStatus={sub?.status}
         questionUsage={usage?.questions ?? 0}
         questionLimit={sub?.questionLimit ?? 0}
-        uploadUsage={usage?.documentUploads ?? 0}
-        uploadLimit={sub?.documentUploadLimit ?? 0}
         membershipRole={membership.role}
         trialEndsAt={
           sub?.status === "trialing" ? sub?.currentPeriodEnd ?? null : null

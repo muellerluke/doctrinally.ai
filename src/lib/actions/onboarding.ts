@@ -54,7 +54,6 @@ export async function resumeCheckout(plan: "standard" | "enterprise") {
     .update(subscriptions)
     .set({
       plan,
-      documentUploadLimit: limits.documentUploadLimit,
       questionLimit: limits.questionLimit,
       updatedAt: new Date(),
     })
@@ -148,7 +147,6 @@ export async function createChurch(input: {
       churchId: church.id,
       plan: parsed.data.plan,
       status: "incomplete",
-      documentUploadLimit: limits.documentUploadLimit,
       questionLimit: limits.questionLimit,
     });
 

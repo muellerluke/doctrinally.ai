@@ -5,11 +5,10 @@ export const PLANS = {
   standard: {
     name: "Standard",
     priceMonthly: 4900,
-    documentUploadLimit: 50,
     questionLimit: 1000,
     features: [
       "Subdomain on doctrinally.ai",
-      "Up to 50 document uploads/month",
+      "Unlimited document uploads",
       "1,000 messages/month",
       "Doctrinally.AI branding",
     ],
@@ -17,12 +16,11 @@ export const PLANS = {
   enterprise: {
     name: "Enterprise",
     priceMonthly: 9900,
-    documentUploadLimit: 100,
     questionLimit: 2000,
     features: [
       "Custom domain",
       "Custom branding and logo",
-      "Up to 100 document uploads/month",
+      "Unlimited document uploads",
       "2,000 messages/month",
     ],
   },
@@ -31,7 +29,6 @@ export const PLANS = {
 export type Plan = keyof typeof PLANS;
 
 export const OVERAGE_PRICING = {
-  documentUpload: 50,
   question: 25,
 } as const;
 

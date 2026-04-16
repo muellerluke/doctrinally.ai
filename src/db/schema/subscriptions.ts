@@ -28,7 +28,6 @@ export const subscriptions = pgTable("subscriptions", {
   stripeSubscriptionId: text("stripe_subscription_id").unique(),
   plan: planEnum("plan").notNull(),
   status: subscriptionStatusEnum("status").notNull().default("incomplete"),
-  documentUploadLimit: integer("document_upload_limit").notNull(),
   questionLimit: integer("question_limit").notNull(),
   messageOverageEnabled: boolean("message_overage_enabled").notNull().default(false),
   messageOverageCap: integer("message_overage_cap").notNull().default(0),

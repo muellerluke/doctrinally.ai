@@ -8,7 +8,6 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { getActiveMembershipForUser } from "@/lib/active-church";
-import { incrementDocumentUpload } from "@/lib/usage";
 import {
   youtubeUploadSchema,
   platejsDocumentSchema,
@@ -58,7 +57,7 @@ export async function getDocuments(filters: {
   const ctx = await getAuthContext();
   if (!ctx) return { error: "Unauthorized" };
 
-  const { churchId, search, type, status, folderId, page = 1, pageSize = 20 } = filters;
+  const { churchId, search, type, status, folderId, page, pageSize } = filters;
 
   if (ctx.membership.churchId !== churchId) {
     return { error: "Unauthorized" };
@@ -86,20 +85,36 @@ export async function getDocuments(filters: {
 
   const where = and(...conditions);
 
-  const [rows, totalResult] = await Promise.all([
-    db
-      .select()
-      .from(documents)
-      .where(where)
-      .orderBy(documents.createdAt)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize),
-    db.select({ total: count() }).from(documents).where(where),
-  ]);
+  // When page/pageSize aren't specified, return all matching documents.
+  // The document library uses TanStack Table for client-side pagination,
+  // so it needs the full set.
+  if (page != null && pageSize != null) {
+    const [rows, totalResult] = await Promise.all([
+      db
+        .select()
+        .from(documents)
+        .where(where)
+        .orderBy(documents.createdAt)
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      db.select({ total: count() }).from(documents).where(where),
+    ]);
+
+    return {
+      documents: rows,
+      total: totalResult[0]?.total ?? 0,
+    };
+  }
+
+  const rows = await db
+    .select()
+    .from(documents)
+    .where(where)
+    .orderBy(documents.createdAt);
 
   return {
     documents: rows,
-    total: totalResult[0]?.total ?? 0,
+    total: rows.length,
   };
 }
 
@@ -125,8 +140,6 @@ export async function createYouTubeDocument(input: YouTubeUploadInput) {
       metadata: { tags: tags ?? [] },
     })
     .returning({ id: documents.id });
-
-  await incrementDocumentUpload(ctx.membership.churchId);
 
   await triggerProcessing("youtube", doc.id);
 
@@ -197,8 +210,6 @@ export async function publishPlatejsDocument(documentId: string) {
     .update(documents)
     .set({ status: "queued", updatedAt: new Date() })
     .where(eq(documents.id, documentId));
-
-  await incrementDocumentUpload(ctx.membership.churchId);
 
   await triggerProcessing("platejs", documentId);
 

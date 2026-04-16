@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
@@ -70,29 +71,31 @@ export function ChurchSwitcher({ churches, activeChurchId }: ChurchSwitcherProps
         align="start"
         className="min-w-[14rem]"
       >
-        <DropdownMenuLabel>Switch church</DropdownMenuLabel>
-        {churches.map((church) => {
-          const isActive = church.churchId === activeChurchId;
-          return (
-            <DropdownMenuItem
-              key={church.churchId}
-              onClick={() => handleSelect(church.churchId)}
-              className="flex items-start gap-2"
-            >
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium">
-                  {church.churchName}
-                </span>
-                <span className="text-xs capitalize text-muted-foreground">
-                  {church.role}
-                </span>
-              </div>
-              {isActive && (
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              )}
-            </DropdownMenuItem>
-          );
-        })}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Switch church</DropdownMenuLabel>
+          {churches.map((church) => {
+            const isActive = church.churchId === activeChurchId;
+            return (
+              <DropdownMenuItem
+                key={church.churchId}
+                onClick={() => handleSelect(church.churchId)}
+                className="flex items-start gap-2"
+              >
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium">
+                    {church.churchName}
+                  </span>
+                  <span className="text-xs capitalize text-muted-foreground">
+                    {church.role}
+                  </span>
+                </div>
+                {isActive && (
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                )}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

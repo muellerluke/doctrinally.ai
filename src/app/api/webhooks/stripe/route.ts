@@ -173,7 +173,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       ...(plan &&
         limits && {
           plan,
-          documentUploadLimit: limits.documentUploadLimit,
           questionLimit: limits.questionLimit,
         }),
       status: mappedStatus,
@@ -288,10 +287,6 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice) {
 
   const rates = getOverageRates();
 
-  const uploadOverage = Math.max(
-    0,
-    usage.documentUploads - sub.documentUploadLimit
-  );
   // Only charge message overage if the church has opted in. When enabled,
   // cap the overage at the admin-configured maximum.
   let questionOverage = 0;
@@ -300,18 +295,7 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice) {
     questionOverage = Math.min(rawOverage, sub.messageOverageCap);
   }
 
-  if (uploadOverage <= 0 && questionOverage <= 0) return;
-
-  // Add overage line items to the draft invoice
-  if (uploadOverage > 0) {
-    await stripe.invoiceItems.create({
-      customer: sub.stripeCustomerId,
-      invoice: invoice.id,
-      description: `Document upload overage (${uploadOverage} over ${sub.documentUploadLimit} limit)`,
-      amount: Math.round(uploadOverage * rates.documentUpload * 100),
-      currency: "usd",
-    });
-  }
+  if (questionOverage <= 0) return;
 
   if (questionOverage > 0) {
     await stripe.invoiceItems.create({

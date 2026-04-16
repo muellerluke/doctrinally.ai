@@ -85,6 +85,13 @@
       "when": 1776164976215,
       "tag": "0011_closed_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776379067129,
+      "tag": "0012_blue_goliath",
+      "breakpoints": true
     }
   ]
 }

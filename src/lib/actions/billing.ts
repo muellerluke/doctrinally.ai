@@ -102,7 +102,6 @@ export async function verifyCheckoutSession(sessionId: string) {
           churchId,
           periodStart,
           periodEnd,
-          documentUploads: 0,
           questions: 0,
         })
         .onConflictDoNothing();
@@ -160,10 +159,6 @@ export async function getSubscriptionWithUsage(churchId: string) {
   });
 
   const rates = getOverageRates();
-  const uploadOverage = Math.max(
-    0,
-    (usage?.documentUploads ?? 0) - sub.documentUploadLimit
-  );
   const questionOverage = Math.max(
     0,
     (usage?.questions ?? 0) - sub.questionLimit
@@ -179,17 +174,11 @@ export async function getSubscriptionWithUsage(churchId: string) {
     status: sub.status,
     currentPeriodStart: sub.currentPeriodStart,
     currentPeriodEnd: sub.currentPeriodEnd,
-    documentUploadLimit: sub.documentUploadLimit,
     questionLimit: sub.questionLimit,
-    documentUploads: usage?.documentUploads ?? 0,
     questions: usage?.questions ?? 0,
-    uploadOverage,
     questionOverage,
-    uploadOverageCost: uploadOverage * rates.documentUpload,
     questionOverageCost: questionOverage * rates.question,
-    totalOverageCost:
-      uploadOverage * rates.documentUpload +
-      questionOverage * rates.question,
+    totalOverageCost: questionOverage * rates.question,
     features: planDetails.features,
     messageOverageEnabled: sub.messageOverageEnabled,
     messageOverageCap: sub.messageOverageCap,

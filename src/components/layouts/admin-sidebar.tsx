@@ -49,8 +49,6 @@ interface AdminSidebarProps {
   subscriptionStatus?: string;
   questionUsage?: number;
   questionLimit?: number;
-  uploadUsage?: number;
-  uploadLimit?: number;
   membershipRole?: string;
   trialEndsAt?: Date | null;
   messageOverageEnabled?: boolean;
@@ -65,8 +63,6 @@ export function AdminSidebar({
   subscriptionStatus,
   questionUsage = 0,
   questionLimit = 0,
-  uploadUsage = 0,
-  uploadLimit = 0,
   membershipRole,
   trialEndsAt,
   messageOverageEnabled = false,
@@ -117,11 +113,8 @@ export function AdminSidebar({
     effectiveQuestionLimit > 0
       ? Math.min((questionUsage / effectiveQuestionLimit) * 100, 100)
       : 0;
-  const uploadPercentage =
-    uploadLimit > 0 ? Math.min((uploadUsage / uploadLimit) * 100, 100) : 0;
 
   const isQuestionOver = questionUsage > effectiveQuestionLimit && effectiveQuestionLimit > 0;
-  const isUploadOver = uploadUsage > uploadLimit && uploadLimit > 0;
 
   return (
     <Sidebar>
@@ -218,19 +211,6 @@ export function AdminSidebar({
                 className={cn(
                   "h-1.5",
                   isQuestionOver && "[&>div]:bg-red-400"
-                )}
-              />
-              <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-                <span>Uploads</span>
-                <span className={cn(isUploadOver && "text-red-400 font-medium")}>
-                  {uploadUsage.toLocaleString()} / {uploadLimit.toLocaleString()}
-                </span>
-              </div>
-              <Progress
-                value={uploadPercentage}
-                className={cn(
-                  "h-1.5",
-                  isUploadOver && "[&>div]:bg-red-400"
                 )}
               />
             </div>

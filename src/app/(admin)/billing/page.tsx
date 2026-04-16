@@ -105,8 +105,7 @@ export default async function BillingPage() {
                 day: "numeric",
                 year: "numeric",
               })}{" "}
-              unless you cancel. Trial limits: {data.documentUploadLimit}{" "}
-              document uploads and {data.questionLimit} messages.
+              unless you cancel. Trial limit: {data.questionLimit} messages.
             </p>
           </div>
         </div>
@@ -167,12 +166,6 @@ export default async function BillingPage() {
             </p>
             {data.totalOverageCost > 0 && (
               <div className="space-y-1 text-xs text-muted-foreground">
-                {data.uploadOverageCost > 0 && (
-                  <p>
-                    Uploads: ${data.uploadOverageCost.toFixed(2)} (
-                    {data.uploadOverage} over)
-                  </p>
-                )}
                 {data.questionOverageCost > 0 && (
                   <p>
                     Messages: ${data.questionOverageCost.toFixed(2)} (
@@ -194,12 +187,6 @@ export default async function BillingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <UsageDisplay
-            label="Document Uploads"
-            current={data.documentUploads}
-            limit={data.documentUploadLimit}
-            overageCost={data.uploadOverageCost}
-          />
           <UsageDisplay
             label="Messages"
             current={data.questions}
@@ -254,10 +241,6 @@ export default async function BillingPage() {
                   Higher limits:
                 </p>
                 <div className="space-y-2 text-sm">
-                  <p>
-                    {PLANS.enterprise.documentUploadLimit} document uploads/mo
-                    (vs {PLANS.standard.documentUploadLimit})
-                  </p>
                   <p>
                     {PLANS.enterprise.questionLimit.toLocaleString()} messages/mo
                     (vs {PLANS.standard.questionLimit})
