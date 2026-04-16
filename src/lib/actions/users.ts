@@ -7,18 +7,16 @@ import { db } from "@/db";
 import { memberships, users, invitations, churches } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { sendInvitationEmail } from "@/lib/email";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 async function requireOwnerContext() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
+  const active = await getActiveMembershipForUser(session.user.id);
+  if (!active || active.membership.role !== "owner") return null;
 
-  if (!membership || membership.role !== "owner") return null;
-
-  return { userId: session.user.id, membership };
+  return { userId: session.user.id, membership: active.membership };
 }
 
 export async function getChurchMembers(churchId: string) {
@@ -105,7 +103,7 @@ export async function inviteUser(input: {
   const church = await db.query.churches.findFirst({
     where: eq(churches.id, input.churchId),
   });
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-up?invite=${token}`;
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite?token=${token}`;
   await sendInvitationEmail(
     input.email,
     church?.name || "a church",
@@ -198,7 +196,7 @@ export async function resendInvitation(invitationId: string) {
   const church = await db.query.churches.findFirst({
     where: eq(churches.id, invite.churchId),
   });
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/sign-up?invite=${token}`;
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite?token=${token}`;
   await sendInvitationEmail(
     invite.email,
     church?.name || "a church",

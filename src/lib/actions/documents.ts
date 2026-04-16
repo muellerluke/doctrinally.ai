@@ -5,8 +5,9 @@ import { eq, and, ilike, isNull, sql, count } from "drizzle-orm";
 import { del } from "@vercel/blob";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
-import { documents, chunks, memberships } from "@/db/schema";
+import { documents, chunks } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 import { incrementDocumentUpload } from "@/lib/usage";
 import {
   youtubeUploadSchema,
@@ -39,12 +40,10 @@ async function getAuthContext() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
-  if (!membership) return null;
+  const active = await getActiveMembershipForUser(session.user.id);
+  if (!active) return null;
 
-  return { userId: session.user.id, membership };
+  return { userId: session.user.id, membership: active.membership };
 }
 
 export async function getDocuments(filters: {

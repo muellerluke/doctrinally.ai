@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { memberships, churches, subscriptions } from "@/db/schema";
+import { subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 const roleHierarchy = { member: 0, admin: 1, owner: 2 } as const;
 type Role = keyof typeof roleHierarchy;
@@ -19,23 +20,18 @@ export async function requireAuth() {
 export async function requireMembership() {
   const session = await requireAuth();
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
+  const active = await getActiveMembershipForUser(session.user.id);
 
-  if (!membership) {
+  if (!active) {
     redirect("/onboarding");
   }
 
-  const church = await db.query.churches.findFirst({
-    where: eq(churches.id, membership.churchId),
-  });
-
-  if (!church) {
-    redirect("/onboarding");
-  }
-
-  return { session, membership, church };
+  return {
+    session,
+    membership: active.membership,
+    church: active.church,
+    availableChurches: active.availableChurches,
+  };
 }
 
 export async function requireRole(minRole: Role) {

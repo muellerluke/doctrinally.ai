@@ -26,6 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { ChurchSwitcher } from "@/components/layouts/church-switcher";
 import { cn } from "@/lib/utils";
 
 const mainNav = [
@@ -33,6 +34,14 @@ const mainNav = [
   { label: "Documents", href: "/documents", icon: FileText },
   { label: "Members", href: "/members", icon: Users },
 ];
+
+interface AvailableChurch {
+  churchId: string;
+  churchName: string;
+  churchSlug: string;
+  role: "owner" | "admin" | "member";
+  membershipId: string;
+}
 
 interface AdminSidebarProps {
   churchName?: string;
@@ -46,6 +55,8 @@ interface AdminSidebarProps {
   trialEndsAt?: Date | null;
   messageOverageEnabled?: boolean;
   messageOverageCap?: number;
+  availableChurches?: AvailableChurch[];
+  activeChurchId?: string;
 }
 
 export function AdminSidebar({
@@ -60,6 +71,8 @@ export function AdminSidebar({
   trialEndsAt,
   messageOverageEnabled = false,
   messageOverageCap = 0,
+  availableChurches = [],
+  activeChurchId,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const isOwner = membershipRole === "owner";
@@ -156,14 +169,28 @@ export function AdminSidebar({
       </SidebarContent>
       <SidebarFooter className="p-4">
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-sidebar-foreground">
-              {churchName || "My Church"}
-            </span>
-            <Badge className={cn("text-xs", planBadgeClass)}>
-              {planLabel}
-            </Badge>
-          </div>
+          {availableChurches.length > 1 && activeChurchId ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <ChurchSwitcher
+                  churches={availableChurches}
+                  activeChurchId={activeChurchId}
+                />
+              </div>
+              <Badge className={cn("text-xs", planBadgeClass)}>
+                {planLabel}
+              </Badge>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-sidebar-foreground">
+                {churchName || "My Church"}
+              </span>
+              <Badge className={cn("text-xs", planBadgeClass)}>
+                {planLabel}
+              </Badge>
+            </div>
+          )}
           {isTrialing && trialDaysLeft !== null && (
             <Link
               href="/billing"

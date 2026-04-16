@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { createHash } from "crypto";
+import { cookies } from "next/headers";
 import { eq, and, gt } from "drizzle-orm";
 import { getServerSession } from "next-auth";
 import { db } from "@/db";
@@ -10,6 +11,7 @@ import { signUpSchema, forgotPasswordSchema } from "@/lib/validations/auth";
 import { generateToken } from "@/lib/utils";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { authOptions } from "@/lib/auth";
+import { ACTIVE_CHURCH_COOKIE } from "@/lib/active-church";
 
 export async function signUp(input: {
   name: string;
@@ -160,6 +162,7 @@ export async function acceptInvitation(token: string, userId: string) {
       .update(invitations)
       .set({ status: "accepted" })
       .where(eq(invitations.id, invite.id));
+    await setActiveChurchCookie(invite.churchId);
     return { success: true, churchId: invite.churchId };
   }
 
@@ -176,6 +179,8 @@ export async function acceptInvitation(token: string, userId: string) {
       .where(eq(invitations.id, invite.id));
   });
 
+  await setActiveChurchCookie(invite.churchId);
+
   return { success: true, churchId: invite.churchId };
 }
 
@@ -183,4 +188,14 @@ export async function acceptInvitationForCurrentUser(token: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return { error: "Not authenticated" };
   return acceptInvitation(token, session.user.id);
+}
+
+async function setActiveChurchCookie(churchId: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(ACTIVE_CHURCH_COOKIE, churchId, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
 }

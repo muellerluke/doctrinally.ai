@@ -6,21 +6,20 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { db } from "@/db";
-import { churches, memberships, subscriptions } from "@/db/schema";
+import { churches, subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { canUseCustomBranding, canUseCustomDomain } from "@/lib/plan-gating";
 import { addDomainToVercel, removeDomainFromVercel } from "@/lib/vercel";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 async function getAuthContext() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
-  if (!membership) return null;
+  const active = await getActiveMembershipForUser(session.user.id);
+  if (!active) return null;
 
-  return { userId: session.user.id, membership };
+  return { userId: session.user.id, membership: active.membership };
 }
 
 const churchInfoSchema = z.object({

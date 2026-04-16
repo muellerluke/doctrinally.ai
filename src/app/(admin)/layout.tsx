@@ -9,7 +9,8 @@ import { UploadProvider } from "@/components/documents/upload-provider";
 import { UploadProgress } from "@/components/documents/upload-progress";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
-import { memberships, churches, subscriptions, usageRecords } from "@/db/schema";
+import { subscriptions, usageRecords } from "@/db/schema";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 export default async function AdminLayout({
   children,
@@ -22,17 +23,13 @@ export default async function AdminLayout({
     redirect("/sign-in");
   }
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
+  const active = await getActiveMembershipForUser(session.user.id);
 
-  if (!membership) {
+  if (!active) {
     redirect("/onboarding");
   }
 
-  const church = await db.query.churches.findFirst({
-    where: eq(churches.id, membership.churchId),
-  });
+  const { membership, church, availableChurches } = active;
 
   // If church exists but isn't active, redirect to complete onboarding
   if (church && !church.isActive) {
@@ -79,6 +76,8 @@ export default async function AdminLayout({
         }
         messageOverageEnabled={sub?.messageOverageEnabled ?? false}
         messageOverageCap={sub?.messageOverageCap ?? 0}
+        availableChurches={availableChurches}
+        activeChurchId={church.id}
       />
       <SidebarInset>
         <AdminHeader userName={session.user.name} />

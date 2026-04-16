@@ -3,8 +3,9 @@
 import { getServerSession } from "next-auth";
 import { eq, and, isNull, InferSelectModel } from "drizzle-orm";
 import { db } from "@/db";
-import { folders, documents, memberships } from "@/db/schema";
+import { folders, documents } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 type Folder = InferSelectModel<typeof folders>;
 
@@ -12,12 +13,10 @@ async function getAuthContext() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
-  if (!membership) return null;
+  const active = await getActiveMembershipForUser(session.user.id);
+  if (!active) return null;
 
-  return { userId: session.user.id, membership };
+  return { userId: session.user.id, membership: active.membership };
 }
 
 export async function getFolders(
