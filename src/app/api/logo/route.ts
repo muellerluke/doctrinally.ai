@@ -4,7 +4,8 @@ import { eq } from "drizzle-orm";
 import { put, del } from "@vercel/blob";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
-import { churches, memberships } from "@/db/schema";
+import { churches } from "@/db/schema";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -15,12 +16,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
-  if (!membership || !["admin", "owner"].includes(membership.role)) {
+  const active = await getActiveMembershipForUser(session.user.id);
+  if (!active || !["admin", "owner"].includes(active.membership.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
+  const membership = active.membership;
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;

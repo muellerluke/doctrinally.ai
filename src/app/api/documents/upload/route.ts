@@ -5,7 +5,8 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
-import { documents, memberships } from "@/db/schema";
+import { documents } from "@/db/schema";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 import { incrementDocumentUpload } from "@/lib/usage";
 
 // Client-direct upload via @vercel/blob/client. The browser uploads bytes
@@ -76,12 +77,11 @@ export async function POST(request: Request) {
           throw new Error("Unauthorized");
         }
 
-        const membership = await db.query.memberships.findFirst({
-          where: eq(memberships.userId, session.user.id),
-        });
-        if (!membership) {
+        const active = await getActiveMembershipForUser(session.user.id);
+        if (!active) {
           throw new Error("No church found");
         }
+        const membership = active.membership;
 
         if (!clientPayloadRaw) {
           throw new Error("Missing upload metadata");

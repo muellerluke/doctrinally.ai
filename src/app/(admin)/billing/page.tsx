@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { eq } from "drizzle-orm";
 import {
   ExternalLink,
   Shield,
@@ -10,9 +9,8 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
-import { db } from "@/db";
-import { memberships, churches } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 import {
   getSubscriptionWithUsage,
   createBillingPortalSession,
@@ -31,11 +29,11 @@ export default async function BillingPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) redirect("/sign-in");
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
+  const active = await getActiveMembershipForUser(session.user.id);
 
-  if (!membership) redirect("/onboarding");
+  if (!active) redirect("/onboarding");
+
+  const { membership } = active;
 
   // Owner-only access
   if (membership.role !== "owner") {

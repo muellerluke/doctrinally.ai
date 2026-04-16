@@ -14,6 +14,7 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { getPlanLimits, getOverageRates, PLANS } from "@/lib/plans";
 import type { PlanType } from "@/lib/plans";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 
 export async function verifyCheckoutSession(sessionId: string) {
   const session = await getServerSession(authOptions);
@@ -117,17 +118,15 @@ export async function createBillingPortalSession() {
     return { error: "You must be signed in" };
   }
 
-  // Verify user is an owner
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
+  // Verify user is an owner of the active church
+  const active = await getActiveMembershipForUser(session.user.id);
 
-  if (!membership || membership.role !== "owner") {
+  if (!active || active.membership.role !== "owner") {
     return { error: "Only owners can manage billing" };
   }
 
   const sub = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.churchId, membership.churchId),
+    where: eq(subscriptions.churchId, active.membership.churchId),
   });
 
   if (!sub?.stripeCustomerId) {

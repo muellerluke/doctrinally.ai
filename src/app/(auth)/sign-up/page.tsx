@@ -80,6 +80,10 @@ export default function SignUpPage() {
       const result = await signUp({ name, email, password });
 
       if (result.error) {
+        if (inviteToken) {
+          router.replace(`/invite?token=${inviteToken}`);
+          return;
+        }
         toast.error(result.error);
         return;
       }

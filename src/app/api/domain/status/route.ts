@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { memberships } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
+import { getActiveMembershipForUser } from "@/lib/active-church";
 import { getDomainStatus, getDomainConfig } from "@/lib/vercel";
 
 export async function GET(request: Request) {
@@ -19,11 +17,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const membership = await db.query.memberships.findFirst({
-    where: eq(memberships.userId, session.user.id),
-  });
+  const active = await getActiveMembershipForUser(session.user.id);
 
-  if (!membership || !["admin", "owner"].includes(membership.role)) {
+  if (!active || !["admin", "owner"].includes(active.membership.role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
 
