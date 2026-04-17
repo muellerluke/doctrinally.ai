@@ -85,5 +85,6 @@ export const processPdf = task({
   id: "process-pdf",
   machine: "small-1x", // 1 vCPU / 512 MB — PDF text extraction + embeddings
   retry: { maxAttempts: 2 },
+  queue: { concurrencyLimit: 25 },
   run: processPdfBody,
 });
