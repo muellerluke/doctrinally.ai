@@ -2,7 +2,7 @@ export const PLANS = {
   standard: {
     name: "Standard",
     price: 49,
-    questionLimit: 1000,
+    questionLimit: 1500,
     features: {
       customDomain: false,
       customBranding: false,
@@ -11,14 +11,14 @@ export const PLANS = {
     highlights: [
       "Subdomain on doctrinally.ai",
       "Unlimited document uploads",
-      "1,000 messages per month",
+      "1,500 messages per month",
       "Doctrinally.AI branding",
     ],
   },
   enterprise: {
     name: "Enterprise",
     price: 99,
-    questionLimit: 2000,
+    questionLimit: 3000,
     features: {
       customDomain: true,
       customBranding: true,
@@ -27,7 +27,7 @@ export const PLANS = {
     highlights: [
       "Custom domain support",
       "Unlimited document uploads",
-      "2,000 messages per month",
+      "3,000 messages per month",
       "Your own logo and branding",
     ],
   },
@@ -35,24 +35,14 @@ export const PLANS = {
 
 export type PlanType = keyof typeof PLANS;
 
-// Free trial configuration. Both plans include a 14-day free trial.
+// Free trial configuration. Both plans include a 14-day free trial with
+// full plan limits — trials give the complete experience of the selected plan.
 export const TRIAL_DAYS = 14;
-export const TRIAL_LIMITS = {
-  questionLimit: 100,
-} as const;
 
 export function getPlanLimits(plan: PlanType) {
   return {
     questionLimit: PLANS[plan].questionLimit,
   };
-}
-
-// Source of truth for the limits stored on a subscription row.
-// During a trial the church gets a capped taste of Standard; on conversion
-// the Stripe webhook (trialing → active) bumps to full plan limits.
-export function getInitialLimits(plan: PlanType, isTrial: boolean) {
-  if (isTrial) return { ...TRIAL_LIMITS };
-  return getPlanLimits(plan);
 }
 
 export function getOverageRates() {

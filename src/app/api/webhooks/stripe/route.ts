@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { db } from "@/db";
 import { churches, subscriptions, usageRecords } from "@/db/schema";
-import { getInitialLimits, getOverageRates } from "@/lib/plans";
+import { getPlanLimits, getOverageRates } from "@/lib/plans";
 import type { PlanType } from "@/lib/plans";
 import type Stripe from "stripe";
 
@@ -158,14 +158,10 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const mappedStatus = statusMap[subscription.status] ?? "incomplete";
   const period = getSubscriptionPeriod(subscription);
 
-  // Resolve limits based on both plan and trial state. This is the path that
-  // fires on the trialing → active transition: when Stripe flips status to
-  // "active" at the end of the trial, limits bump from TRIAL_LIMITS to the
-  // full plan limits automatically.
+  // Trials run with full plan limits, so trialing → active transitions don't
+  // change the stored limit; we still refresh the row in case the plan changed.
   const plan = subscription.metadata?.plan as PlanType | undefined;
-  const limits = plan
-    ? getInitialLimits(plan, mappedStatus === "trialing")
-    : null;
+  const limits = plan ? getPlanLimits(plan) : null;
 
   await db
     .update(subscriptions)

@@ -19,6 +19,8 @@ function extractVideoId(url: string): string | null {
     /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
     /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
     /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    // /live/<id> — used for live streams and their ended-stream replays
+    /(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/,
   ];
   for (const pattern of patterns) {
     const match = url.match(pattern);

@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { onboardingSchema } from "@/lib/validations/onboarding";
 import { slugify } from "@/lib/utils";
 import { stripe, getStripePriceId } from "@/lib/stripe";
-import { getInitialLimits, TRIAL_DAYS } from "@/lib/plans";
+import { getPlanLimits, TRIAL_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
 
 export async function getExistingChurch() {
@@ -49,7 +49,7 @@ export async function resumeCheckout(plan: "standard" | "enterprise") {
   // Both plans start as a 14-day free trial on resume so churches that
   // bailed from the first checkout still get the trial offer.
   const isTrial = true;
-  const limits = getInitialLimits(plan, isTrial);
+  const limits = getPlanLimits(plan);
   await db
     .update(subscriptions)
     .set({
@@ -123,9 +123,9 @@ export async function createChurch(input: {
     };
   }
 
-  // Both plans start as a 14-day free trial with reduced limits.
+  // Both plans start as a 14-day free trial with full plan limits.
   const isTrial = true;
-  const limits = getInitialLimits(parsed.data.plan, isTrial);
+  const limits = getPlanLimits(parsed.data.plan);
 
   const result = await db.transaction(async (tx) => {
     const [church] = await tx

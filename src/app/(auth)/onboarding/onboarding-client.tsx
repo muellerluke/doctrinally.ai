@@ -18,7 +18,7 @@ import { PlanCard } from "@/components/billing/plan-card";
 import { churchInfoSchema } from "@/lib/validations/onboarding";
 import { createChurch, resumeCheckout } from "@/lib/actions/onboarding";
 import { slugify } from "@/lib/utils";
-import type { PlanType } from "@/lib/plans";
+import { PLANS, type PlanType } from "@/lib/plans";
 
 type InitialChurch = { name: string; slug: string } | null;
 
@@ -192,8 +192,9 @@ export function OnboardingClient({
 
           <p className="rounded-md border border-primary/20 bg-primary/[0.04] p-3 text-center text-xs text-muted-foreground">
             You won&apos;t be charged today. Your card will be charged $
-            {selectedPlan === "standard" ? "49" : "99"} in 14 days unless you
-            cancel. Trial includes 10 document uploads and 100 messages.
+            {PLANS[selectedPlan].price} in 14 days unless you cancel. Trial
+            includes the full {PLANS[selectedPlan].name} plan:{" "}
+            {PLANS[selectedPlan].questionLimit.toLocaleString()}{" "}messages.
             Message limits are enforced &mdash; you&apos;ll never be charged
             for overages unless you explicitly enable them in billing settings.
           </p>

@@ -98,7 +98,7 @@ export default function PricingPage() {
                 <span className="text-muted-foreground">/month</span>
               </div>
               <p className="mt-2 text-[13px] text-muted-foreground">
-                Your AI on your own domain, with your church&apos;s branding and 2x the capacity.
+                Your AI on your own domain, with your church&apos;s branding and more capacity.
               </p>
 
               <ul className="mt-7 space-y-3.5">
