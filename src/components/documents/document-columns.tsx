@@ -104,7 +104,19 @@ export function getDocumentColumns(
     },
     {
       accessorKey: "type",
-      header: "Type",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            column.toggleSorting(column.getIsSorted() === "asc")
+          }
+          className="-ml-2"
+        >
+          Type
+          <ArrowUpDown className="h-3.5 w-3.5" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <Badge variant="outline" className="font-normal">
           {capitalizeType(row.original.type)}
@@ -113,14 +125,38 @@ export function getDocumentColumns(
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            column.toggleSorting(column.getIsSorted() === "asc")
+          }
+          className="-ml-2"
+        >
+          Status
+          <ArrowUpDown className="h-3.5 w-3.5" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <DocumentStatusBadge status={row.original.status} />
       ),
     },
     {
       accessorKey: "createdAt",
-      header: "Created",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            column.toggleSorting(column.getIsSorted() === "asc")
+          }
+          className="-ml-2"
+        >
+          Created
+          <ArrowUpDown className="h-3.5 w-3.5" />
+        </Button>
+      ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {formatDate(row.original.createdAt)}

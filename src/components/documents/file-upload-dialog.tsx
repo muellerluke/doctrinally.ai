@@ -6,6 +6,7 @@ import { FileUp, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { UploadItem } from "@/components/documents/upload-provider";
+import { confirmBlobUpload } from "@/lib/actions/documents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -168,12 +169,20 @@ export function FileUploadDialog({
           folderId: folderId ?? null,
           fileType: entry.file.type,
           fileSize: entry.file.size,
+          uploadId,
         }),
         onUploadProgress: (event) => {
           onUploadProgress?.(uploadId, Math.round(event.percentage));
         },
       })
-        .then(() => {
+        .then(async (blob) => {
+          // Client-side fallback: tell the server the blob URL in case the
+          // Vercel Blob webhook didn't fire (e.g. local dev, or network
+          // issue in production). If the webhook already handled it, this
+          // is a no-op.
+          await confirmBlobUpload(uploadId, blob.url).catch(() => {
+            // Non-fatal — the webhook may have already handled it.
+          });
           onUploadComplete?.(uploadId);
           window.plausible?.("Document Upload", { props: { type: "file" } });
           toast.success(`Uploaded: ${entry.file.name}`);

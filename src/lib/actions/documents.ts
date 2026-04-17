@@ -118,6 +118,61 @@ export async function getDocuments(filters: {
   };
 }
 
+/**
+ * Client-side fallback for the Vercel Blob webhook. After the browser
+ * finishes uploading bytes to blob storage, it calls this with the
+ * correlation `uploadId` (stored in the document's metadata during
+ * Phase 1) and the final blob URL. If the webhook already updated the
+ * row, this is a no-op.
+ */
+export async function confirmBlobUpload(uploadId: string, blobUrl: string) {
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Unauthorized" };
+
+  if (!uploadId || !blobUrl) return { error: "Missing uploadId or blobUrl" };
+
+  // Find the document by the uploadId stored in metadata.
+  // The JSONB query ensures exact match even with concurrent uploads.
+  const [doc] = await db
+    .select({ id: documents.id, type: documents.type, status: documents.status })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.churchId, ctx.membership.churchId),
+        sql`${documents.metadata}->>'uploadId' = ${uploadId}`
+      )
+    )
+    .limit(1);
+
+  if (!doc) return { error: "Document not found for this upload" };
+
+  // If the webhook already set blobPath and moved status past "uploaded",
+  // there's nothing to do — avoid triggering a duplicate processing job.
+  if (doc.status !== "uploaded") {
+    return { success: true, alreadyHandled: true };
+  }
+
+  // Update blobPath and queue for processing.
+  await db
+    .update(documents)
+    .set({
+      blobPath: blobUrl,
+      status: "queued",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(documents.id, doc.id),
+        // Re-check status to prevent race with webhook
+        eq(documents.status, "uploaded")
+      )
+    );
+
+  await triggerProcessing(doc.type, doc.id);
+
+  return { success: true };
+}
+
 export async function createYouTubeDocument(input: YouTubeUploadInput) {
   const ctx = await getAuthContext();
   if (!ctx) return { error: "Unauthorized" };

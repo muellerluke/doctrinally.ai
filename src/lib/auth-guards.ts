@@ -54,6 +54,16 @@ export async function requireAdmin() {
   return requireRole("admin");
 }
 
+const SUPER_ADMIN_EMAIL = "luke@doctrinally.ai";
+
+export async function requireSuperAdmin() {
+  const session = await requireAuth();
+  if (session.user.email !== SUPER_ADMIN_EMAIL) {
+    return null;
+  }
+  return session;
+}
+
 export async function getSubscriptionForChurch(churchId: string) {
   return db.query.subscriptions.findFirst({
     where: eq(subscriptions.churchId, churchId),

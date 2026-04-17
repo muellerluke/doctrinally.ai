@@ -49,6 +49,9 @@ interface ClientPayload {
   folderId?: string | null;
   fileType: string;
   fileSize: number;
+  /** Client-generated correlation ID so the client can confirm the upload
+   *  after blob storage completes, as a fallback for the webhook. */
+  uploadId?: string;
 }
 
 interface TokenPayload {
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
           throw new Error("Invalid upload metadata");
         }
 
-        const { title, tags, folderId, fileType, fileSize } = payload;
+        const { title, tags, folderId, fileType, fileSize, uploadId } = payload;
 
         if (!title || title.length < 2) {
           throw new Error("Title is required (min 2 characters)");
@@ -141,7 +144,10 @@ export async function POST(request: Request) {
             type: docType,
             status: "uploaded",
             folderId: folderId || null,
-            metadata: { tags: parsedTags },
+            metadata: {
+              tags: parsedTags,
+              ...(uploadId && { uploadId }),
+            },
           })
           .returning({ id: documents.id });
 
