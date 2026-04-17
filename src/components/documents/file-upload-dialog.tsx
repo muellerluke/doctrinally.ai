@@ -180,7 +180,14 @@ export function FileUploadDialog({
           // Vercel Blob webhook didn't fire (e.g. local dev, or network
           // issue in production). If the webhook already handled it, this
           // is a no-op.
-          await confirmBlobUpload(uploadId, blob.url).catch(() => {
+          await confirmBlobUpload({
+            uploadId,
+            blobUrl: blob.url,
+            title: entry.title,
+            tags: tagList,
+            folderId: folderId ?? null,
+            docType: fileType,
+          }).catch(() => {
             // Non-fatal — the webhook may have already handled it.
           });
           onUploadComplete?.(uploadId);

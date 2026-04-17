@@ -16,6 +16,7 @@ import {
   type PlatejsDocumentInput,
   type DocumentMetadataInput,
 } from "@/lib/validations/documents";
+import { type UploadDocType } from "@/lib/documents/mime";
 
 const DOC_TYPE_TO_TASK: Record<string, string> = {
   youtube: "process-youtube",
@@ -119,58 +120,93 @@ export async function getDocuments(filters: {
 }
 
 /**
- * Client-side fallback for the Vercel Blob webhook. After the browser
- * finishes uploading bytes to blob storage, it calls this with the
- * correlation `uploadId` (stored in the document's metadata during
- * Phase 1) and the final blob URL. If the webhook already updated the
- * row, this is a no-op.
+ * Shared insert-or-skip helper for direct-upload documents. Called from
+ * both the Vercel Blob webhook (`onUploadCompleted`) and the client-side
+ * fallback `confirmBlobUpload`. Idempotent via the correlation `uploadId`:
+ * if a row with that id already exists for the church, returns the
+ * existing id without inserting or re-triggering processing.
  */
-export async function confirmBlobUpload(uploadId: string, blobUrl: string) {
-  const ctx = await getAuthContext();
-  if (!ctx) return { error: "Unauthorized" };
-
-  if (!uploadId || !blobUrl) return { error: "Missing uploadId or blobUrl" };
-
-  // Find the document by the uploadId stored in metadata.
-  // The JSONB query ensures exact match even with concurrent uploads.
-  const [doc] = await db
-    .select({ id: documents.id, type: documents.type, status: documents.status })
+export async function upsertUploadedDocument(input: {
+  churchId: string;
+  uploadedBy: string;
+  title: string;
+  docType: UploadDocType;
+  folderId: string | null;
+  tags: string[];
+  uploadId: string;
+  blobPath: string;
+}): Promise<{ id: string; alreadyExisted: boolean }> {
+  const [existing] = await db
+    .select({ id: documents.id })
     .from(documents)
     .where(
       and(
-        eq(documents.churchId, ctx.membership.churchId),
-        sql`${documents.metadata}->>'uploadId' = ${uploadId}`
+        eq(documents.churchId, input.churchId),
+        sql`${documents.metadata}->>'uploadId' = ${input.uploadId}`
       )
     )
     .limit(1);
 
-  if (!doc) return { error: "Document not found for this upload" };
-
-  // If the webhook already set blobPath and moved status past "uploaded",
-  // there's nothing to do — avoid triggering a duplicate processing job.
-  if (doc.status !== "uploaded") {
-    return { success: true, alreadyHandled: true };
+  if (existing) {
+    return { id: existing.id, alreadyExisted: true };
   }
 
-  // Update blobPath and queue for processing.
-  await db
-    .update(documents)
-    .set({
-      blobPath: blobUrl,
+  const [inserted] = await db
+    .insert(documents)
+    .values({
+      churchId: input.churchId,
+      uploadedBy: input.uploadedBy,
+      title: input.title,
+      type: input.docType,
       status: "queued",
-      updatedAt: new Date(),
+      blobPath: input.blobPath,
+      folderId: input.folderId,
+      metadata: { tags: input.tags, uploadId: input.uploadId },
     })
-    .where(
-      and(
-        eq(documents.id, doc.id),
-        // Re-check status to prevent race with webhook
-        eq(documents.status, "uploaded")
-      )
-    );
+    .returning({ id: documents.id });
 
-  await triggerProcessing(doc.type, doc.id);
+  await triggerProcessing(input.docType, inserted.id);
 
-  return { success: true };
+  return { id: inserted.id, alreadyExisted: false };
+}
+
+/**
+ * Client-side fallback for the Vercel Blob webhook. After the browser
+ * finishes uploading bytes to blob storage, it calls this with the
+ * correlation `uploadId`, the final blob URL, and the metadata the
+ * client collected from the user. If the webhook already inserted the
+ * row, this is a no-op.
+ */
+export async function confirmBlobUpload(input: {
+  uploadId: string;
+  blobUrl: string;
+  title: string;
+  tags: string[];
+  folderId: string | null;
+  docType: UploadDocType;
+}) {
+  const ctx = await getAuthContext();
+  if (!ctx) return { error: "Unauthorized" };
+
+  const { uploadId, blobUrl, title, tags, folderId, docType } = input;
+  if (!uploadId || !blobUrl) return { error: "Missing uploadId or blobUrl" };
+
+  const result = await upsertUploadedDocument({
+    churchId: ctx.membership.churchId,
+    uploadedBy: ctx.userId,
+    title,
+    docType,
+    folderId,
+    tags,
+    uploadId,
+    blobPath: blobUrl,
+  });
+
+  return {
+    success: true,
+    documentId: result.id,
+    alreadyHandled: result.alreadyExisted,
+  };
 }
 
 export async function createYouTubeDocument(input: YouTubeUploadInput) {

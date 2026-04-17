@@ -1,43 +1,26 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { eq } from "drizzle-orm";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
-import { tasks } from "@trigger.dev/sdk/v3";
 import { authOptions } from "@/lib/auth";
-import { db } from "@/db";
-import { documents } from "@/db/schema";
 import { getActiveMembershipForUser } from "@/lib/active-church";
+import { upsertUploadedDocument } from "@/lib/actions/documents";
+import {
+  MIME_TO_TYPE,
+  MAX_FILE_SIZE,
+  resolveDocType,
+  type UploadDocType,
+} from "@/lib/documents/mime";
 
 // Client-direct upload via @vercel/blob/client. The browser uploads bytes
 // straight to Blob storage; this route only signs a token and receives a
 // webhook callback when the upload finishes. This bypasses Vercel's 4.5 MB
 // serverless body limit that previously caused 413 errors on large files.
-
-const TYPE_TO_TASK: Record<string, string> = {
-  pdf: "process-pdf",
-  word: "process-word",
-  video: "process-video",
-};
-
-// Per-MIME ceilings. Videos up to 2 GB; docs capped smaller because there
-// is no legitimate need for a 2 GB PDF and it keeps abuse contained.
-const MAX_FILE_SIZE: Record<string, number> = {
-  "application/pdf": 50 * 1024 * 1024, // 50 MB
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    50 * 1024 * 1024, // 50 MB
-  "video/mp4": 2 * 1024 * 1024 * 1024, // 2 GB
-  "video/webm": 2 * 1024 * 1024 * 1024,
-  "video/quicktime": 2 * 1024 * 1024 * 1024,
-};
-
-const MIME_TO_TYPE: Record<string, string> = {
-  "application/pdf": "pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    "word",
-  "video/mp4": "video",
-  "video/webm": "video",
-  "video/quicktime": "video",
-};
+//
+// No `documents` row is created during Phase 1 — the row only exists if
+// the bytes actually land, enforced by writing rows exclusively from
+// Phase 2 (`onUploadCompleted`) or its client-side fallback
+// (`confirmBlobUpload`). Both paths share `upsertUploadedDocument`, which
+// is idempotent via the correlation `uploadId`.
 
 // Ceiling passed to Vercel Blob. Per-type limits are enforced below
 // against the clientPayload size before the token is signed.
@@ -49,16 +32,20 @@ interface ClientPayload {
   folderId?: string | null;
   fileType: string;
   fileSize: number;
-  /** Client-generated correlation ID so the client can confirm the upload
-   *  after blob storage completes, as a fallback for the webhook. */
-  uploadId?: string;
+  /** Client-generated correlation ID; carries from Phase 1 through the
+   *  webhook into the eventual `documents` row, and gates the
+   *  `confirmBlobUpload` fallback. */
+  uploadId: string;
 }
 
 interface TokenPayload {
-  documentId: string;
   churchId: string;
   userId: string;
-  docType: "pdf" | "word" | "video";
+  docType: UploadDocType;
+  title: string;
+  tags: string[];
+  folderId: string | null;
+  uploadId: string;
 }
 
 export async function POST(request: Request) {
@@ -69,11 +56,10 @@ export async function POST(request: Request) {
       body,
       request,
       // Phase 1: client asks for a signed token. We run auth + validation
-      // here using only the file metadata in clientPayload (no bytes yet),
-      // create the documents row in "uploaded" state so the library can
-      // render it immediately, and return a tokenPayload the webhook will
-      // receive in phase 2.
-      onBeforeGenerateToken: async (pathname, clientPayloadRaw) => {
+      // here using only the file metadata in clientPayload (no bytes yet)
+      // and return a tokenPayload the webhook will receive in phase 2.
+      // NOTE: no DB row is created here — see top-of-file comment.
+      onBeforeGenerateToken: async (_pathname, clientPayloadRaw) => {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
           throw new Error("Unauthorized");
@@ -96,17 +82,18 @@ export async function POST(request: Request) {
           throw new Error("Invalid upload metadata");
         }
 
-        const { title, tags, folderId, fileType, fileSize, uploadId } = payload;
+        const { title, tags, folderId, fileType, fileSize, uploadId } =
+          payload;
 
         if (!title || title.length < 2) {
           throw new Error("Title is required (min 2 characters)");
         }
 
-        const docType = MIME_TO_TYPE[fileType] as
-          | "pdf"
-          | "word"
-          | "video"
-          | undefined;
+        if (!uploadId) {
+          throw new Error("Missing uploadId");
+        }
+
+        const docType = resolveDocType(fileType);
         if (!docType) {
           throw new Error(
             "Unsupported file type. Please upload a PDF, Word document, or video."
@@ -132,30 +119,14 @@ export async function POST(request: Request) {
               .filter(Boolean)
           : [];
 
-        // Create the row up-front so router.refresh() on the client shows
-        // the file immediately. onUploadCompleted will fill in blobPath
-        // and flip status to "queued" once the upload actually lands.
-        const [doc] = await db
-          .insert(documents)
-          .values({
-            churchId: membership.churchId,
-            uploadedBy: session.user.id,
-            title,
-            type: docType,
-            status: "uploaded",
-            folderId: folderId || null,
-            metadata: {
-              tags: parsedTags,
-              ...(uploadId && { uploadId }),
-            },
-          })
-          .returning({ id: documents.id });
-
         const tokenPayload: TokenPayload = {
-          documentId: doc.id,
           churchId: membership.churchId,
           userId: session.user.id,
           docType,
+          title,
+          tags: parsedTags,
+          folderId: folderId ?? null,
+          uploadId,
         };
 
         return {
@@ -166,14 +137,14 @@ export async function POST(request: Request) {
         };
       },
 
-      // Phase 2: Blob storage calls this after the upload completes. Flip
-      // the row to "queued", record the public URL, bump usage, and hand
-      // off to Trigger.dev for processing.
+      // Phase 2: Blob storage calls this after the upload completes.
+      // Inserts the row (idempotent via uploadId) and hands off to
+      // Trigger.dev for processing.
       //
       // NOTE: In local dev this callback cannot reach localhost from
-      // Vercel Blob. The documents row still exists from phase 1 (status
-      // "uploaded") — use `vercel dev` or an ngrok tunnel to exercise the
-      // full pipeline locally.
+      // Vercel Blob. The client-side fallback `confirmBlobUpload` runs
+      // after `upload()` resolves and uses the same shared helper, so the
+      // row still gets created — just on the client-triggered path.
       onUploadCompleted: async ({ blob, tokenPayload: tokenPayloadRaw }) => {
         if (!tokenPayloadRaw) return;
 
@@ -185,32 +156,22 @@ export async function POST(request: Request) {
           return;
         }
 
-        const { documentId, churchId, docType } = payload;
-
-        await db
-          .update(documents)
-          .set({
-            status: "queued",
+        try {
+          await upsertUploadedDocument({
+            churchId: payload.churchId,
+            uploadedBy: payload.userId,
+            title: payload.title,
+            docType: payload.docType,
+            folderId: payload.folderId,
+            tags: payload.tags,
+            uploadId: payload.uploadId,
             blobPath: blob.url,
-            updatedAt: new Date(),
-          })
-          .where(eq(documents.id, documentId));
-
-        const taskId = TYPE_TO_TASK[docType];
-        if (taskId) {
-          try {
-            await tasks.trigger(taskId, { documentId });
-          } catch (err) {
-            console.error(`Failed to trigger ${taskId} for ${documentId}:`, err);
-            await db
-              .update(documents)
-              .set({
-                status: "failed",
-                errorMessage: "Failed to queue processing task",
-                updatedAt: new Date(),
-              })
-              .where(eq(documents.id, documentId));
-          }
+          });
+        } catch (err) {
+          console.error(
+            `Failed to upsert document for uploadId=${payload.uploadId}:`,
+            err
+          );
         }
       },
     });

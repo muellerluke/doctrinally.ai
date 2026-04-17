@@ -108,7 +108,7 @@ export async function makeDocument(
       churchId,
       title: "Test Document",
       type: "pdf",
-      status: "uploaded",
+      status: "queued",
       ...overrides,
     })
     .returning();
