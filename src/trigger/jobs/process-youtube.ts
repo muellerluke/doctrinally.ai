@@ -4,132 +4,104 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
+import { formatProcessingError, logProcessingError } from "../utils/error-logging";
 import {
   fetchYouTubeCaptions,
   fetchSupadataTranscript,
 } from "../utils/youtube";
+import { extractVideoId } from "../utils/extract-video-id";
 import type { WhisperSegment } from "../utils/whisper";
 
-/**
- * Extract YouTube video ID from a URL.
- */
-function extractVideoId(url: string): string | null {
-  const patterns = [
-    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-    // /live/<id> — used for live streams and their ended-stream replays
-    /(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+export async function processYouTubeBody(payload: { documentId: string }) {
+  const { documentId } = payload;
+
+  try {
+    const [doc] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, documentId))
+      .limit(1);
+
+    if (!doc) throw new Error(`Document ${documentId} not found`);
+    if (doc.type !== "youtube")
+      throw new Error(`Document ${documentId} is not a YouTube document`);
+
+    await db
+      .update(documents)
+      .set({ status: "processing", errorMessage: null, updatedAt: new Date() })
+      .where(eq(documents.id, documentId));
+
+    const videoId = extractVideoId(doc.sourceUrl!);
+    if (!videoId)
+      throw new Error(`Could not extract video ID from: ${doc.sourceUrl}`);
+
+    // Two-tier transcript: free InnerTube captions first, Supadata fallback.
+    let segments: WhisperSegment[];
+    let transcriptSource: "captions" | "supadata";
+
+    try {
+      segments = await fetchYouTubeCaptions(videoId);
+      transcriptSource = "captions";
+    } catch (captionErr) {
+      console.warn(
+        `[process-youtube] Captions unavailable for ${videoId}, falling back to Supadata:`,
+        captionErr instanceof Error ? captionErr.message : captionErr
+      );
+      segments = await fetchSupadataTranscript(videoId);
+      transcriptSource = "supadata";
+    }
+
+    if (segments.length === 0) {
+      throw new Error("No transcript available for this video");
+    }
+
+    const transcriptChunks = chunkTranscript(segments, 120);
+    if (transcriptChunks.length === 0) {
+      throw new Error("No content extracted from transcript");
+    }
+
+    const texts = transcriptChunks.map((c) => c.text);
+    const embeddings = await generateEmbeddings(texts);
+
+    await db.delete(chunks).where(eq(chunks.documentId, documentId));
+    await db.insert(chunks).values(
+      transcriptChunks.map((chunk, index) => ({
+        documentId,
+        churchId: doc.churchId,
+        content: chunk.text,
+        chunkIndex: index,
+        startTime: chunk.startTime,
+        endTime: chunk.endTime,
+        embedding: embeddings[index],
+      }))
+    );
+
+    await db
+      .update(documents)
+      .set({ status: "indexed", updatedAt: new Date() })
+      .where(eq(documents.id, documentId));
+
+    return {
+      success: true,
+      chunkCount: transcriptChunks.length,
+      transcriptSource,
+    };
+  } catch (error) {
+    logProcessingError("process-youtube", error);
+    const message = formatProcessingError(error);
+
+    await db
+      .update(documents)
+      .set({ status: "failed", errorMessage: message, updatedAt: new Date() })
+      .where(eq(documents.id, documentId));
+
+    throw error;
   }
-  return null;
 }
 
 export const processYouTube = task({
   id: "process-youtube",
-  machine: "small-1x",   // 1 vCPU / 512 MB — transcript fetching + embeddings
+  machine: "small-1x", // 1 vCPU / 512 MB — transcript fetching + embeddings
   retry: { maxAttempts: 2 },
-  run: async (payload: { documentId: string }) => {
-    const { documentId } = payload;
-
-    try {
-      // Fetch document
-      const [doc] = await db
-        .select()
-        .from(documents)
-        .where(eq(documents.id, documentId))
-        .limit(1);
-
-      if (!doc) throw new Error(`Document ${documentId} not found`);
-      if (doc.type !== "youtube")
-        throw new Error(`Document ${documentId} is not a YouTube document`);
-
-      // Set processing status
-      await db
-        .update(documents)
-        .set({ status: "processing", errorMessage: null, updatedAt: new Date() })
-        .where(eq(documents.id, documentId));
-
-      // Extract video ID
-      const videoId = extractVideoId(doc.sourceUrl!);
-      if (!videoId) throw new Error(`Could not extract video ID from: ${doc.sourceUrl}`);
-
-      // Two-tier transcript: free InnerTube captions first, Supadata fallback.
-      let segments: WhisperSegment[];
-      let transcriptSource: "captions" | "supadata";
-
-      try {
-        segments = await fetchYouTubeCaptions(videoId);
-        transcriptSource = "captions";
-      } catch (captionErr) {
-        console.warn(
-          `[process-youtube] Captions unavailable for ${videoId}, falling back to Supadata:`,
-          captionErr instanceof Error ? captionErr.message : captionErr
-        );
-        segments = await fetchSupadataTranscript(videoId);
-        transcriptSource = "supadata";
-      }
-
-      if (segments.length === 0) {
-        throw new Error("No transcript available for this video");
-      }
-
-      // Chunk transcript into ~120 second segments
-      const transcriptChunks = chunkTranscript(segments, 120);
-
-      if (transcriptChunks.length === 0) {
-        throw new Error("No content extracted from transcript");
-      }
-
-      // Generate embeddings
-      const texts = transcriptChunks.map((c) => c.text);
-      const embeddings = await generateEmbeddings(texts);
-
-      // Delete existing chunks for this document
-      await db.delete(chunks).where(eq(chunks.documentId, documentId));
-
-      // Insert new chunks
-      await db.insert(chunks).values(
-        transcriptChunks.map((chunk, index) => ({
-          documentId,
-          churchId: doc.churchId,
-          content: chunk.text,
-          chunkIndex: index,
-          startTime: chunk.startTime,
-          endTime: chunk.endTime,
-          embedding: embeddings[index],
-        }))
-      );
-
-      // Mark as indexed
-      await db
-        .update(documents)
-        .set({ status: "indexed", updatedAt: new Date() })
-        .where(eq(documents.id, documentId));
-
-      return {
-        success: true,
-        chunkCount: transcriptChunks.length,
-        transcriptSource,
-      };
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown error occurred";
-
-      await db
-        .update(documents)
-        .set({
-          status: "failed",
-          errorMessage: message,
-          updatedAt: new Date(),
-        })
-        .where(eq(documents.id, documentId));
-
-      throw error;
-    }
-  },
+  run: processYouTubeBody,
 });

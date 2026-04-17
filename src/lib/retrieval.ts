@@ -120,6 +120,38 @@ export async function keywordSearch(
 }
 
 /**
+ * Reciprocal rank fusion — pure ranking function, exposed for unit testing.
+ * k=60 is the standard RRF constant. Used only for ordering, not for the
+ * returned similarity value.
+ */
+export function fuseRankings(
+  semantic: RetrievedChunk[],
+  keyword: RetrievedChunk[],
+  limit: number,
+  k = 60
+): { score: number; chunk: RetrievedChunk }[] {
+  const scores = new Map<string, { score: number; chunk: RetrievedChunk }>();
+
+  semantic.forEach((chunk, rank) => {
+    scores.set(chunk.chunkId, { score: 1 / (k + rank + 1), chunk });
+  });
+
+  keyword.forEach((chunk, rank) => {
+    const rrfScore = 1 / (k + rank + 1);
+    const existing = scores.get(chunk.chunkId);
+    if (existing) {
+      existing.score += rrfScore;
+    } else {
+      scores.set(chunk.chunkId, { score: rrfScore, chunk });
+    }
+  });
+
+  return Array.from(scores.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+/**
  * Hybrid search combining semantic and keyword search with reciprocal rank fusion.
  */
 export async function hybridSearch(
@@ -152,32 +184,7 @@ export async function hybridSearch(
     }
   }
 
-  // Reciprocal rank fusion — used only for ordering, not for the returned
-  // similarity value.
-  const k = 60; // RRF constant
-  const scores = new Map<string, { score: number; chunk: RetrievedChunk }>();
-
-  filteredSemantic.forEach((chunk, rank) => {
-    const rrfScore = 1 / (k + rank + 1);
-    scores.set(chunk.chunkId, {
-      score: rrfScore,
-      chunk,
-    });
-  });
-
-  keywordResults.forEach((chunk, rank) => {
-    const rrfScore = 1 / (k + rank + 1);
-    const existing = scores.get(chunk.chunkId);
-    if (existing) {
-      existing.score += rrfScore;
-    } else {
-      scores.set(chunk.chunkId, { score: rrfScore, chunk });
-    }
-  });
-
-  const ranked = Array.from(scores.values())
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  const ranked = fuseRankings(filteredSemantic, keywordResults, limit);
 
   if (ranked.length === 0) return [];
 

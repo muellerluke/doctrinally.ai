@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
 import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
+import { formatProcessingError, logProcessingError } from "../utils/error-logging";
 import { transcribeWithWhisper, type WhisperSegment } from "../utils/whisper";
 import {
   extractAudio,
@@ -112,8 +113,8 @@ export const processVideo = task({
         audioSegments: audioSegments.length,
       };
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      logProcessingError("process-video", error);
+      const message = formatProcessingError(error);
 
       await db
         .update(documents)

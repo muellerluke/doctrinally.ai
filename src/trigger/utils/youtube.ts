@@ -14,7 +14,7 @@ export class CaptionsUnavailableError extends Error {
  * or transient server error. Retries on HTTP 429, 500, 502, 503, 504
  * and generic network errors.
  */
-async function withRetry<T>(
+export async function withRetry<T>(
   fn: () => Promise<T>,
   {
     maxAttempts = 3,

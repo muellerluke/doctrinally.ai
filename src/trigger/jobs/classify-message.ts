@@ -11,104 +11,88 @@ import {
   assignTopicToMessage,
 } from "../utils/classification";
 
-export const classifyMessage = task({
-  id: "classify-message",
-  machine: "micro",   // 0.25 vCPU / 256 MB — lightweight LLM call + embedding
-  retry: { maxAttempts: 2 },
-  run: async (payload: {
-    messageId: string;
-    chatId: string;
-    churchId: string;
-  }) => {
-    const { messageId, chatId, churchId } = payload;
+export async function classifyMessageBody(payload: {
+  messageId: string;
+  chatId: string;
+  churchId: string;
+}) {
+  const { messageId, chatId, churchId } = payload;
 
-    try {
-      // Fetch the user message to classify
-      const [userMessage] = await db
-        .select({ id: messages.id, content: messages.content, topicId: messages.topicId })
-        .from(messages)
-        .where(eq(messages.id, messageId))
-        .limit(1);
+  try {
+    const [userMessage] = await db
+      .select({
+        id: messages.id,
+        content: messages.content,
+        topicId: messages.topicId,
+      })
+      .from(messages)
+      .where(eq(messages.id, messageId))
+      .limit(1);
 
-      if (!userMessage) return { skipped: true, reason: "Message not found" };
-      if (userMessage.topicId) return { skipped: true, reason: "Already classified" };
+    if (!userMessage) return { skipped: true, reason: "Message not found" };
+    if (userMessage.topicId)
+      return { skipped: true, reason: "Already classified" };
 
-      // Fetch the 2 previous messages for context (to handle follow-ups)
-      const previousMessages = await db
-        .select({ role: messages.role, content: messages.content })
-        .from(messages)
-        .where(
-          and(
-            eq(messages.chatId, chatId),
-            lt(messages.id, messageId)
-          )
-        )
-        .orderBy(desc(messages.createdAt))
-        .limit(2);
+    const previousMessages = await db
+      .select({ role: messages.role, content: messages.content })
+      .from(messages)
+      .where(and(eq(messages.chatId, chatId), lt(messages.id, messageId)))
+      .orderBy(desc(messages.createdAt))
+      .limit(2);
 
-      previousMessages.reverse();
+    previousMessages.reverse();
 
-      // Enrich the message for classification
-      const enrichedQuery = enrichMessageForClassification(
-        userMessage.content,
-        previousMessages
+    const enrichedQuery = enrichMessageForClassification(
+      userMessage.content,
+      previousMessages
+    );
+
+    const [embedding] = await generateEmbeddings([enrichedQuery]);
+    const candidates = await findSimilarTopics(churchId, embedding);
+    const classification = await classifyQuestion(enrichedQuery, candidates);
+
+    if (classification.existingTopicId) {
+      const validCandidate = candidates.find(
+        (c) => c.id === classification.existingTopicId
       );
-
-      // Generate embedding
-      const [embedding] = await generateEmbeddings([enrichedQuery]);
-
-      // Find similar existing topics
-      const candidates = await findSimilarTopics(churchId, embedding);
-
-      // Classify with LLM
-      const classification = await classifyQuestion(enrichedQuery, candidates);
-
-      // Assign existing topic
-      if (classification.existingTopicId) {
-        const validCandidate = candidates.find(
-          (c) => c.id === classification.existingTopicId
-        );
-
-        if (validCandidate) {
-          await assignTopicToMessage(messageId, validCandidate.id);
-          return {
-            success: true,
-            action: "assigned_existing",
-            topicId: validCandidate.id,
-            label: validCandidate.label,
-          };
-        }
-      }
-
-      // Create new topic
-      if (classification.newTopicLabel) {
-        const label = classification.newTopicLabel.slice(0, 50);
-        const topicId = await createTopic(churchId, label, embedding);
-        await assignTopicToMessage(messageId, topicId);
-
+      if (validCandidate) {
+        await assignTopicToMessage(messageId, validCandidate.id);
         return {
           success: true,
-          action: "created_new",
-          topicId,
-          label,
+          action: "assigned_existing",
+          topicId: validCandidate.id,
+          label: validCandidate.label,
         };
       }
+    }
 
-      // Fallback: "General"
-      const topicId = await createTopic(churchId, "General", embedding);
+    if (classification.newTopicLabel) {
+      const label = classification.newTopicLabel.slice(0, 50);
+      const topicId = await createTopic(churchId, label, embedding);
       await assignTopicToMessage(messageId, topicId);
-
       return {
         success: true,
-        action: "fallback_general",
+        action: "created_new",
         topicId,
-      };
-    } catch (error) {
-      console.error("classify-message failed:", error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        label,
       };
     }
-  },
+
+    const topicId = await createTopic(churchId, "General", embedding);
+    await assignTopicToMessage(messageId, topicId);
+    return { success: true, action: "fallback_general", topicId };
+  } catch (error) {
+    console.error("classify-message failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+export const classifyMessage = task({
+  id: "classify-message",
+  machine: "micro", // 0.25 vCPU / 256 MB — lightweight LLM call + embedding
+  retry: { maxAttempts: 2 },
+  run: classifyMessageBody,
 });
