@@ -1,8 +1,34 @@
 /**
  * Shared text chunking utilities for document processing.
+ *
+ * Uses a real OpenAI-compatible tokenizer (cl100k_base via js-tiktoken)
+ * for token counting — critical for non-Latin scripts like Hebrew and
+ * Greek where the old word-count heuristic underestimated by ~10x,
+ * producing chunks that blew past OpenAI's 8192-token embedding cap.
  */
 
-import { estimateTokens } from "@/lib/chat/tokens";
+import { getEncoding, type Tiktoken } from "js-tiktoken";
+
+// cl100k_base is the encoding used by text-embedding-3-small, gpt-4,
+// and gpt-3.5-turbo. Load lazily — the encoding tables are ~1 MB of
+// JSON that we don't want to parse on every cold start if the module
+// isn't used (e.g. during tests that stub chunking).
+let encoder: Tiktoken | null = null;
+function getTokenEncoder(): Tiktoken {
+  if (!encoder) encoder = getEncoding("cl100k_base");
+  return encoder;
+}
+
+/**
+ * Accurate token count for a string using the cl100k_base tokenizer.
+ * Use this anywhere we need to stay under OpenAI's hard token limits
+ * (chunking for embeddings, chunking for model input, etc.). Heuristic
+ * estimators break on mixed-script content.
+ */
+export function countTokens(text: string): number {
+  if (!text) return 0;
+  return getTokenEncoder().encode(text).length;
+}
 
 /**
  * Split text on sentence boundaries, returning an array of sentences.
@@ -20,7 +46,7 @@ function splitSentences(text: string): string[] {
  * so individual chunks never exceed OpenAI's 8192-token embedding input limit.
  */
 function hardSplitBlock(block: string, maxTokens: number): string[] {
-  if (estimateTokens(block) <= maxTokens) return [block];
+  if (countTokens(block) <= maxTokens) return [block];
 
   const splitters: RegExp[] = [/\n\n+/, /\n/, /\s+/];
   for (const re of splitters) {
@@ -31,7 +57,7 @@ function hardSplitBlock(block: string, maxTokens: number): string[] {
     let acc = "";
     for (const part of parts) {
       const candidate = acc ? `${acc} ${part}` : part;
-      if (estimateTokens(candidate) > maxTokens && acc.length > 0) {
+      if (countTokens(candidate) > maxTokens && acc.length > 0) {
         out.push(acc);
         acc = part;
       } else {
@@ -42,16 +68,30 @@ function hardSplitBlock(block: string, maxTokens: number): string[] {
 
     // Recurse so any piece still over the limit gets split by the next
     // coarser-grained splitter.
-    if (out.every((p) => estimateTokens(p) <= maxTokens)) return out;
+    if (out.every((p) => countTokens(p) <= maxTokens)) return out;
     return out.flatMap((p) => hardSplitBlock(p, maxTokens));
   }
 
-  // Last resort — no whitespace at all. Slice by character count using
-  // ~3.5 chars/token (conservative vs. tiktoken's ~4).
-  const charCap = Math.max(1, Math.floor(maxTokens * 3.5));
+  // Last resort — no whitespace at all (e.g. run-together OCR output in a
+  // script with no token-safe ratio). Binary-chop: slice in halves until
+  // every piece fits inside the budget. Measures real tokens each step so
+  // it works for Hebrew / Greek / CJK equally.
   const out: string[] = [];
-  for (let i = 0; i < block.length; i += charCap) {
-    out.push(block.slice(i, i + charCap));
+  const stack = [block];
+  while (stack.length > 0) {
+    const piece = stack.pop()!;
+    if (countTokens(piece) <= maxTokens) {
+      out.push(piece);
+    } else if (piece.length <= 1) {
+      // Pathological single-char case — push it anyway; embedding will
+      // succeed on a solitary character.
+      out.push(piece);
+    } else {
+      const mid = Math.floor(piece.length / 2);
+      // Push right first so left is processed first (preserves order).
+      stack.push(piece.slice(mid));
+      stack.push(piece.slice(0, mid));
+    }
   }
   return out;
 }
@@ -81,7 +121,7 @@ export function chunkByTokens(
   let currentTokens = 0;
 
   for (const sentence of sentences) {
-    const sentenceTokens = estimateTokens(sentence);
+    const sentenceTokens = countTokens(sentence);
 
     if (currentTokens + sentenceTokens > maxTokens && current.length > 0) {
       chunks.push(current.join(" "));
@@ -90,7 +130,7 @@ export function chunkByTokens(
       const overlapSentences: string[] = [];
       let overlapTokens = 0;
       for (let i = current.length - 1; i >= 0; i--) {
-        const t = estimateTokens(current[i]);
+        const t = countTokens(current[i]);
         if (overlapTokens + t > overlap) break;
         overlapSentences.unshift(current[i]);
         overlapTokens += t;
