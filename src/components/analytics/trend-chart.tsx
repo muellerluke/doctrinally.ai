@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -11,6 +10,7 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useResolvedColor } from "@/hooks/use-resolved-color";
 import type { TimeSeriesPoint } from "@/lib/actions/analytics";
 
 interface TrendChartProps {
@@ -18,23 +18,6 @@ interface TrendChartProps {
   data: TimeSeriesPoint[];
   color?: string;
   height?: number;
-}
-
-/**
- * Resolve a CSS custom property to its computed value so Recharts (which
- * needs a concrete color string, not a CSS variable) can use it.
- */
-function useResolvedColor(cssVar: string, fallback: string): string {
-  const ref = useRef<HTMLDivElement>(null);
-  const [resolved, setResolved] = useState(fallback);
-
-  useEffect(() => {
-    const el = ref.current ?? document.documentElement;
-    const raw = getComputedStyle(el).getPropertyValue(cssVar).trim();
-    if (raw) setResolved(raw.startsWith("oklch") || raw.startsWith("#") ? raw : `oklch(${raw})`);
-  }, [cssVar]);
-
-  return resolved;
 }
 
 export function TrendChart({

@@ -1,5 +1,5 @@
 import { schedules, tasks } from "@trigger.dev/sdk/v3";
-import { eq, and, lt, inArray } from "drizzle-orm";
+import { eq, and, lt, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
 
@@ -20,6 +20,31 @@ export const retryFailedDocuments = schedules.task({
   cron: "17 * * * *",
   machine: "small-1x",
   run: async () => {
+    // --- 0. Delete unrecoverable documents ---
+    // Rows with no source material at all (no blobPath, no sourceUrl, no
+    // content) can never succeed. Without this step they bounce between
+    // `failed` → `queued` → `processing` → `failed` forever in the retry
+    // loop below. Wait 1h before reaping so an in-flight upload that is
+    // mid-Phase-2 webhook doesn't get nuked.
+    const unrecoverableCutoff = new Date(Date.now() - 60 * 60 * 1000);
+    const deletedUnrecoverable = await db
+      .delete(documents)
+      .where(
+        and(
+          isNull(documents.blobPath),
+          isNull(documents.sourceUrl),
+          or(isNull(documents.content), eq(documents.content, "")),
+          lt(documents.createdAt, unrecoverableCutoff)
+        )
+      )
+      .returning({ id: documents.id });
+
+    if (deletedUnrecoverable.length > 0) {
+      console.log(
+        `[retry-failed-documents] Deleted ${deletedUnrecoverable.length} unrecoverable document(s) with no source.`
+      );
+    }
+
     // --- 1. Retry explicitly failed documents ---
     // Only retry documents that have been in "failed" state for at least
     // 5 minutes. This avoids re-triggering a document that JUST failed
@@ -66,7 +91,11 @@ export const retryFailedDocuments = schedules.task({
     const allDocs = [...failedDocs, ...stuckDocs];
 
     if (allDocs.length === 0) {
-      return { retriedCount: 0, unstuckCount: 0 };
+      return {
+        retriedCount: 0,
+        unstuckCount: 0,
+        deletedUnrecoverable: deletedUnrecoverable.length,
+      };
     }
 
     let retriedCount = 0;
@@ -125,6 +154,7 @@ export const retryFailedDocuments = schedules.task({
     return {
       retriedCount,
       unstuckCount,
+      deletedUnrecoverable: deletedUnrecoverable.length,
       totalFound: allDocs.length,
     };
   },

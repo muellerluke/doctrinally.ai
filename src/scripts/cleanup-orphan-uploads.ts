@@ -1,13 +1,22 @@
 /**
- * One-off cleanup for orphan documents left behind by the pre-2026-04-17
- * upload flow, which created the `documents` row in Phase 1 (token signing)
- * before the bytes actually uploaded. If the upload never completed, the
- * row stuck around in `status='uploaded'` with `blob_path=NULL` forever.
+ * One-off cleanup for unrecoverable document rows — documents with no
+ * source at all (`blob_path IS NULL AND source_url IS NULL AND content IS
+ * NULL/empty`). These can never be processed and exist only because an
+ * upload was abandoned mid-flow or a YouTube submission never wrote its
+ * source URL.
+ *
+ * Covers every doc type:
+ *   - pdf/word/video  → need `blob_path`
+ *   - youtube          → needs `source_url`
+ *   - platejs          → needs `content`
+ *
+ * Matches any status (uploaded, queued, processing, failed, etc.) — the
+ * retry scheduler tends to bounce these between `failed` and `queued`
+ * indefinitely, so filtering on status alone would miss them.
  *
  * Safe to re-run. Dry-run is the default; pass `--confirm` to delete.
  * `chunks.document_id` has ON DELETE CASCADE, so any stray chunks get
- * cleaned up automatically (shouldn't exist on these rows — they never
- * got processed — but the cascade is there as insurance).
+ * cleaned up automatically.
  *
  * Usage:
  *   npx tsx --env-file=.env src/scripts/cleanup-orphan-uploads.ts
@@ -27,17 +36,25 @@ const sql = postgres(TARGET_URL, { idle_timeout: 30, max: 1 });
 
 async function main() {
   const candidates = await sql<
-    { id: string; church_id: string; title: string; created_at: Date }[]
+    {
+      id: string;
+      church_id: string;
+      type: string;
+      status: string;
+      title: string;
+      created_at: Date;
+    }[]
   >`
-    SELECT id, church_id, title, created_at
+    SELECT id, church_id, type, status, title, created_at
     FROM documents
-    WHERE status = 'uploaded'
-      AND blob_path IS NULL
+    WHERE blob_path IS NULL
+      AND source_url IS NULL
+      AND (content IS NULL OR content = '')
       AND created_at < NOW() - INTERVAL '1 hour'
     ORDER BY created_at ASC
   `;
 
-  console.log(`Found ${candidates.length} orphan document(s).`);
+  console.log(`Found ${candidates.length} unrecoverable document(s).`);
   if (candidates.length === 0) {
     await sql.end();
     return;
@@ -46,7 +63,7 @@ async function main() {
   const preview = candidates.slice(0, 10);
   for (const row of preview) {
     console.log(
-      `  - ${row.id}  church=${row.church_id}  "${row.title}"  created=${row.created_at.toISOString()}`
+      `  - ${row.id}  type=${row.type}  status=${row.status}  church=${row.church_id}  "${row.title}"  created=${row.created_at.toISOString()}`
     );
   }
   if (candidates.length > preview.length) {

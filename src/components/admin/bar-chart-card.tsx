@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,27 +10,12 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useResolvedColor } from "@/hooks/use-resolved-color";
 
 interface BarChartCardProps {
   title: string;
   data: { churchName: string; messages: number; documents: number }[];
   height?: number;
-}
-
-function useResolvedColor(cssVar: string, fallback: string): string {
-  const ref = useRef<HTMLDivElement>(null);
-  const [resolved, setResolved] = useState(fallback);
-
-  useEffect(() => {
-    const el = ref.current ?? document.documentElement;
-    const raw = getComputedStyle(el).getPropertyValue(cssVar).trim();
-    if (raw)
-      setResolved(
-        raw.startsWith("oklch") || raw.startsWith("#") ? raw : `oklch(${raw})`
-      );
-  }, [cssVar]);
-
-  return resolved;
 }
 
 export function BarChartCard({
