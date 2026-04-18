@@ -2,13 +2,7 @@
  * Shared text chunking utilities for document processing.
  */
 
-/**
- * Estimate token count from text. Rough heuristic: ~1.3 tokens per word.
- */
-function estimateTokens(text: string): number {
-  const words = text.split(/\s+/).filter(Boolean).length;
-  return Math.ceil(words * 1.3);
-}
+import { estimateTokens } from "@/lib/chat/tokens";
 
 /**
  * Split text on sentence boundaries, returning an array of sentences.

@@ -6,6 +6,7 @@ export const PLANS = {
     features: {
       customDomain: false,
       customBranding: false,
+      sermonWriter: false,
     },
     description: "Perfect for churches getting started with AI-powered chat",
     highlights: [
@@ -22,6 +23,7 @@ export const PLANS = {
     features: {
       customDomain: true,
       customBranding: true,
+      sermonWriter: true,
     },
     description: "For churches that want full control over their experience",
     highlights: [
@@ -29,6 +31,7 @@ export const PLANS = {
       "Unlimited document uploads",
       "3,000 messages per month",
       "Your own logo and branding",
+      "AI-assisted sermon writer ($10/mo AI budget)",
     ],
   },
 } as const;
@@ -38,6 +41,11 @@ export type PlanType = keyof typeof PLANS;
 // Free trial configuration. Both plans include a 14-day free trial with
 // full plan limits — trials give the complete experience of the selected plan.
 export const TRIAL_DAYS = 14;
+
+// Default sermon-writer budget for Enterprise churches, in cents.
+// Subscription rows hold the authoritative per-church value; this is the
+// seed value used when a fresh Enterprise subscription is created.
+export const DEFAULT_SERMON_BUDGET_CENTS = 1000;
 
 export function getPlanLimits(plan: PlanType) {
   return {
@@ -51,3 +59,11 @@ export function getOverageRates() {
   };
 }
 
+/**
+ * Whether a plan has access to the sermon-writer feature. Enterprise only.
+ * Used for UI gating and `/api/sermons/chat` route-entry checks.
+ */
+export function hasSermonWriter(plan: PlanType | undefined | null): boolean {
+  if (!plan) return false;
+  return PLANS[plan].features.sermonWriter === true;
+}

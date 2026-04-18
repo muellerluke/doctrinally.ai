@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { eq, and, lte, gte } from "drizzle-orm";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/layouts/admin-sidebar";
 import { AdminHeader } from "@/components/layouts/admin-header";
+import { AdminBanners } from "@/components/layouts/admin-banners";
 import { UploadProvider } from "@/components/documents/upload-provider";
 import { UploadProgress } from "@/components/documents/upload-progress";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
 import { subscriptions, usageRecords } from "@/db/schema";
 import { getActiveMembershipForUser } from "@/lib/active-church";
+import { hasSermonWriter } from "@/lib/plans";
 
 export default async function AdminLayout({
   children,
@@ -77,33 +78,17 @@ export default async function AdminLayout({
         messageOverageCap={sub?.messageOverageCap ?? 0}
         availableChurches={availableChurches}
         activeChurchId={church.id}
+        hasSermonWriter={hasSermonWriter(sub?.plan)}
+        sermonBudgetCents={sub?.sermonBudgetCents ?? 0}
+        sermonSpentCents={usage?.sermonTokensCents ?? 0}
       />
-      <SidebarInset>
+      <SidebarInset className="h-svh overflow-hidden">
         <AdminHeader userName={session.user.name} />
-        <main className="flex-1 p-6">
-          {needsSetup && (
-            <div className="mb-6 flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-400/20 dark:bg-blue-950/40 dark:text-blue-300">
-              <span className="font-medium">Finish setting up your church.</span>
-              <Link
-                href="/settings"
-                className="underline underline-offset-2 hover:text-blue-900 dark:hover:text-blue-200"
-              >
-                Go to Settings
-              </Link>
-              <span className="text-blue-700 dark:text-blue-400">
-                to add a description and complete your profile.
-              </span>
-            </div>
-          )}
-          {sub?.status === "past_due" && (
-            <div className="mb-6 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <span className="font-medium">Payment past due.</span>
-              <span className="text-amber-700">
-                Please update your payment method in Billing to avoid service
-                interruption.
-              </span>
-            </div>
-          )}
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+          <AdminBanners
+            needsSetup={!!needsSetup}
+            pastDue={sub?.status === "past_due"}
+          />
           {children}
         </main>
       </SidebarInset>

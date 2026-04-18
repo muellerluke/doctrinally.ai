@@ -31,6 +31,10 @@ export const subscriptions = pgTable("subscriptions", {
   questionLimit: integer("question_limit").notNull(),
   messageOverageEnabled: boolean("message_overage_enabled").notNull().default(false),
   messageOverageCap: integer("message_overage_cap").notNull().default(0),
+  // Monthly budget in cents for the Enterprise sermon-writer. Default $10.
+  // Enforcement reads this column; when a church is on Standard the feature is
+  // gated by plan and this value is not consulted.
+  sermonBudgetCents: integer("sermon_budget_cents").notNull().default(1000),
   currentPeriodStart: timestamp("current_period_start", { mode: "date" }),
   currentPeriodEnd: timestamp("current_period_end", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

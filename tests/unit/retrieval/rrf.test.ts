@@ -8,7 +8,7 @@ const chunk = (id: string, extra: Partial<RetrievedChunk> = {}): RetrievedChunk 
   documentTitle: `Doc ${id}`,
   documentType: "pdf",
   content: `content ${id}`,
-  similarity: 0.8,
+  semanticSimilarity: 0.8,
   ...extra,
 });
 

@@ -1,5 +1,5 @@
 import { streamText, tool, stepCountIs, jsonSchema, type Tool } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { createOpenAI } from "@ai-sdk/openai";
 import { getServerSession } from "next-auth";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
@@ -8,18 +8,38 @@ import { authOptions } from "@/lib/auth";
 import { hybridSearch } from "@/lib/retrieval";
 import { incrementQuestionCount, getCurrentUsage, getEffectiveMessageLimit } from "@/lib/usage";
 import { tasks } from "@trigger.dev/sdk/v3";
-import { lookupByReference } from "@/lib/bible";
 import type { Citation, RetrievedChunk } from "@/lib/types/citations";
 import { logger } from "@/lib/logger";
+import { buildRagContext } from "@/lib/chat/rag";
+import {
+  estimateMessageTokens,
+  estimateTokens,
+  trimHistoryToBudget,
+} from "@/lib/chat/tokens";
+
+// Same thresholds as createSearchTool — a chunk must clear one of these
+// to be considered "relevant" enough to pass to the model.
+const SEMANTIC_FLOOR = 0.3;
+const KEYWORD_FLOOR = 0.01;
+const RAG_TOP_K = 6;
+const TOTAL_TOKEN_BUDGET = 100_000;
+const OUTPUT_RESERVE = 4_000;
 
 interface ClientMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+const inception = createOpenAI({
+  baseURL: process.env.INCEPTION_BASE_URL || "https://api.inceptionlabs.ai/v1",
+  apiKey: process.env.INCEPTION_API_KEY,
+});
+
+const DEFAULT_MODEL = "mercury-2";
+
 function getModel() {
-  const model = process.env.AI_MODEL || "gpt-5.4-mini";
-  return openai(model);
+  const model = process.env.AI_MODEL || DEFAULT_MODEL;
+  return inception.chat(model);
 }
 
 function buildSystemPrompt(
@@ -39,10 +59,21 @@ Guidelines:
 - When you reference a search result, cite it by embedding the source using <document>DOCUMENT_ID</document> where DOCUMENT_ID is the documentId from the search result.
 - IMPORTANT: <document> tags must ALWAYS be on their own line, separated from surrounding text by blank lines. Never place a <document> tag inside a sentence or paragraph. Always finish your sentence or paragraph first, then place the tag on the next line.
 - Include the most relevant 1-3 sources as <document> embeds. You don't need to embed every result.
-- When you need to quote or reference a specific Bible passage, ALWAYS use the lookupBiblePassage tool to get the exact text. Never quote Bible verses from memory — the tool provides the Berean Standard Bible (BSB) translation which is copyright-safe.
 - Be warm, pastoral, and helpful. Speak in a way that is accessible to church members of all backgrounds.
-- When referencing Bible passages, include the book, chapter, and verse.
 - Keep responses focused and concise unless the user asks for a detailed explanation.
+
+Bible quotations — copyright rules you MUST follow:
+- You may quote Bible passages from memory. Always include the book, chapter, and verse reference (e.g. "John 3:16").
+- Bible quotations are INDEPENDENT of the search tool. When the user asks you to quote, recite, or explain a specific Bible passage, answer from your own biblical knowledge even if the church's content library returns nothing. The fallback instruction below applies to questions about what THIS CHURCH teaches — it does NOT apply to direct requests for Bible verse text.
+- Default to the New International Version (NIV) unless the user asks for a different translation. State the translation in parentheses after any direct quotation — e.g. 'For God so loved the world...' (John 3:16, NIV).
+- HARD CAP: never quote more than 15 verses total in a single response, regardless of how many passages are referenced. If more scripture would help, summarize the additional passages in your own words and point the user to a Bible app for the full text.
+- NEVER quote or reproduce an entire chapter or book of the Bible. If a user asks for a whole chapter (e.g. "give me all of Romans 8" or "quote the whole book of James"), decline politely and suggest they open a Bible app or website such as BibleGateway. You may briefly summarize the passage and quote a few key verses (within the 15-verse cap).
+- Paraphrasing longer passages in your own words is preferred over long direct quotations.
+- When your response contains one or more direct Bible quotations, append the following attribution block at the very end of the response, on its own paragraph, in italics using markdown (e.g. *Scripture...*):
+
+  Scripture quotations taken from the Holy Bible, New International Version®, NIV®. Copyright © 1973, 1978, 1984, 2011 by Biblica, Inc.® Used by permission. All rights reserved worldwide.
+
+  If you quoted a translation other than NIV, replace this attribution with the correct notice for that translation. If no Bible passage was quoted directly, omit the attribution entirely.
 
 CRITICAL — When search returns NO results:
 When the search tool returns a "noResults" response, it means the church's library does not contain content on this topic. When this happens you MUST follow the fallback instruction below EXACTLY. Do not deviate from it. Do not add your own answer before or after it. The fallback instruction is set by the church administrator and overrides your default behavior.
@@ -107,28 +138,42 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       required: ["query"],
     }),
     execute: async ({ query }) => {
-      const RELEVANCE_THRESHOLD = 0.55;
+      // Per-scale relevance gates. A chunk is relevant if it passes EITHER:
+      //  - semantic cosine similarity >= SEMANTIC_THRESHOLD, or
+      //  - keyword ts_rank >= KEYWORD_THRESHOLD
+      // These scales are not comparable — applying a single cutoff to both
+      // (as the old code did) silently rejected every keyword-only hit.
+      const SEMANTIC_THRESHOLD = 0.3;
+      const KEYWORD_THRESHOLD = 0.01;
       const results = await hybridSearch(churchId, query, 6);
 
-      // Filter using raw cosine similarity. Only results that genuinely
-      // match the query should reach the AI.
-      const relevant = results.filter(
-        (c) =>
-          typeof c.similarity === "number" &&
-          c.similarity >= RELEVANCE_THRESHOLD
-      );
+      const isRelevant = (c: (typeof results)[number]) =>
+        (typeof c.semanticSimilarity === "number" &&
+          c.semanticSimilarity >= SEMANTIC_THRESHOLD) ||
+        (typeof c.keywordRank === "number" &&
+          c.keywordRank >= KEYWORD_THRESHOLD);
+
+      const relevant = results.filter(isRelevant);
 
       logger.info("[chat] search executed", {
         churchId,
         query,
         totalResults: results.length,
         relevantResults: relevant.length,
-        threshold: RELEVANCE_THRESHOLD,
+        semanticThreshold: SEMANTIC_THRESHOLD,
+        keywordThreshold: KEYWORD_THRESHOLD,
         scores: results.map((r) => ({
           docId: r.documentId,
           title: r.documentTitle,
-          similarity: r.similarity != null ? Math.round(r.similarity * 100) / 100 : null,
-          passed: typeof r.similarity === "number" && r.similarity >= RELEVANCE_THRESHOLD,
+          semanticSimilarity:
+            r.semanticSimilarity != null
+              ? Math.round(r.semanticSimilarity * 100) / 100
+              : null,
+          keywordRank:
+            r.keywordRank != null
+              ? Math.round(r.keywordRank * 1000) / 1000
+              : null,
+          passed: isRelevant(r),
           contentPreview: r.content?.slice(0, 100) ?? "(empty)",
         })),
       });
@@ -146,8 +191,8 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       const toolOutput = relevant.map((chunk, i) => ({
         resultNumber: i + 1,
         relevanceScore:
-          chunk.similarity != null
-            ? Math.round(chunk.similarity * 100) / 100
+          chunk.semanticSimilarity != null
+            ? Math.round(chunk.semanticSimilarity * 100) / 100
             : null,
         documentId: chunk.documentId,
         documentTitle: chunk.documentTitle,
@@ -175,39 +220,6 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       });
 
       return toolOutput;
-    },
-  };
-}
-
-function createBibleLookupTool(): Tool<{ reference: string }, unknown> {
-  return {
-    description:
-      "Look up a specific Bible passage by reference (e.g. 'John 3:16', 'Romans 8:28-30', 'Psalm 23'). Returns the exact text from the Berean Standard Bible (BSB) translation. ALWAYS use this tool when you need to quote scripture — never quote Bible verses from memory.",
-    inputSchema: jsonSchema<{ reference: string }>({
-      type: "object",
-      properties: {
-        reference: {
-          type: "string",
-          description:
-            "The Bible reference to look up, e.g. 'John 3:16', 'Genesis 1:1-5', '1 Corinthians 13:4-7'",
-        },
-      },
-      required: ["reference"],
-    }),
-    execute: async ({ reference }) => {
-      const result = await lookupByReference(reference);
-      if (!result) {
-        return { error: `Could not find passage: ${reference}` };
-      }
-      return {
-        reference: result.reference,
-        text: result.text,
-        bookName: result.bookName,
-        chapter: result.chapter,
-        verseStart: result.verseStart,
-        verseEnd: result.verseEnd,
-        translation: "BSB (Berean Standard Bible)",
-      };
     },
   };
 }
@@ -261,6 +273,7 @@ function extractSearchResults(
 
 const CITATION_SENTINEL = "\n__CITATIONS__";
 const CHAT_ID_SENTINEL = "\n__CHAT_ID__";
+const CHUNK_BOUNDARY = "\u200B\u200B";
 
 export const maxDuration = 60;
 
@@ -381,13 +394,56 @@ export async function POST(request: Request) {
     church?.aiFallbackInstruction
   );
 
+  // Eager RAG: pre-fetch relevant chunks for the current user question and
+  // attach them as a context block on the final user message. The agentic
+  // `search` tool remains available so the model can dig deeper if the
+  // eager fetch missed something.
+  const rawChunks = await hybridSearch(churchId, userQuery, RAG_TOP_K);
+  const ragChunks: RetrievedChunk[] = rawChunks.filter(
+    (c) =>
+      (c.semanticSimilarity ?? 0) >= SEMANTIC_FLOOR ||
+      (c.keywordRank ?? 0) >= KEYWORD_FLOOR
+  );
+  const ragContext = buildRagContext(ragChunks);
+
+  // Prepend RAG context to the last user message. Note: the message we
+  // persist to the DB uses the original `userQuery` below — the RAG prefix
+  // is only present in what we send to the model.
+  const enrichedMessages =
+    ragContext && coreMessages.length > 0
+      ? coreMessages.map((m, i) =>
+          i === coreMessages.length - 1 && m.role === "user"
+            ? { ...m, content: ragContext + m.content }
+            : m
+        )
+      : coreMessages;
+
+  // Trim older messages to fit the 100k total input budget. The last
+  // message (current user turn, RAG-enriched) is always kept.
+  const lastMessage = enrichedMessages.at(-1);
+  const olderMessages = enrichedMessages.slice(0, -1);
+  const trimmedOlder = lastMessage
+    ? trimHistoryToBudget(olderMessages, {
+        systemPromptTokens: estimateTokens(systemPrompt),
+        ragContextTokens: estimateTokens(ragContext),
+        currentUserTokens: estimateMessageTokens(lastMessage),
+        totalBudget: TOTAL_TOKEN_BUDGET,
+        outputReserve: OUTPUT_RESERVE,
+      })
+    : [];
+  const messagesToSend = lastMessage
+    ? [...trimmedOlder, lastMessage]
+    : enrichedMessages;
+
   logger.info("[chat] request started", {
     churchId,
     chatId: chatId ?? null,
     userId: userId ?? null,
     isAdminTest: isAdminTest ?? false,
-    model: process.env.AI_MODEL || "gpt-5.4-mini",
-    messageCount: coreMessages.length,
+    model: process.env.AI_MODEL || DEFAULT_MODEL,
+    messageCount: messagesToSend.length,
+    historyDropped: olderMessages.length - trimmedOlder.length,
+    ragChunkCount: ragChunks.length,
   });
 
   logger.debug("[chat] system prompt", {
@@ -397,16 +453,15 @@ export async function POST(request: Request) {
 
   logger.debug("[chat] messages sent to model", {
     churchId,
-    messages: coreMessages,
+    messages: messagesToSend,
   });
 
   const result = streamText({
     model: getModel(),
     system: systemPrompt,
-    messages: coreMessages,
+    messages: messagesToSend,
     tools: {
       search: createSearchTool(churchId),
-      lookupBiblePassage: createBibleLookupTool(),
     },
     stopWhen: stepCountIs(6),
   });
@@ -418,8 +473,9 @@ export async function POST(request: Request) {
       try {
         let fullText = "";
         for await (const chunk of result.textStream) {
+          if (!chunk) continue;
           fullText += chunk;
-          controller.enqueue(encoder.encode(chunk));
+          controller.enqueue(encoder.encode(CHUNK_BOUNDARY + chunk));
         }
 
         // Extract tool results for citations
@@ -456,14 +512,19 @@ export async function POST(request: Request) {
         }
 
         const searchResults = extractSearchResults(steps as unknown[]);
-        const citations = chunksToMetadata(searchResults);
+        // Merge the eager-RAG chunks with any chunks the agentic search
+        // tool pulled in. chunksToMetadata dedupes by documentId, so
+        // overlap between the two sources collapses into a single citation.
+        const allChunks = [...ragChunks, ...searchResults];
+        const citations = chunksToMetadata(allChunks);
 
         logger.info("[chat] response completed", {
           churchId,
           chatId: chatId ?? null,
           responseLength: fullText.length,
           totalSteps: steps.length,
-          searchResultsRaw: searchResults.length,
+          ragChunkCount: ragChunks.length,
+          toolSearchResults: searchResults.length,
           citationsDeduped: citations.length,
           citationDocIds: citations.map((c) => c.documentId),
         });

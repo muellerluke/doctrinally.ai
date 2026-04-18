@@ -25,6 +25,8 @@ const DOC_TYPE_TO_TASK: Record<string, string> = {
   word: "process-word",
   video: "process-video",
   platejs: "process-platejs",
+  // Sermons reuse the Platejs processing pipeline — same chunking, same index.
+  sermon: "process-platejs",
 };
 
 async function triggerProcessing(docType: string, documentId: string) {
@@ -303,7 +305,10 @@ export async function publishPlatejsDocument(documentId: string) {
     .set({ status: "queued", updatedAt: new Date() })
     .where(eq(documents.id, documentId));
 
-  await triggerProcessing("platejs", documentId);
+  // Route to the correct processing task based on the document's own type.
+  // Sermons and Platejs docs both use process-platejs; including the lookup
+  // here lets future document types (e.g. imported markdown) extend cleanly.
+  await triggerProcessing(doc.type, documentId);
 
   return { success: true };
 }

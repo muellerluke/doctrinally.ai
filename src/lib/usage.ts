@@ -1,7 +1,7 @@
 import { eq, and, lte, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { usageRecords, subscriptions } from "@/db/schema";
-import { getOverageRates } from "@/lib/plans";
+import { getOverageRates, hasSermonWriter, type PlanType } from "@/lib/plans";
 
 export async function incrementQuestionCount(churchId: string) {
   const now = new Date();
@@ -118,4 +118,82 @@ export async function canUseService(churchId: string): Promise<boolean> {
     sub.status === "past_due" ||
     sub.status === "trialing"
   );
+}
+
+// -----------------------------------------------------------------------
+// Sermon-writer billing
+// -----------------------------------------------------------------------
+
+/**
+ * Atomically add `cents` to the current period's sermon token spend.
+ * Called from the `/api/sermons/chat` streamText `onFinish` callback after
+ * pricing the turn's token usage via `priceTokens()`.
+ *
+ * No-ops silently if there is no current period row (the church should
+ * always have one, but we do not want to fail the AI response over
+ * accounting). Callers should log separately.
+ */
+export async function incrementSermonTokenSpend(
+  churchId: string,
+  cents: number
+) {
+  if (cents <= 0) return;
+  const now = new Date();
+  const record = await db.query.usageRecords.findFirst({
+    where: and(
+      eq(usageRecords.churchId, churchId),
+      lte(usageRecords.periodStart, now),
+      gte(usageRecords.periodEnd, now)
+    ),
+  });
+  if (!record) return;
+
+  await db
+    .update(usageRecords)
+    .set({
+      sermonTokensCents: sql`${usageRecords.sermonTokensCents} + ${cents}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(usageRecords.id, record.id));
+}
+
+/**
+ * Returns the sermon-writer budget and current spend for a church's active
+ * period. Returns `null` when the plan does not include the feature — callers
+ * should treat that as "feature not available" rather than "budget at zero".
+ */
+export async function getSermonBudgetStatus(churchId: string): Promise<{
+  plan: PlanType;
+  enabled: boolean;
+  budgetCents: number;
+  spentCents: number;
+  remainingCents: number;
+  exhausted: boolean;
+} | null> {
+  const [sub, usage] = await Promise.all([
+    db.query.subscriptions.findFirst({
+      where: eq(subscriptions.churchId, churchId),
+      columns: {
+        plan: true,
+        sermonBudgetCents: true,
+      },
+    }),
+    getCurrentUsage(churchId),
+  ]);
+
+  if (!sub) return null;
+
+  const enabled = hasSermonWriter(sub.plan);
+  const budgetCents = enabled ? sub.sermonBudgetCents : 0;
+  const spentCents = usage?.sermonTokensCents ?? 0;
+  const remainingCents = Math.max(0, budgetCents - spentCents);
+
+  return {
+    plan: sub.plan,
+    enabled,
+    budgetCents,
+    spentCents,
+    remainingCents,
+    exhausted: enabled && spentCents >= budgetCents,
+  };
 }

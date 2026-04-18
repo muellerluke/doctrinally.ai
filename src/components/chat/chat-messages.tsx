@@ -9,6 +9,7 @@ export interface ChatMessageData {
   role: "user" | "assistant";
   content: string;
   citations?: Citation[];
+  stableUpTo?: number;
 }
 
 interface ChatMessagesProps {
@@ -32,6 +33,7 @@ export function ChatMessages({ messages, isStreaming }: ChatMessagesProps) {
             role={msg.role}
             content={msg.content}
             citations={msg.citations}
+            stableUpTo={msg.stableUpTo}
             isStreaming={
               isStreaming && i === messages.length - 1 && msg.role === "assistant"
             }

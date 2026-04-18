@@ -3,60 +3,15 @@
 import Markdown from "react-markdown";
 import type { Citation } from "@/lib/types/citations";
 import { DocumentEmbed } from "@/components/chat/document-embed";
+import { DiffusionReveal } from "@/components/chat/diffusion-reveal";
+import { splitCitationSegments } from "@/lib/citations/parse";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   citations?: Citation[];
   isStreaming?: boolean;
-}
-
-type Segment =
-  | { kind: "text"; value: string }
-  | { kind: "embed"; node: React.ReactNode };
-
-/**
- * Parse <document>DOCUMENT_ID</document> tags and split content into
- * text segments and DocumentEmbed components.
- */
-function splitDocumentEmbeds(
-  content: string,
-  citations: Citation[]
-): Segment[] {
-  const citationByDocId = new Map(citations.map((c) => [c.documentId, c]));
-  const segments: Segment[] = [];
-  const regex = /<document>([^<]+)<\/document>/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({
-        kind: "text",
-        value: content.slice(lastIndex, match.index),
-      });
-    }
-
-    const docId = match[1].trim();
-    const citation = citationByDocId.get(docId);
-
-    if (citation) {
-      segments.push({
-        kind: "embed",
-        node: (
-          <DocumentEmbed key={`embed-${match.index}`} citation={citation} />
-        ),
-      });
-    }
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < content.length) {
-    segments.push({ kind: "text", value: content.slice(lastIndex) });
-  }
-
-  return segments;
+  stableUpTo?: number;
 }
 
 // Bible reference regex
@@ -257,6 +212,7 @@ export function ChatMessage({
   content,
   citations = [],
   isStreaming,
+  stableUpTo,
 }: ChatMessageProps) {
   if (role === "user") {
     return (
@@ -268,8 +224,16 @@ export function ChatMessage({
     );
   }
 
-  // Split out <document> embeds first, then render text as markdown
-  const segments = splitDocumentEmbeds(content, citations);
+  // Split stable vs pending only while streaming. Citations land at stream end,
+  // so the pending slice is always plain text that has yet to settle into markdown.
+  const boundary = Math.min(
+    stableUpTo ?? content.length,
+    content.length
+  );
+  const stableContent = isStreaming ? content.slice(0, boundary) : content;
+  const pendingContent = isStreaming ? content.slice(boundary) : "";
+
+  const segments = splitCitationSegments(stableContent, citations);
 
   return (
     <div>
@@ -282,9 +246,10 @@ export function ChatMessage({
               citations={citations}
             />
           ) : (
-            segment.node
+            <DocumentEmbed key={`embed-${i}`} citation={segment.citation} />
           )
         )}
+        {pendingContent && <DiffusionReveal text={pendingContent} />}
         {isStreaming && !content && <ThinkingDots />}
       </div>
     </div>

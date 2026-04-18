@@ -11,7 +11,9 @@ import {
   Settings,
   CreditCard,
   LogOut,
+  Sparkles,
 } from "lucide-react";
+import { formatCents } from "@/lib/sermons/token-budget";
 import {
   Sidebar,
   SidebarContent,
@@ -29,11 +31,11 @@ import { Progress } from "@/components/ui/progress";
 import { ChurchSwitcher } from "@/components/layouts/church-switcher";
 import { cn } from "@/lib/utils";
 
-const mainNav = [
+const baseMainNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Documents", href: "/documents", icon: FileText },
   { label: "Members", href: "/members", icon: Users },
-];
+] as const;
 
 interface AvailableChurch {
   churchId: string;
@@ -55,6 +57,9 @@ interface AdminSidebarProps {
   messageOverageCap?: number;
   availableChurches?: AvailableChurch[];
   activeChurchId?: string;
+  sermonBudgetCents?: number;
+  sermonSpentCents?: number;
+  hasSermonWriter?: boolean;
 }
 
 export function AdminSidebar({
@@ -69,9 +74,21 @@ export function AdminSidebar({
   messageOverageCap = 0,
   availableChurches = [],
   activeChurchId,
+  sermonBudgetCents = 0,
+  sermonSpentCents = 0,
+  hasSermonWriter: hasSermonWriterProp = false,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const isOwner = membershipRole === "owner";
+  const canAuthorSermons =
+    hasSermonWriterProp && (membershipRole === "owner" || membershipRole === "admin");
+
+  const mainNav = canAuthorSermons
+    ? [
+        ...baseMainNav,
+        { label: "Sermons", href: "/sermons", icon: Sparkles },
+      ]
+    : baseMainNav;
 
   const managementNav = [
     { label: "User Management", href: "/users", icon: UserCog },
@@ -115,6 +132,12 @@ export function AdminSidebar({
       : 0;
 
   const isQuestionOver = questionUsage > effectiveQuestionLimit && effectiveQuestionLimit > 0;
+
+  const sermonPct =
+    sermonBudgetCents > 0
+      ? Math.min((sermonSpentCents / sermonBudgetCents) * 100, 100)
+      : 0;
+  const sermonOver = sermonBudgetCents > 0 && sermonSpentCents >= sermonBudgetCents;
 
   return (
     <Sidebar>
@@ -199,20 +222,50 @@ export function AdminSidebar({
           {subscriptionStatus === "active" ||
           subscriptionStatus === "past_due" ||
           subscriptionStatus === "trialing" ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-                <span>Messages</span>
-                <span className={cn(isQuestionOver && "text-red-400 font-medium")}>
-                  {questionUsage.toLocaleString()} / {effectiveQuestionLimit.toLocaleString()}
-                </span>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
+                  <span>Messages</span>
+                  <span className={cn(isQuestionOver && "text-red-400 font-medium")}>
+                    {questionUsage.toLocaleString()} / {effectiveQuestionLimit.toLocaleString()}
+                  </span>
+                </div>
+                <Progress
+                  value={questionPercentage}
+                  className={cn(
+                    "h-1.5",
+                    isQuestionOver && "[&>div]:bg-red-400"
+                  )}
+                />
               </div>
-              <Progress
-                value={questionPercentage}
-                className={cn(
-                  "h-1.5",
-                  isQuestionOver && "[&>div]:bg-red-400"
-                )}
-              />
+              {hasSermonWriterProp ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
+                    <span>Sermon AI</span>
+                    <span className={cn(sermonOver && "text-red-400 font-medium")}>
+                      {formatCents(sermonSpentCents)} / {formatCents(sermonBudgetCents)}
+                    </span>
+                  </div>
+                  <Progress
+                    value={sermonPct}
+                    className={cn(
+                      "h-1.5",
+                      sermonOver && "[&>div]:bg-red-400"
+                    )}
+                  />
+                </div>
+              ) : (
+                <Link
+                  href="/billing"
+                  className="flex items-center justify-between rounded-md border border-sidebar-border/60 bg-sidebar-foreground/5 px-2.5 py-1.5 text-[11px] text-sidebar-foreground/70 transition hover:bg-sidebar-foreground/10"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3" />
+                    Sermon writer
+                  </span>
+                  <span className="text-sidebar-foreground/50">Enterprise</span>
+                </Link>
+              )}
             </div>
           ) : (
             <p className="text-xs text-sidebar-foreground/40">

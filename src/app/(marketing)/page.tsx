@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { CTASection } from "@/components/marketing/cta-section";
+import { BookDemoButton } from "@/components/marketing/book-demo-button";
 import {
   ArrowRight,
   Check,
-  MessageSquare,
   Upload,
   BarChart3,
   Sparkles,
@@ -106,21 +106,7 @@ export default function HomePage() {
                 Start your 14-day free trial
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-12 px-5 text-[0.95rem]"
-                render={
-                  <a
-                    href="https://example.doctrinally.ai"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-              >
-                <MessageSquare className="h-4 w-4" />
-                Try a live demo
-              </Button>
+              <BookDemoButton />
             </div>
 
             {/* Trust row */}

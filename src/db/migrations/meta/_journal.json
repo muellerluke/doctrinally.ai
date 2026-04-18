@@ -92,6 +92,20 @@
       "when": 1776379067129,
       "tag": "0012_blue_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1776522273051,
+      "tag": "0013_heavy_colossus",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1776536172039,
+      "tag": "0014_unusual_sphinx",
+      "breakpoints": true
     }
   ]
 }

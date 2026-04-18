@@ -8,6 +8,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   citations?: Citation[];
+  stableUpTo?: number;
 }
 
 interface UseChatOptions {
@@ -31,6 +32,8 @@ interface UseChatReturn {
 
 const CITATION_SENTINEL = "\n__CITATIONS__";
 const CHAT_ID_SENTINEL = "\n__CHAT_ID__";
+const CHUNK_BOUNDARY = "\u200B\u200B";
+const REVEAL_MS = 280;
 
 let messageCounter = 0;
 function genId() {
@@ -89,6 +92,12 @@ export function useChat({
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const chatIdRef = useRef<string | null>(initialChatId ?? null);
+  const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearRevealTimers = useCallback(() => {
+    for (const t of revealTimersRef.current) clearTimeout(t);
+    revealTimersRef.current = [];
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const trimmed = input.trim();
@@ -162,59 +171,116 @@ export function useChat({
       if (!reader) throw new Error("No response body");
 
       const decoder = new TextDecoder();
-      let fullText = "";
+      let rawBuffer = "";
+      let displayText = "";
+      const assistantId = assistantMsg.id;
+
+      const scheduleStableAdvance = (target: number) => {
+        const timer = setTimeout(() => {
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantId);
+            if (idx === -1) return prev;
+            const current = prev[idx];
+            if ((current.stableUpTo ?? 0) >= target) return prev;
+            const clamped = Math.min(target, current.content.length);
+            if (clamped === current.stableUpTo) return prev;
+            const updated = [...prev];
+            updated[idx] = { ...current, stableUpTo: clamped };
+            return updated;
+          });
+        }, REVEAL_MS);
+        revealTimersRef.current.push(timer);
+      };
+
+      const stripSentinels = (text: string) => {
+        let out = text;
+        const citIdx = out.indexOf(CITATION_SENTINEL);
+        if (citIdx !== -1) out = out.slice(0, citIdx);
+        const chatIdIdx = out.indexOf(CHAT_ID_SENTINEL);
+        if (chatIdIdx !== -1) out = out.slice(0, chatIdIdx);
+        return out;
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        fullText += chunk;
+        rawBuffer += chunk;
 
-        // During streaming, strip sentinels from display
-        let displayText = fullText;
-        const citIdx = displayText.indexOf(CITATION_SENTINEL);
-        if (citIdx !== -1) displayText = displayText.slice(0, citIdx);
-        const chatIdIdx = displayText.indexOf(CHAT_ID_SENTINEL);
-        if (chatIdIdx !== -1) displayText = displayText.slice(0, chatIdIdx);
+        // Split on the invisible chunk boundary emitted by the server.
+        // Any segment after a boundary is "new text just arrived".
+        const parts = chunk.split(CHUNK_BOUNDARY);
 
-        setMessages((prev) => {
-          const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last && last.role === "assistant") {
-            updated[updated.length - 1] = {
-              ...last,
-              content: displayText,
+        // parts[0] belongs to whatever segment is currently open.
+        // Subsequent parts are fresh server-side chunks.
+        const preBoundary = parts[0];
+        const freshChunks = parts.slice(1);
+
+        if (preBoundary) {
+          // Extend the latest pending slice with any trailing text in this read.
+          displayText += preBoundary;
+          const clean = stripSentinels(displayText);
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantId);
+            if (idx === -1) return prev;
+            const updated = [...prev];
+            updated[idx] = { ...updated[idx], content: clean };
+            return updated;
+          });
+        }
+
+        for (const fresh of freshChunks) {
+          // Freeze the pre-existing content as "stable" before appending new.
+          const priorLen = stripSentinels(displayText).length;
+          displayText += fresh;
+          const clean = stripSentinels(displayText);
+
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantId);
+            if (idx === -1) return prev;
+            const current = prev[idx];
+            const updated = [...prev];
+            updated[idx] = {
+              ...current,
+              content: clean,
+              stableUpTo: Math.min(priorLen, clean.length),
             };
-          }
-          return updated;
-        });
+            return updated;
+          });
+
+          // Schedule promotion: after REVEAL_MS, this chunk settles.
+          scheduleStableAdvance(clean.length);
+        }
       }
 
-      // Final: extract citations and chatId
+      // Final: extract citations and chatId from the raw buffered stream
       const { text: cleanText, citations, chatId: newChatId } =
-        extractStreamMetadata(fullText);
+        extractStreamMetadata(rawBuffer.split(CHUNK_BOUNDARY).join(""));
 
       if (newChatId) {
         chatIdRef.current = newChatId;
         setChatId(newChatId);
       }
 
+      clearRevealTimers();
+
       setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.id === assistantId);
+        if (idx === -1) return prev;
         const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last && last.role === "assistant") {
-          updated[updated.length - 1] = {
-            ...last,
-            content: cleanText,
-            citations,
-          };
-        }
+        updated[idx] = {
+          ...updated[idx],
+          content: cleanText,
+          citations,
+          stableUpTo: cleanText.length,
+        };
         return updated;
       });
 
       window.plausible?.("Chat Message");
     } catch (err) {
+      clearRevealTimers();
       if ((err as Error).name === "AbortError") return;
       setError((err as Error).message);
       setMessages((prev) => {
@@ -228,17 +294,18 @@ export function useChat({
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [input, isLoading, messages, churchId, churchName]);
+  }, [input, isLoading, messages, churchId, churchName, isAdminTest, clearRevealTimers]);
 
   const reset = useCallback(() => {
     if (abortRef.current) abortRef.current.abort();
+    clearRevealTimers();
     setMessages([]);
     setChatId(null);
     chatIdRef.current = null;
     setInput("");
     setIsLoading(false);
     setError(null);
-  }, []);
+  }, [clearRevealTimers]);
 
   return {
     messages,

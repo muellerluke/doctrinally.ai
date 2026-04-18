@@ -1,4 +1,12 @@
-import { jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { churches } from "./churches";
 import { users } from "./users";
@@ -11,6 +19,7 @@ export const documentTypeEnum = pgEnum("document_type", [
   "pdf",
   "word",
   "platejs",
+  "sermon",
 ]);
 
 export const documentStatusEnum = pgEnum("document_status", [
@@ -41,6 +50,19 @@ export const documents = pgTable("documents", {
   blobPath: text("blob_path"),
   content: text("content"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  // Sermon-specific metadata (speaker, date, tags, series). Null for non-sermons.
+  sermonMetadata: jsonb("sermon_metadata").$type<{
+    speaker?: string;
+    sermonDate?: string;
+    series?: string;
+    tags?: string[];
+  }>(),
+  // When a sermon is published into the library, this records the publish time.
+  publishedFromSermonAt: timestamp("published_from_sermon_at", { mode: "date" }),
+  // Whether this document is visible in the member-facing chat's retrieval.
+  // Defaults to true for existing document types; new sermons default to false
+  // and the pastor must opt in on publish.
+  membersSearchable: boolean("members_searchable").notNull().default(true),
   errorMessage: text("error_message"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

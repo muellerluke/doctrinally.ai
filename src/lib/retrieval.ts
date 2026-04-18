@@ -8,6 +8,14 @@ const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 
 /**
+ * Retrieval scope. "member" filters to documents visible in the member-facing
+ * chat (`members_searchable = true`). "full" returns every indexed document
+ * for the church — used by the sermon-writer and doctrine-check, which must
+ * see unpublished sermons and admin-only content.
+ */
+export type RetrievalScope = "member" | "full";
+
+/**
  * Generate a single embedding vector for a user query.
  */
 export async function generateQueryEmbedding(
@@ -44,9 +52,12 @@ export async function generateQueryEmbedding(
 export async function semanticSearch(
   churchId: string,
   embedding: number[],
-  limit = 10
+  limit = 10,
+  scope: RetrievalScope = "member"
 ): Promise<RetrievedChunk[]> {
   const vectorStr = `[${embedding.join(",")}]`;
+  const memberFilter =
+    scope === "member" ? sql`AND d.members_searchable = TRUE` : sql``;
 
   const results = await db.execute(sql`
     SELECT
@@ -57,7 +68,7 @@ export async function semanticSearch(
       c.start_time,
       c.end_time,
       c.page_number,
-      1 - (c.embedding <=> ${vectorStr}::vector) AS similarity,
+      1 - (c.embedding <=> ${vectorStr}::vector) AS semantic_similarity,
       d.title AS document_title,
       d.type AS document_type,
       d.source_url,
@@ -66,12 +77,15 @@ export async function semanticSearch(
     JOIN documents d ON d.id = c.document_id
     WHERE c.church_id = ${churchId}
       AND d.status = 'indexed'
+      ${memberFilter}
       AND c.embedding IS NOT NULL
     ORDER BY c.embedding <=> ${vectorStr}::vector
     LIMIT ${limit}
   `);
 
-  return (results as unknown as Record<string, unknown>[]).map(mapRowToChunk);
+  return (results as unknown as Record<string, unknown>[]).map((row) =>
+    mapRowToChunk(row, "semantic")
+  );
 }
 
 /**
@@ -80,7 +94,8 @@ export async function semanticSearch(
 export async function keywordSearch(
   churchId: string,
   query: string,
-  limit = 10
+  limit = 10,
+  scope: RetrievalScope = "member"
 ): Promise<RetrievedChunk[]> {
   // Convert query to tsquery format: split words and join with &
   const tsQuery = query
@@ -93,6 +108,9 @@ export async function keywordSearch(
 
   if (!tsQuery) return [];
 
+  const memberFilter =
+    scope === "member" ? sql`AND d.members_searchable = TRUE` : sql``;
+
   const results = await db.execute(sql`
     SELECT
       c.id AS chunk_id,
@@ -102,7 +120,7 @@ export async function keywordSearch(
       c.start_time,
       c.end_time,
       c.page_number,
-      ts_rank(to_tsvector('english', c.content), to_tsquery('english', ${tsQuery})) AS similarity,
+      ts_rank(to_tsvector('english', c.content), to_tsquery('english', ${tsQuery})) AS keyword_rank,
       d.title AS document_title,
       d.type AS document_type,
       d.source_url,
@@ -111,12 +129,15 @@ export async function keywordSearch(
     JOIN documents d ON d.id = c.document_id
     WHERE c.church_id = ${churchId}
       AND d.status = 'indexed'
+      ${memberFilter}
       AND to_tsvector('english', c.content) @@ to_tsquery('english', ${tsQuery})
     ORDER BY ts_rank(to_tsvector('english', c.content), to_tsquery('english', ${tsQuery})) DESC
     LIMIT ${limit}
   `);
 
-  return (results as unknown as Record<string, unknown>[]).map(mapRowToChunk);
+  return (results as unknown as Record<string, unknown>[]).map((row) =>
+    mapRowToChunk(row, "keyword")
+  );
 }
 
 /**
@@ -152,35 +173,56 @@ export function fuseRankings(
 }
 
 /**
+ * Cosine-similarity floor for semantic hits. `text-embedding-3-small` produces
+ * scores in roughly [0.0, 0.7] for real content — anything below ~0.3 is noise.
+ */
+export const SEMANTIC_SIMILARITY_FLOOR = 0.3;
+
+/**
  * Hybrid search combining semantic and keyword search with reciprocal rank fusion.
+ *
+ * Each returned chunk carries `semanticSimilarity` and/or `keywordRank`
+ * depending on which methods matched it. Both are set when a chunk is found
+ * by both methods — a strong co-occurrence signal. These scores live on
+ * different scales and must be compared separately (see callers).
+ *
+ * `scope` defaults to "member" so every existing call site keeps its current
+ * behavior — only the sermon-writer and doctrine-check opt into "full".
  */
 export async function hybridSearch(
   churchId: string,
   query: string,
-  limit = 8
+  limit = 8,
+  scope: RetrievalScope = "member"
 ): Promise<RetrievedChunk[]> {
   const embedding = await generateQueryEmbedding(query);
 
   const [semanticResults, keywordResults] = await Promise.all([
-    semanticSearch(churchId, embedding, limit * 2),
-    keywordSearch(churchId, query, limit * 2),
+    semanticSearch(churchId, embedding, limit * 2, scope),
+    keywordSearch(churchId, query, limit * 2, scope),
   ]);
 
-  // Filter out low-similarity semantic results before fusion. Without this,
-  // irrelevant chunks (e.g., a query about "pizza" matching sermons about
-  // "peace") still appear as results and the model treats them as relevant.
-  const SIMILARITY_THRESHOLD = 0.5;
+  // Drop semantic hits below the noise floor before fusion. This keeps
+  // irrelevant chunks (query "pizza" matching sermons about "peace") from
+  // riding into the result set on a weak cosine score.
   const filteredSemantic = semanticResults.filter(
-    (c) => typeof c.similarity === "number" && c.similarity >= SIMILARITY_THRESHOLD
+    (c) =>
+      typeof c.semanticSimilarity === "number" &&
+      c.semanticSimilarity >= SEMANTIC_SIMILARITY_FLOOR
   );
 
-  // Build a map of raw cosine similarities from semantic search so we can
-  // preserve them through RRF. The raw cosine score is the only meaningful
-  // relevance signal — the RRF score is only used for ranking order.
-  const rawSimilarityMap = new Map<string, number>();
+  // Collect both scores per chunkId so a chunk found in both search methods
+  // retains both signals through fusion.
+  const semanticByChunk = new Map<string, number>();
   for (const chunk of filteredSemantic) {
-    if (typeof chunk.similarity === "number") {
-      rawSimilarityMap.set(chunk.chunkId, chunk.similarity);
+    if (typeof chunk.semanticSimilarity === "number") {
+      semanticByChunk.set(chunk.chunkId, chunk.semanticSimilarity);
+    }
+  }
+  const keywordByChunk = new Map<string, number>();
+  for (const chunk of keywordResults) {
+    if (typeof chunk.keywordRank === "number") {
+      keywordByChunk.set(chunk.chunkId, chunk.keywordRank);
     }
   }
 
@@ -190,22 +232,32 @@ export async function hybridSearch(
 
   return ranked.map(({ chunk }) => ({
     ...chunk,
-    // Use the raw cosine similarity as the similarity value. This gives
-    // an honest measure of how relevant each chunk actually is, rather
-    // than a normalized RRF score where the top result is always 1.0.
-    // Keyword-only results keep their ts_rank score as-is.
-    similarity: rawSimilarityMap.get(chunk.chunkId) ?? chunk.similarity,
+    semanticSimilarity: semanticByChunk.get(chunk.chunkId),
+    keywordRank: keywordByChunk.get(chunk.chunkId),
   }));
 }
 
-function mapRowToChunk(row: Record<string, unknown>): RetrievedChunk {
+function mapRowToChunk(
+  row: Record<string, unknown>,
+  source: "semantic" | "keyword"
+): RetrievedChunk {
+  const semanticSimilarity =
+    source === "semantic" && row.semantic_similarity != null
+      ? Number(row.semantic_similarity)
+      : undefined;
+  const keywordRank =
+    source === "keyword" && row.keyword_rank != null
+      ? Number(row.keyword_rank)
+      : undefined;
+
   return {
     chunkId: row.chunk_id as string,
     documentId: row.document_id as string,
     documentTitle: row.document_title as string,
     documentType: row.document_type as RetrievedChunk["documentType"],
     content: row.content as string,
-    similarity: row.similarity as number | undefined,
+    semanticSimilarity,
+    keywordRank,
     sourceUrl: (row.source_url as string) || (row.blob_path as string) || undefined,
     heading: (row.heading as string) || undefined,
     startTime: row.start_time != null ? Number(row.start_time) : undefined,

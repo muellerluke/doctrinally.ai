@@ -17,8 +17,11 @@ const streamTextSpy = vi.fn(() => ({
 vi.mock("ai", () => ({
   streamText: streamTextSpy,
   tool: (def: unknown) => def,
+  jsonSchema: (schema: unknown) => schema,
+  stepCountIs: (n: number) => n,
 }));
 vi.mock("@ai-sdk/openai", () => ({
+  createOpenAI: () => ({ chat: () => ({}) }),
   openai: () => ({}),
 }));
 
