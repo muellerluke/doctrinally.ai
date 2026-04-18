@@ -2,6 +2,7 @@
 
 import { getServerSession } from "next-auth";
 import { eq, and, ilike, isNull, sql, count } from "drizzle-orm";
+import { after } from "next/server";
 import { del } from "@vercel/blob";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
@@ -358,15 +359,20 @@ export async function deleteDocument(documentId: string) {
 
   if (!doc) return { error: "Document not found" };
 
-  if (doc.blobPath) {
-    try {
-      await del(doc.blobPath);
-    } catch {
-      // Continue with deletion even if blob removal fails
-    }
-  }
-
   await db.delete(documents).where(eq(documents.id, documentId));
+
+  // Fire-and-forget blob cleanup after the response flushes. Failure
+  // leaves an orphan blob, not an orphan row.
+  if (doc.blobPath) {
+    const blobUrl = doc.blobPath;
+    after(async () => {
+      try {
+        await del(blobUrl);
+      } catch (err) {
+        console.error(`deleteDocument: failed to delete blob ${blobUrl}:`, err);
+      }
+    });
+  }
 
   return { success: true };
 }

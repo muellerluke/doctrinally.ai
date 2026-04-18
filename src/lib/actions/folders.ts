@@ -1,7 +1,9 @@
 "use server";
 
 import { getServerSession } from "next-auth";
-import { eq, and, isNull, InferSelectModel } from "drizzle-orm";
+import { eq, and, isNull, inArray, InferSelectModel } from "drizzle-orm";
+import { after } from "next/server";
+import { del } from "@vercel/blob";
 import { db } from "@/db";
 import { folders, documents } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
@@ -140,15 +142,77 @@ export async function deleteFolder(folderId: string) {
 
   const churchId = ctx.membership.churchId;
 
-  const folder = await db.query.folders.findFirst({
+  const root = await db.query.folders.findFirst({
     where: and(eq(folders.id, folderId), eq(folders.churchId, churchId)),
   });
-  if (!folder) return { error: "Folder not found" };
+  if (!root) return { error: "Folder not found" };
 
-  // Documents inside get folderId set to null via FK onDelete: "set null"
-  await db.delete(folders).where(eq(folders.id, folderId));
+  // Walk the folder tree (breadth-first) to collect every descendant.
+  // `folders.parentId` has no FK constraint, so nothing cascades — we
+  // have to enumerate the subtree ourselves.
+  const folderIds = [folderId];
+  let frontier = [folderId];
+  while (frontier.length > 0) {
+    const children = await db
+      .select({ id: folders.id })
+      .from(folders)
+      .where(
+        and(
+          eq(folders.churchId, churchId),
+          inArray(folders.parentId, frontier)
+        )
+      );
+    frontier = children.map((c) => c.id);
+    folderIds.push(...frontier);
+  }
 
-  return { success: true };
+  // Pull every document that lived in any folder we're about to remove.
+  // We need the blobPath list before the row goes away so we can clean
+  // the bytes from storage afterwards.
+  const docs = await db
+    .select({ id: documents.id, blobPath: documents.blobPath })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.churchId, churchId),
+        inArray(documents.folderId, folderIds)
+      )
+    );
+
+  const docIds = docs.map((d) => d.id);
+  const blobsToDelete = docs
+    .map((d) => d.blobPath)
+    .filter((p): p is string => !!p);
+
+  // Delete documents first (chunks cascade via chunks.documentId
+  // onDelete: cascade). Then delete the folders.
+  if (docIds.length > 0) {
+    await db.delete(documents).where(inArray(documents.id, docIds));
+  }
+  await db.delete(folders).where(inArray(folders.id, folderIds));
+
+  // Fire-and-forget blob cleanup — runs after the response has been
+  // flushed, so the user doesn't wait on network I/O to blob storage.
+  // Failures here leave orphan blobs, not orphan DB rows.
+  if (blobsToDelete.length > 0) {
+    after(async () => {
+      const results = await Promise.allSettled(
+        blobsToDelete.map((url) => del(url))
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        console.error(
+          `deleteFolder: ${failed}/${blobsToDelete.length} blob deletions failed`
+        );
+      }
+    });
+  }
+
+  return {
+    success: true,
+    deletedFolders: folderIds.length,
+    deletedDocuments: docs.length,
+  };
 }
 
 export async function moveDocument(
