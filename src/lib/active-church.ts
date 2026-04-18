@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { memberships, churches } from "@/db/schema";
+import { memberships, churches, users } from "@/db/schema";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 
 export const ACTIVE_CHURCH_COOKIE = "activeChurchId";
 
@@ -22,17 +23,37 @@ export type ActiveMembershipResult = {
 export async function getActiveMembershipForUser(
   userId: string
 ): Promise<ActiveMembershipResult> {
+  // Look up the user's email so we can grant super-admin cross-church
+  // impersonation in production. One extra indexed PK lookup per call —
+  // cheap compared to the memberships/churches queries below.
+  const userRow = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { email: true },
+  });
+  const isSuperAdmin = isSuperAdminEmail(userRow?.email);
+
+  // In dev we always open up cross-church access for easier debugging.
+  // In production the same powers are restricted to the platform
+  // super-admin (luke@doctrinally.ai).
+  const allowAllChurches =
+    process.env.NODE_ENV === "development" || isSuperAdmin;
+
   const userMemberships = await db.query.memberships.findMany({
     where: eq(memberships.userId, userId),
     orderBy: asc(memberships.createdAt),
   });
 
-  if (userMemberships.length === 0) return null;
+  // Super-admin may have no real memberships at all — still allow the
+  // church switcher + impersonation path to kick in.
+  if (userMemberships.length === 0 && !allowAllChurches) return null;
 
   const churchIds = userMemberships.map((m) => m.churchId);
-  const churchRows = await db.query.churches.findMany({
-    where: inArray(churches.id, churchIds),
-  });
+  const churchRows =
+    churchIds.length > 0
+      ? await db.query.churches.findMany({
+          where: inArray(churches.id, churchIds),
+        })
+      : [];
   const churchById = new Map(churchRows.map((c) => [c.id, c]));
 
   let availableChurches: UserChurchSummary[] = userMemberships
@@ -49,9 +70,11 @@ export async function getActiveMembershipForUser(
     })
     .filter((x): x is UserChurchSummary => x !== null);
 
-  // Dev-only: include ALL churches so the switcher shows every church in
-  // the database, not just the ones the user has memberships for.
-  if (process.env.NODE_ENV === "development") {
+  // Show every church in the DB — not just ones the user has a real
+  // membership for — so the switcher works as an impersonation entry
+  // point. Gated on `allowAllChurches` so this only fires in dev or
+  // for the super-admin in prod.
+  if (allowAllChurches) {
     const allChurches = await db.query.churches.findMany({
       orderBy: asc(churches.name),
     });
@@ -72,9 +95,10 @@ export async function getActiveMembershipForUser(
   const cookieStore = await cookies();
   const activeChurchId = cookieStore.get(ACTIVE_CHURCH_COOKIE)?.value;
 
-  // Dev-only: allow impersonating any church, even without a real membership.
-  // This lets developers view the admin experience of any church in the DB.
-  if (process.env.NODE_ENV === "development" && activeChurchId) {
+  // Allow impersonating any church without a real membership — same
+  // gating as above (`allowAllChurches`). Returns a synthetic owner-role
+  // membership so downstream admin pages render normally.
+  if (allowAllChurches && activeChurchId) {
     const hasRealMembership = userMemberships.some(
       (m) => m.churchId === activeChurchId
     );
@@ -97,6 +121,31 @@ export async function getActiveMembershipForUser(
         };
       }
     }
+  }
+
+  // If we reach here with no real memberships, only the super-admin
+  // (or dev) gets a default synthetic landing — pick the first church
+  // alphabetically so the admin shell has something to render.
+  if (userMemberships.length === 0) {
+    if (!allowAllChurches) return null;
+    const fallback = availableChurches[0];
+    if (!fallback) return null;
+    const fallbackChurch = await db.query.churches.findFirst({
+      where: eq(churches.id, fallback.churchId),
+    });
+    if (!fallbackChurch) return null;
+    return {
+      membership: {
+        id: "dev-synthetic",
+        userId,
+        churchId: fallbackChurch.id,
+        role: "owner" as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      church: fallbackChurch,
+      availableChurches,
+    };
   }
 
   const active =

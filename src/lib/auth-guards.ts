@@ -5,6 +5,9 @@ import { db } from "@/db";
 import { subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { getActiveMembershipForUser } from "@/lib/active-church";
+import { isSuperAdminEmail } from "@/lib/super-admin";
+
+export { SUPER_ADMIN_EMAIL, isSuperAdminEmail } from "@/lib/super-admin";
 
 const roleHierarchy = { member: 0, admin: 1, owner: 2 } as const;
 type Role = keyof typeof roleHierarchy;
@@ -54,11 +57,9 @@ export async function requireAdmin() {
   return requireRole("admin");
 }
 
-const SUPER_ADMIN_EMAIL = "luke@doctrinally.ai";
-
 export async function requireSuperAdmin() {
   const session = await requireAuth();
-  if (session.user.email !== SUPER_ADMIN_EMAIL) {
+  if (!isSuperAdminEmail(session.user.email)) {
     return null;
   }
   return session;

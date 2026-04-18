@@ -31,6 +31,10 @@ interface ClientPayload {
   tags?: string;
   folderId?: string | null;
   fileType: string;
+  /** Original filename — used as a server-side fallback for docType
+   *  resolution when `fileType` is blank or `application/octet-stream`
+   *  (common for .m4v, .mkv, and other less-popular video containers). */
+  fileName?: string;
   fileSize: number;
   /** Client-generated correlation ID; carries from Phase 1 through the
    *  webhook into the eventual `documents` row, and gates the
@@ -82,8 +86,15 @@ export async function POST(request: Request) {
           throw new Error("Invalid upload metadata");
         }
 
-        const { title, tags, folderId, fileType, fileSize, uploadId } =
-          payload;
+        const {
+          title,
+          tags,
+          folderId,
+          fileType,
+          fileName,
+          fileSize,
+          uploadId,
+        } = payload;
 
         if (!title || title.length < 2) {
           throw new Error("Title is required (min 2 characters)");
@@ -93,14 +104,21 @@ export async function POST(request: Request) {
           throw new Error("Missing uploadId");
         }
 
-        const docType = resolveDocType(fileType);
+        const docType = resolveDocType(fileType, fileName);
         if (!docType) {
           throw new Error(
             "Unsupported file type. Please upload a PDF, Word document, or video."
           );
         }
 
-        const maxSize = MAX_FILE_SIZE[fileType] ?? 50 * 1024 * 1024;
+        // Prefer the MIME-specific ceiling, fall back to the per-docType
+        // default so novel video MIMEs (e.g. Safari sending video/x-m4v)
+        // still get the 2 GB video cap instead of the 50 MB pdf/word cap.
+        const maxSize =
+          MAX_FILE_SIZE[fileType] ??
+          (docType === "video"
+            ? 2 * 1024 * 1024 * 1024
+            : 50 * 1024 * 1024);
         if (typeof fileSize !== "number" || fileSize <= 0) {
           throw new Error("Invalid file size");
         }

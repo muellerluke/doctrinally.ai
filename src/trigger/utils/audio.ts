@@ -66,7 +66,11 @@ export async function extractAudio(
   videoUrl: string,
   workDir: string
 ): Promise<string> {
-  const videoPath = join(workDir, `video-${randomUUID()}.mp4`);
+  // No extension on the input file — ffmpeg probes the container by
+  // content, so it reads MP4, M4V, MOV, MKV, WebM, AVI, etc. equally
+  // well whether we name the file .mp4 or not. Keeping it bare avoids
+  // implying the file is any particular format.
+  const videoPath = join(workDir, `input-${randomUUID()}`);
   const audioPath = join(workDir, `audio-${randomUUID()}.mp3`);
 
   // Stream video to disk — never buffer the full video in memory.

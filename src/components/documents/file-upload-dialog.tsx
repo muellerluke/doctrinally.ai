@@ -19,8 +19,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const ACCEPTED_TYPES =
-  ".pdf,.docx,video/mp4,video/webm,video/quicktime,video/*";
+// Explicit extension list (in addition to `video/*`) so the OS picker
+// highlights these as selectable even when the browser can't map them to
+// a MIME type. Covers every container ffmpeg routinely handles.
+const ACCEPTED_TYPES = [
+  ".pdf",
+  ".docx",
+  ".mp4",
+  ".m4v",
+  ".mov",
+  ".qt",
+  ".webm",
+  ".mkv",
+  ".avi",
+  ".ogv",
+  ".ogg",
+  ".3gp",
+  ".3g2",
+  ".flv",
+  ".ts",
+  ".mts",
+  ".m2ts",
+  ".mpeg",
+  ".mpg",
+  ".wmv",
+  "video/*",
+].join(",");
 
 const ACCEPT_MAP: Record<string, string> = {
   "application/pdf": "pdf",
@@ -28,12 +52,69 @@ const ACCEPT_MAP: Record<string, string> = {
     "word",
 };
 
-function resolveFileType(file: File): "pdf" | "word" | "video" {
-  if (ACCEPT_MAP[file.type]) return ACCEPT_MAP[file.type] as "pdf" | "word";
-  if (file.type.startsWith("video/")) return "video";
-  if (file.name.endsWith(".pdf")) return "pdf";
-  if (file.name.endsWith(".docx")) return "word";
-  return "video";
+// Extension → synthetic MIME to send to the backend when the browser
+// reports a blank or `application/octet-stream` type. Keeps uploads
+// flowing for Safari's treatment of .m4v, less-popular .mkv/.avi/.mov,
+// etc.
+const EXT_TO_MIME: Record<string, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  mp4: "video/mp4",
+  m4v: "video/x-m4v",
+  mov: "video/quicktime",
+  qt: "video/quicktime",
+  webm: "video/webm",
+  mkv: "video/x-matroska",
+  avi: "video/x-msvideo",
+  ogv: "video/ogg",
+  ogg: "video/ogg",
+  "3gp": "video/3gpp",
+  "3g2": "video/3gpp2",
+  flv: "video/x-flv",
+  ts: "video/mp2t",
+  mts: "video/mp2t",
+  m2ts: "video/mp2t",
+  mpeg: "video/mpeg",
+  mpg: "video/mpeg",
+  wmv: "video/mp4", // wmv isn't a registered web MIME; map to mp4 so Blob accepts the bytes (ffmpeg can still read the actual WMV)
+};
+
+function extensionOf(name: string): string | null {
+  const dotIdx = name.lastIndexOf(".");
+  if (dotIdx <= 0 || dotIdx === name.length - 1) return null;
+  return name.slice(dotIdx + 1).toLowerCase();
+}
+
+/** Resolve (docType, mimeType) for a browser-picked File. Falls back to the
+ *  filename extension whenever `file.type` is blank, generic, or something
+ *  not in our canonical list. */
+function resolveFileMeta(file: File): {
+  docType: "pdf" | "word" | "video";
+  effectiveMime: string;
+} {
+  const ext = extensionOf(file.name);
+
+  if (ACCEPT_MAP[file.type]) {
+    return {
+      docType: ACCEPT_MAP[file.type] as "pdf" | "word",
+      effectiveMime: file.type,
+    };
+  }
+  if (file.type.startsWith("video/")) {
+    return { docType: "video", effectiveMime: file.type };
+  }
+  if (ext && EXT_TO_MIME[ext]) {
+    const mime = EXT_TO_MIME[ext];
+    const docType = mime.startsWith("video/")
+      ? "video"
+      : mime === "application/pdf"
+        ? "pdf"
+        : "word";
+    return { docType, effectiveMime: mime };
+  }
+
+  // Last resort — let the backend reject if it really is something odd.
+  return { docType: "video", effectiveMime: file.type || "video/mp4" };
 }
 
 function filenameWithoutExtension(name: string) {
@@ -149,7 +230,7 @@ export function FileUploadDialog({
     // Fire all uploads concurrently
     for (const entry of batch) {
       const uploadId = crypto.randomUUID();
-      const fileType = resolveFileType(entry.file);
+      const { docType, effectiveMime } = resolveFileMeta(entry.file);
 
       onUploadStart?.({
         id: uploadId,
@@ -163,11 +244,13 @@ export function FileUploadDialog({
         access: "public",
         handleUploadUrl: "/api/documents/upload",
         multipart: true,
+        contentType: effectiveMime,
         clientPayload: JSON.stringify({
           title: entry.title,
           tags: tagList.join(","),
           folderId: folderId ?? null,
-          fileType: entry.file.type,
+          fileType: effectiveMime,
+          fileName: entry.file.name,
           fileSize: entry.file.size,
           uploadId,
         }),
@@ -186,7 +269,7 @@ export function FileUploadDialog({
             title: entry.title,
             tags: tagList,
             folderId: folderId ?? null,
-            docType: fileType,
+            docType,
           }).catch(() => {
             // Non-fatal — the webhook may have already handled it.
           });
@@ -216,8 +299,9 @@ export function FileUploadDialog({
             Upload {entries.length > 1 ? `${entries.length} Files` : "Files"}
           </DialogTitle>
           <DialogDescription>
-            Upload PDFs, Word documents, or video files. Content will be
-            processed and indexed for AI retrieval.
+            Upload PDFs, Word documents, or video files (MP4, M4V, MOV, WebM,
+            MKV, AVI, and more). Content will be processed and indexed for AI
+            retrieval.
           </DialogDescription>
         </DialogHeader>
 
