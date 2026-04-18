@@ -13,4 +13,3 @@ export * from "./folders";
 export * from "./bible";
 export * from "./topics";
 export * from "./sermon-sessions";
-export * from "./demo-bookings";

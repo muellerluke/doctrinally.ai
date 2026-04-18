@@ -38,7 +38,11 @@ export async function processPdfBody(payload: { documentId: string }) {
     // Extract text from PDF using unpdf (serverless-safe, no DOM deps)
     const pdf = await getDocumentProxy(data);
     const { text: extracted } = await extractText(pdf, { mergePages: true });
-    const text = Array.isArray(extracted) ? extracted.join("\n") : extracted;
+    const rawText = Array.isArray(extracted) ? extracted.join("\n") : extracted;
+
+    // Postgres `text` columns reject NUL (U+0000) bytes — some PDFs embed them
+    // via encoded fonts or raw binary. Strip before chunking.
+    const text = rawText.replace(/\u0000/g, "");
 
     if (!text || text.trim().length === 0) {
       throw new Error("No text content extracted from PDF");

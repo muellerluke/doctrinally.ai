@@ -23,7 +23,10 @@ export function chunkByTokens(
   maxTokens = 300,
   overlap = 30
 ): string[] {
-  const sentences = splitSentences(text);
+  // Defensive: strip NUL bytes — Postgres `text` columns reject U+0000 and
+  // embedded NULs can sneak in from PDFs, OCR output, or corrupt sources.
+  const safeText = text.replace(/\u0000/g, "");
+  const sentences = splitSentences(safeText);
   const chunks: string[] = [];
   let current: string[] = [];
   let currentTokens = 0;
