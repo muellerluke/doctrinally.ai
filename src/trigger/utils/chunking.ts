@@ -14,6 +14,49 @@ function splitSentences(text: string): string[] {
 }
 
 /**
+ * Hard-split a single block that's longer than `maxTokens` into smaller pieces.
+ * Tries (in order): paragraph breaks → line breaks → word boundaries → raw
+ * character slices. Guarantees every output is ≤ maxTokens, which is required
+ * so individual chunks never exceed OpenAI's 8192-token embedding input limit.
+ */
+function hardSplitBlock(block: string, maxTokens: number): string[] {
+  if (estimateTokens(block) <= maxTokens) return [block];
+
+  const splitters: RegExp[] = [/\n\n+/, /\n/, /\s+/];
+  for (const re of splitters) {
+    const parts = block.split(re).filter((p) => p.length > 0);
+    if (parts.length <= 1) continue;
+
+    const out: string[] = [];
+    let acc = "";
+    for (const part of parts) {
+      const candidate = acc ? `${acc} ${part}` : part;
+      if (estimateTokens(candidate) > maxTokens && acc.length > 0) {
+        out.push(acc);
+        acc = part;
+      } else {
+        acc = candidate;
+      }
+    }
+    if (acc.length > 0) out.push(acc);
+
+    // Recurse so any piece still over the limit gets split by the next
+    // coarser-grained splitter.
+    if (out.every((p) => estimateTokens(p) <= maxTokens)) return out;
+    return out.flatMap((p) => hardSplitBlock(p, maxTokens));
+  }
+
+  // Last resort — no whitespace at all. Slice by character count using
+  // ~3.5 chars/token (conservative vs. tiktoken's ~4).
+  const charCap = Math.max(1, Math.floor(maxTokens * 3.5));
+  const out: string[] = [];
+  for (let i = 0; i < block.length; i += charCap) {
+    out.push(block.slice(i, i + charCap));
+  }
+  return out;
+}
+
+/**
  * Chunk text into segments of approximately `maxTokens` tokens with `overlap`
  * token overlap between consecutive chunks. Splits on sentence boundaries
  * when possible.
@@ -26,7 +69,13 @@ export function chunkByTokens(
   // Defensive: strip NUL bytes — Postgres `text` columns reject U+0000 and
   // embedded NULs can sneak in from PDFs, OCR output, or corrupt sources.
   const safeText = text.replace(/\u0000/g, "");
-  const sentences = splitSentences(safeText);
+  // Split into sentences, then hard-split any sentence that would by itself
+  // exceed maxTokens. Without this, a PDF page with no sentence terminators
+  // (tables, bullet lists, URL dumps) becomes one multi-thousand-token
+  // "sentence" and the per-chunk loop below has no way to break it down.
+  const sentences = splitSentences(safeText).flatMap((s) =>
+    hardSplitBlock(s, maxTokens)
+  );
   const chunks: string[] = [];
   let current: string[] = [];
   let currentTokens = 0;
