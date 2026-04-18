@@ -11,6 +11,12 @@ import { Button } from "@/components/ui/button";
 const CAL_NAMESPACE = "doctrinally.ai-booking";
 const CAL_LINK = "luke-mueller-ohorfe/doctrinally.ai-booking";
 
+// Query param we stamp onto the current doctrinally.ai URL when the user
+// clicks the button. The Meta Pixel auto-fires a `PageView` on history
+// changes, so this exposes a URL signature Meta Ads Manager can target
+// with a custom conversion rule (e.g. "URL contains demo_click").
+const TRACKING_PARAM = "demo_click";
+
 export function BookDemoButton() {
   useEffect(() => {
     (async () => {
@@ -22,6 +28,19 @@ export function BookDemoButton() {
     })();
   }, []);
 
+  function handleClick() {
+    if (typeof window === "undefined") return;
+    // Silently append ?demo_click=1 to the current URL (preserving any
+    // existing params) so Meta Pixel records a new PageView. Using
+    // replaceState avoids polluting browser history — the user can still
+    // hit back to leave the page exactly as they expect.
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(TRACKING_PARAM)) {
+      url.searchParams.set(TRACKING_PARAM, "1");
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
+  }
+
   return (
     <Button
       size="lg"
@@ -30,6 +49,7 @@ export function BookDemoButton() {
       data-cal-namespace={CAL_NAMESPACE}
       data-cal-link={CAL_LINK}
       data-cal-config='{"layout":"month_view","useSlotsViewOnSmallScreen":"true"}'
+      onClick={handleClick}
     >
       <MessageSquare className="h-4 w-4" />
       Book a demo

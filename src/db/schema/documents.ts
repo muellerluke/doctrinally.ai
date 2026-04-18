@@ -1,5 +1,6 @@
 import {
   boolean,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -64,6 +65,11 @@ export const documents = pgTable("documents", {
   // and the pastor must opt in on publish.
   membersSearchable: boolean("members_searchable").notNull().default(true),
   errorMessage: text("error_message"),
+  // How many times the hourly scheduler has re-queued this document. Caps
+  // out the retry-failed-documents loop so a permanently broken doc stops
+  // bouncing. Reset to 0 on successful index or when an admin manually
+  // retries from the UI.
+  retryCount: integer("retry_count").notNull().default(0),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });

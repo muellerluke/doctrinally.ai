@@ -1,5 +1,5 @@
 import { schedules, tasks } from "@trigger.dev/sdk/v3";
-import { eq, and, lt, inArray, isNull, or } from "drizzle-orm";
+import { eq, and, lt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
 
@@ -11,8 +11,26 @@ const DOC_TYPE_TO_TASK: Record<string, string> = {
   platejs: "process-platejs",
 };
 
-/** Statuses that indicate a document is stuck and should be retried. */
-const STUCK_STATUSES = ["uploaded", "queued", "processing"] as const;
+/**
+ * Hard cap on how many times the scheduler will re-queue a single document
+ * before giving up. Combined with Trigger.dev's own `retry.maxAttempts: 2`
+ * on each process-* task, a truly broken doc gets ≈(MAX_RETRIES + 1) × 2
+ * processing attempts before the scheduler stops touching it.
+ *
+ * When the cap is hit the doc is left in whatever terminal state it's in
+ * (usually "failed"). An admin can reset `retry_count` and try again by
+ * calling retryDocument/reprocessDocument from the UI.
+ */
+const MAX_RETRIES = 3;
+
+/**
+ * Statuses that indicate a transient-stuck document worth re-queuing.
+ * Split by cutoff because "queued" should trigger almost immediately in
+ * prod (Trigger.dev normally picks up a task within seconds) while
+ * "processing" legitimately runs for up to an hour on large videos.
+ */
+const QUEUED_CUTOFF_MS = 15 * 60 * 1000;      // 15 min — queued but never picked up
+const PROCESSING_CUTOFF_MS = 60 * 60 * 1000;  // 1 hour — running job presumed dead
 
 export const retryFailedDocuments = schedules.task({
   id: "retry-failed-documents",
@@ -45,56 +63,79 @@ export const retryFailedDocuments = schedules.task({
       );
     }
 
-    // --- 1. Retry explicitly failed documents ---
-    // Only retry documents that have been in "failed" state for at least
-    // 5 minutes. This avoids re-triggering a document that JUST failed
-    // and might still be in a Trigger.dev built-in retry cycle.
+    // --- 1. Explicitly failed docs ---
+    // Wait 5 minutes so Trigger.dev's built-in retry has a chance to finish
+    // before the scheduler piles on its own retry.
     const failedCutoff = new Date(Date.now() - 5 * 60 * 1000);
-
     const failedDocs = await db
       .select({
         id: documents.id,
         type: documents.type,
         title: documents.title,
         status: documents.status,
+        retryCount: documents.retryCount,
       })
       .from(documents)
       .where(
         and(
           eq(documents.status, "failed"),
-          lt(documents.updatedAt, failedCutoff)
+          lt(documents.updatedAt, failedCutoff),
+          lt(documents.retryCount, MAX_RETRIES)
         )
       );
 
-    // --- 2. Unstick documents stuck in a transient state for over an hour ---
-    // These are documents that got stuck in "uploaded", "queued", or
-    // "processing" — likely because the Trigger.dev worker crashed, the
-    // task timed out without updating the DB, or deployment interrupted a
-    // running job.
-    const stuckCutoff = new Date(Date.now() - 60 * 60 * 1000);
-
-    const stuckDocs = await db
+    // --- 2. Stuck in "queued" — short window ---
+    // Trigger.dev normally picks up a queued task within seconds. If a row
+    // has been sitting in "queued" for 15+ minutes, the trigger call almost
+    // certainly dropped on the floor (network blip during upload webhook,
+    // worker crash between queue and start, etc.).
+    const queuedCutoff = new Date(Date.now() - QUEUED_CUTOFF_MS);
+    const queuedStuck = await db
       .select({
         id: documents.id,
         type: documents.type,
         title: documents.title,
         status: documents.status,
+        retryCount: documents.retryCount,
       })
       .from(documents)
       .where(
         and(
-          inArray(documents.status, [...STUCK_STATUSES]),
-          lt(documents.updatedAt, stuckCutoff)
+          inArray(documents.status, ["queued", "uploaded"]),
+          lt(documents.updatedAt, queuedCutoff),
+          lt(documents.retryCount, MAX_RETRIES)
         )
       );
 
-    const allDocs = [...failedDocs, ...stuckDocs];
+    // --- 3. Stuck in "processing" — long window ---
+    // Video transcription can legitimately take the better part of an hour.
+    // Only rescue processing-stuck rows after they've been silent for 1h.
+    const processingCutoff = new Date(Date.now() - PROCESSING_CUTOFF_MS);
+    const processingStuck = await db
+      .select({
+        id: documents.id,
+        type: documents.type,
+        title: documents.title,
+        status: documents.status,
+        retryCount: documents.retryCount,
+      })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.status, "processing"),
+          lt(documents.updatedAt, processingCutoff),
+          lt(documents.retryCount, MAX_RETRIES)
+        )
+      );
+
+    const allDocs = [...failedDocs, ...queuedStuck, ...processingStuck];
 
     if (allDocs.length === 0) {
       return {
         retriedCount: 0,
         unstuckCount: 0,
         deletedUnrecoverable: deletedUnrecoverable.length,
+        capped: 0,
       };
     }
 
@@ -108,32 +149,28 @@ export const retryFailedDocuments = schedules.task({
       const wasFailed = doc.status === "failed";
 
       try {
-        // Mark as queued BEFORE triggering so a concurrent run of this
-        // same scheduled task won't pick it up again. The processing task
-        // itself will set "processing" when it starts and "failed" if it
-        // errors.
-        //
-        // The WHERE clause re-checks the current status to prevent a race
-        // with a manual retry, another concurrent scheduled run, or the
-        // document legitimately transitioning to a new state between our
-        // SELECT and this UPDATE.
+        // Atomically flip to "queued" AND increment retryCount. The WHERE
+        // clause re-checks status + retry_count so two concurrent scheduler
+        // runs can't double-increment (only one of them wins the UPDATE).
         const [updated] = await db
           .update(documents)
           .set({
             status: "queued",
             errorMessage: null,
+            retryCount: sql`${documents.retryCount} + 1`,
             updatedAt: new Date(),
           })
           .where(
             and(
               eq(documents.id, doc.id),
-              eq(documents.status, doc.status)
+              eq(documents.status, doc.status),
+              eq(documents.retryCount, doc.retryCount)
             )
           )
           .returning({ id: documents.id });
 
-        // If the row wasn't updated, another process already changed its
-        // status — skip triggering to avoid a duplicate job.
+        // Another process changed status or retryCount between our SELECT
+        // and UPDATE — skip this one to avoid duplicate work.
         if (!updated) continue;
 
         await tasks.trigger(taskId, { documentId: doc.id });
@@ -145,17 +182,31 @@ export const retryFailedDocuments = schedules.task({
         }
       } catch (err) {
         console.error(
-          `[retry-failed-documents] Failed to re-queue ${doc.type} document "${doc.title}" (${doc.id}, was ${doc.status}):`,
+          `[retry-failed-documents] Failed to re-queue ${doc.type} document "${doc.title}" (${doc.id}, was ${doc.status}, retry ${doc.retryCount + 1}/${MAX_RETRIES}):`,
           err
         );
       }
     }
+
+    // Count how many docs we looked at but skipped because they already
+    // hit the retry cap — useful signal in the Trigger.dev UI for spotting
+    // genuinely broken docs that need admin attention.
+    const [cappedRow] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(documents)
+      .where(
+        and(
+          inArray(documents.status, ["failed", "queued", "uploaded", "processing"]),
+          sql`${documents.retryCount} >= ${MAX_RETRIES}`
+        )
+      );
 
     return {
       retriedCount,
       unstuckCount,
       deletedUnrecoverable: deletedUnrecoverable.length,
       totalFound: allDocs.length,
+      capped: cappedRow?.count ?? 0,
     };
   },
 });

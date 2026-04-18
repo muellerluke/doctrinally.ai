@@ -140,7 +140,7 @@ export async function processPlatejsBody(payload: { documentId: string }) {
 
     await db
       .update(documents)
-      .set({ status: "indexed", updatedAt: new Date() })
+      .set({ status: "indexed", retryCount: 0, updatedAt: new Date() })
       .where(eq(documents.id, documentId));
 
     return { success: true, chunkCount: allChunks.length };

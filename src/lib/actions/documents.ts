@@ -396,9 +396,16 @@ export async function retryDocument(documentId: string) {
   if (!doc) return { error: "Document not found" };
   if (doc.status !== "failed") return { error: "Only failed documents can be retried" };
 
+  // Manual retry from the admin UI resets the automated-retry counter so
+  // the doc gets a fresh set of scheduler attempts if it fails again.
   await db
     .update(documents)
-    .set({ status: "queued", errorMessage: null, updatedAt: new Date() })
+    .set({
+      status: "queued",
+      errorMessage: null,
+      retryCount: 0,
+      updatedAt: new Date(),
+    })
     .where(eq(documents.id, documentId));
 
   await triggerProcessing(doc.type, documentId);
@@ -422,9 +429,11 @@ export async function reprocessDocument(documentId: string) {
 
   await db.delete(chunks).where(eq(chunks.documentId, documentId));
 
+  // Manual reprocess from the admin UI resets the automated-retry counter
+  // so the fresh run gets a full set of scheduler attempts.
   await db
     .update(documents)
-    .set({ status: "queued", updatedAt: new Date() })
+    .set({ status: "queued", retryCount: 0, updatedAt: new Date() })
     .where(eq(documents.id, documentId));
 
   await triggerProcessing(doc.type, documentId);

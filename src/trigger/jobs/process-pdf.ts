@@ -1,4 +1,4 @@
-import { task } from "@trigger.dev/sdk/v3";
+import { task, tasks } from "@trigger.dev/sdk/v3";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { documents, chunks } from "@/db/schema";
@@ -6,6 +6,15 @@ import { chunkByTokens } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
 import { formatProcessingError, logProcessingError } from "../utils/error-logging";
 import { extractText, getDocumentProxy } from "unpdf";
+
+/**
+ * Minimum length of usable text we expect from a PDF's text layer. Below
+ * this, we assume the PDF is scanned/image-only and hand it off to the OCR
+ * pipeline (process-pdf-ocr). A typical cover-page-only text extraction
+ * runs 50–150 chars, so 200 is conservative — it errs toward OCR when in
+ * doubt, which is the right call since OCR also works fine on text PDFs.
+ */
+const MIN_TEXT_LAYER_CHARS = 200;
 
 export async function processPdfBody(payload: { documentId: string }) {
   const { documentId } = payload;
@@ -44,8 +53,17 @@ export async function processPdfBody(payload: { documentId: string }) {
     // via encoded fonts or raw binary. Strip before chunking.
     const text = rawText.replace(/\u0000/g, "");
 
-    if (!text || text.trim().length === 0) {
-      throw new Error("No text content extracted from PDF");
+    // If the text layer is empty or suspiciously thin, treat the PDF as
+    // image-based and hand off to the OCR pipeline on a larger machine.
+    if (!text || text.trim().length < MIN_TEXT_LAYER_CHARS) {
+      console.log(
+        `[process-pdf] text layer is ${text.trim().length} chars — below ${MIN_TEXT_LAYER_CHARS}, delegating to process-pdf-ocr`,
+        { documentId }
+      );
+      await tasks.trigger("process-pdf-ocr", { documentId });
+      // Leave status as 'processing' — process-pdf-ocr will flip it to
+      // 'indexed' (or 'failed' with its own error message) when it finishes.
+      return { success: true, delegated: "ocr" as const };
     }
 
     const textChunks = chunkByTokens(text, 300, 30);
@@ -68,7 +86,7 @@ export async function processPdfBody(payload: { documentId: string }) {
 
     await db
       .update(documents)
-      .set({ status: "indexed", updatedAt: new Date() })
+      .set({ status: "indexed", retryCount: 0, updatedAt: new Date() })
       .where(eq(documents.id, documentId));
 
     return { success: true, chunkCount: textChunks.length };
