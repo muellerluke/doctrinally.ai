@@ -14,7 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { PageHero } from "@/components/marketing/page-hero";
 import { FAQAccordion } from "@/components/marketing/faq-accordion";
 import { CTASection } from "@/components/marketing/cta-section";
-import { standardFeatures, enterpriseFeatures, faqs } from "@/content/marketing/data";
+import {
+  standardFeatures,
+  enterpriseFeatures,
+  sermonAiFeatures,
+  faqs,
+} from "@/content/marketing/data";
 
 export const metadata: Metadata = {
   title: "Pricing — Doctrinally.AI",
@@ -102,21 +107,53 @@ export default function PricingPage() {
               </p>
 
               <ul className="mt-7 space-y-3.5">
-                {enterpriseFeatures.map((f, i) => (
-                  <li
-                    key={f}
-                    className={`flex items-start gap-2.5 text-[0.92rem] ${
-                      i === 0 ? "font-semibold text-foreground" : ""
-                    }`}
-                  >
-                    {i === 0 ? (
-                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                    ) : (
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                    )}
-                    <span className={i === 0 ? "" : "text-foreground/90"}>{f}</span>
-                  </li>
-                ))}
+                {enterpriseFeatures.map((f, i) => {
+                  const isHeader = i === 0;
+                  const isSermonAi = f.startsWith("Sermon AI");
+                  if (isSermonAi) {
+                    // Flagship Enterprise feature — render as a mini-card
+                    // that visually lifts off the plain bullet list.
+                    return (
+                      <li
+                        key={f}
+                        className="relative flex items-start gap-3 rounded-xl border border-gold/40 bg-gold/[0.06] p-3"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gold/40 bg-background text-gold">
+                          <Sparkles className="h-4 w-4" />
+                        </div>
+                        <div className="text-[0.9rem] leading-snug">
+                          <div className="font-semibold text-foreground">
+                            Sermon AI{" "}
+                            <span className="ml-1 rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-gold-foreground/70">
+                              Exclusive
+                            </span>
+                          </div>
+                          <div className="text-[0.82rem] text-muted-foreground">
+                            Draft sermons with an assistant trained on your
+                            church&apos;s own teaching.
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li
+                      key={f}
+                      className={`flex items-start gap-2.5 text-[0.92rem] ${
+                        isHeader ? "font-semibold text-foreground" : ""
+                      }`}
+                    >
+                      {isHeader ? (
+                        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                      ) : (
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                      )}
+                      <span className={isHeader ? "" : "text-foreground/90"}>
+                        {f}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
 
               <Button
@@ -148,6 +185,66 @@ export default function PricingPage() {
             charged for overages unless you opt in. If enabled, extra messages
             are just $0.25 each with a cap you control.
           </p>
+        </div>
+      </section>
+
+      {/* ─── Why Enterprise · Sermon AI explainer ──────────────────
+          Surfaces what "Sermon AI" actually means for pastors looking
+          at the Enterprise bullet above. Three-up grid with gold
+          accents, matching the identity used on /features and /how-it-works. */}
+      <section className="relative overflow-hidden border-b bg-gradient-to-b from-background via-card/30 to-background py-16 sm:py-20">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[70%] w-[70%] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(closest-side, var(--gold) 0%, transparent 70%)",
+          }}
+        />
+        <div className="container mx-auto px-4">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1">
+              <Sparkles className="h-3.5 w-3.5 text-gold" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                What Enterprise unlocks
+              </span>
+            </div>
+            <h2 className="mt-5 font-heading text-[1.6rem] tracking-tight sm:text-[2.2rem]">
+              Sermon AI, in three moments.
+            </h2>
+            <p className="mt-4 text-[0.98rem] leading-relaxed text-muted-foreground">
+              An assistant trained on your own teaching, living beside a rich
+              editor. Chat it through the text, write alongside it, publish
+              when ready — and the chat your members already use cites it the
+              same day.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-12 grid max-w-5xl gap-5 md:grid-cols-3">
+            {sermonAiFeatures.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl border border-gold/30 bg-card/60 p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-gold/[0.1]"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-gold/40 bg-gold/10 text-gold">
+                  <f.icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-heading text-lg leading-snug">{f.title}</h3>
+                <p className="mt-2 text-[0.9rem] leading-relaxed text-muted-foreground">
+                  {f.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link
+              href="/features#sermon-ai"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              See Sermon AI in action &rarr;
+            </Link>
+          </div>
         </div>
       </section>
 

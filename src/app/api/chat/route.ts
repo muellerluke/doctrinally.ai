@@ -149,7 +149,9 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       // (as the old code did) silently rejected every keyword-only hit.
       const SEMANTIC_THRESHOLD = 0.3;
       const KEYWORD_THRESHOLD = 0.01;
+      const searchStartMs = Date.now();
       const results = await hybridSearch(churchId, query, 6);
+      const searchDurationMs = Date.now() - searchStartMs;
 
       const isRelevant = (c: (typeof results)[number]) =>
         (typeof c.semanticSimilarity === "number" &&
@@ -162,6 +164,7 @@ function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
       logger.info("[chat] search executed", {
         churchId,
         query,
+        durationMs: searchDurationMs,
         totalResults: results.length,
         relevantResults: relevant.length,
         semanticThreshold: SEMANTIC_THRESHOLD,
@@ -439,6 +442,7 @@ export async function POST(request: Request) {
     messages: messagesToSend,
   });
 
+  const streamStartMs = Date.now();
   const result = streamText({
     model: getModel(),
     system: systemPrompt,
@@ -465,6 +469,10 @@ export async function POST(request: Request) {
     maxOutputTokens: 1500,
     stopSequences: ["<b>", "</b>", "<br", "</br"],
     temperature: 0.7,
+    // Reasoning effort left at Mercury's default — the 40 s latency we
+    // saw earlier turned out to be a missing pgvector/GIN index, not
+    // reasoning overhead. With the index fix in place the full response
+    // is ~5-8 s at default reasoning.
   });
 
   const encoder = new TextEncoder();
@@ -473,11 +481,14 @@ export async function POST(request: Request) {
     async start(controller) {
       try {
         let fullText = "";
+        let firstTokenAt: number | null = null;
         for await (const chunk of result.textStream) {
           if (!chunk) continue;
+          if (firstTokenAt == null) firstTokenAt = Date.now();
           fullText += chunk;
           controller.enqueue(encoder.encode(CHUNK_BOUNDARY + chunk));
         }
+        const streamEndMs = Date.now();
 
         // Extract tool results for citations
         const steps = await result.steps;
@@ -517,14 +528,39 @@ export async function POST(request: Request) {
         const searchResults = extractSearchResults(steps as unknown[]);
         const citations = chunksToMetadata(searchResults);
 
+        // Timing summary. `timeToFirstTokenMs` is the real user-perceived
+        // latency — everything before this is the user staring at
+        // "Thinking…". `generationMs` is how long the tokens took to
+        // stream once they started. `totalDurationMs` includes both.
+        // A big gap between `timeToFirstTokenMs` and
+        // `totalDurationMs - timeToFirstTokenMs` tells us whether we're
+        // bottlenecked on agentic setup (tool calls, first-token latency)
+        // or on raw generation speed.
+        const timeToFirstTokenMs =
+          firstTokenAt != null ? firstTokenAt - streamStartMs : null;
+        const generationMs =
+          firstTokenAt != null ? streamEndMs - firstTokenAt : 0;
+        const totalDurationMs = streamEndMs - streamStartMs;
+        const toolCallCount = (steps as Record<string, unknown>[]).reduce(
+          (sum, step) => {
+            const calls = step.toolCalls as unknown[] | undefined;
+            return sum + (Array.isArray(calls) ? calls.length : 0);
+          },
+          0
+        );
+
         logger.info("[chat] response completed", {
           churchId,
           chatId: chatId ?? null,
           responseLength: fullText.length,
           totalSteps: steps.length,
+          toolCallCount,
           searchResultsRaw: searchResults.length,
           citationsDeduped: citations.length,
           citationDocIds: citations.map((c) => c.documentId),
+          timeToFirstTokenMs,
+          generationMs,
+          totalDurationMs,
         });
 
         // Append chatId sentinel (so client can track the conversation)
