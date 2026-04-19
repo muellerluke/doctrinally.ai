@@ -22,12 +22,15 @@ import {
   acceptInvitation,
   signUp,
 } from "@/lib/actions/auth";
+import { CenteredAuth } from "@/components/auth/centered-auth";
 
 export default function InvitePage() {
   return (
-    <Suspense fallback={null}>
-      <InviteContent />
-    </Suspense>
+    <CenteredAuth>
+      <Suspense fallback={null}>
+        <InviteContent />
+      </Suspense>
+    </CenteredAuth>
   );
 }
 

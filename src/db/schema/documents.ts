@@ -6,9 +6,10 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { churches } from "./churches";
 import { users } from "./users";
 import { folders } from "./folders";
@@ -32,7 +33,9 @@ export const documentStatusEnum = pgEnum("document_status", [
   "failed",
 ]);
 
-export const documents = pgTable("documents", {
+export const documents = pgTable(
+  "documents",
+  {
   id: uuid("id").defaultRandom().primaryKey(),
   churchId: uuid("church_id")
     .notNull()
@@ -48,6 +51,10 @@ export const documents = pgTable("documents", {
     onDelete: "set null",
   }),
   sourceUrl: text("source_url"),
+  // Extracted YouTube video id. Null for non-YouTube docs. Populated on both
+  // manual uploads and channel auto-sync to make per-church dedup cheap via
+  // the partial unique index below.
+  youtubeVideoId: text("youtube_video_id"),
   blobPath: text("blob_path"),
   content: text("content"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>(),
@@ -72,7 +79,15 @@ export const documents = pgTable("documents", {
   retryCount: integer("retry_count").notNull().default(0),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
-});
+  },
+  (table) => [
+    // Per-church dedup on YouTube video id. Partial so non-YouTube rows
+    // (youtube_video_id IS NULL) don't collide with each other.
+    uniqueIndex("documents_church_youtube_video_idx")
+      .on(table.churchId, table.youtubeVideoId)
+      .where(sql`${table.youtubeVideoId} IS NOT NULL`),
+  ]
+);
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
   church: one(churches, {

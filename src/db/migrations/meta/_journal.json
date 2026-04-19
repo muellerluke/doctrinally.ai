@@ -127,6 +127,13 @@
       "when": 1776562078823,
       "tag": "0017_elite_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1776636332338,
+      "tag": "0018_hard_bloodscream",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,12 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { subscriptions } from "@/db/schema";
+import {
+  subscriptions,
+  youtubeChannelSyncs,
+  youtubeSyncPlaylists,
+} from "@/db/schema";
 import { requireMembership } from "@/lib/auth-guards";
-import { canUseCustomBranding } from "@/lib/plan-gating";
+import { canUseCustomBranding, canUseYouTubeSync } from "@/lib/plan-gating";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneralForm } from "@/components/settings/general-form";
@@ -10,6 +14,7 @@ import { BrandingForm } from "@/components/settings/branding-form";
 import { DomainForm } from "@/components/settings/domain-form";
 import { QrCodeCard } from "@/components/settings/qr-code-card";
 import { AiFallbackForm } from "@/components/settings/ai-fallback-form";
+import { YouTubeSyncForm } from "@/components/settings/youtube-sync-form";
 
 export default async function SettingsPage() {
   const { membership, church } = await requireMembership();
@@ -19,7 +24,17 @@ export default async function SettingsPage() {
   });
 
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
+  const canYouTubeSync = sub ? canUseYouTubeSync(sub.plan) : false;
   const isOwner = membership.role === "owner";
+
+  const sync = await db.query.youtubeChannelSyncs.findFirst({
+    where: eq(youtubeChannelSyncs.churchId, church.id),
+  });
+  const playlistRows = sync
+    ? await db.query.youtubeSyncPlaylists.findMany({
+        where: eq(youtubeSyncPlaylists.syncId, sync.id),
+      })
+    : [];
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000";
   const protocol = appDomain.includes("localhost") ? "http" : "https";
 
@@ -42,6 +57,7 @@ export default async function SettingsPage() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="domain">Domain</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
+          <TabsTrigger value="youtube">YouTube Sync</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6 space-y-6">
@@ -92,6 +108,38 @@ export default async function SettingsPage() {
         <TabsContent value="ai" className="mt-6">
           <AiFallbackForm
             currentInstruction={church.aiFallbackInstruction}
+          />
+        </TabsContent>
+
+        <TabsContent value="youtube" className="mt-6">
+          <YouTubeSyncForm
+            isEnterprise={canYouTubeSync}
+            sync={
+              sync
+                ? {
+                    id: sync.id,
+                    channelUrl: sync.channelUrl,
+                    channelId: sync.channelId,
+                    channelHandle: sync.channelHandle,
+                    channelTitle: sync.channelTitle,
+                    channelThumbnail: sync.channelThumbnail,
+                    status: sync.status,
+                    enabled: sync.enabled,
+                    dayOfWeek: sync.dayOfWeek,
+                    hourLocal: sync.hourLocal,
+                    timezone: sync.timezone,
+                    lastSyncStartedAt: sync.lastSyncStartedAt,
+                    lastSyncEndedAt: sync.lastSyncEndedAt,
+                    lastSyncError: sync.lastSyncError,
+                    lastSyncStats: sync.lastSyncStats,
+                  }
+                : null
+            }
+            playlists={playlistRows.map((p) => ({
+              id: p.id,
+              playlistId: p.playlistId,
+              playlistTitle: p.playlistTitle,
+            }))}
           />
         </TabsContent>
       </Tabs>

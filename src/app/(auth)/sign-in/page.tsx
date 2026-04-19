@@ -17,12 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { signInSchema } from "@/lib/validations/auth";
+import { CenteredAuth } from "@/components/auth/centered-auth";
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={null}>
-      <SignInContent />
-    </Suspense>
+    <CenteredAuth>
+      <Suspense fallback={null}>
+        <SignInContent />
+      </Suspense>
+    </CenteredAuth>
   );
 }
 

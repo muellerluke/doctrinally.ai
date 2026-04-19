@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Rss } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/marketing/page-hero";
@@ -85,6 +85,25 @@ export default function HowItWorksPage() {
                 document is chunked, indexed, and ready for your AI to use in
                 minutes &mdash; not hours.
               </p>
+              <div className="mt-5 flex items-start gap-3 rounded-xl border border-gold/40 bg-gold/[0.06] p-4 sm:max-w-2xl">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold/40 bg-background text-gold">
+                  <Rss className="h-4 w-4" />
+                </div>
+                <div className="text-sm">
+                  <div className="font-semibold text-foreground">
+                    Or connect your entire channel{" "}
+                    <span className="ml-1 rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-gold">
+                      Enterprise
+                    </span>
+                  </div>
+                  <div className="text-[0.85rem] leading-relaxed text-muted-foreground">
+                    Paste your YouTube channel URL once. We pull every sermon,
+                    short, live replay, and playlist into auto-generated
+                    folders, and keep running every week so new uploads appear
+                    in your chat without you lifting a finger.
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div>

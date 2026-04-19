@@ -18,6 +18,7 @@ import {
   type DocumentMetadataInput,
 } from "@/lib/validations/documents";
 import { type UploadDocType } from "@/lib/documents/mime";
+import { extractVideoId } from "@/trigger/utils/extract-video-id";
 
 const DOC_TYPE_TO_TASK: Record<string, string> = {
   youtube: "process-youtube",
@@ -221,6 +222,26 @@ export async function createYouTubeDocument(input: YouTubeUploadInput) {
 
   const { title, sourceUrl, tags, folderId } = parsed.data;
 
+  const videoId = extractVideoId(sourceUrl);
+
+  // Enforce the partial unique index before Drizzle does, so we can return
+  // a friendly error instead of a PG unique-violation surfacing as a 500.
+  if (videoId) {
+    const duplicate = await db.query.documents.findFirst({
+      where: and(
+        eq(documents.churchId, ctx.membership.churchId),
+        eq(documents.youtubeVideoId, videoId)
+      ),
+    });
+    if (duplicate) {
+      return {
+        error: "This YouTube video is already in your library",
+        documentId: duplicate.id,
+        duplicate: true,
+      };
+    }
+  }
+
   const [doc] = await db
     .insert(documents)
     .values({
@@ -230,6 +251,7 @@ export async function createYouTubeDocument(input: YouTubeUploadInput) {
       type: "youtube",
       status: "queued",
       sourceUrl,
+      youtubeVideoId: videoId,
       folderId: folderId ?? null,
       metadata: { tags: tags ?? [] },
     })

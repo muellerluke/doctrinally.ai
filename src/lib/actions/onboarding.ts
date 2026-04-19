@@ -2,14 +2,24 @@
 
 import { getServerSession } from "next-auth";
 import { eq } from "drizzle-orm";
+import { after } from "next/server";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
-import { churches, memberships, subscriptions } from "@/db/schema";
+import {
+  churches,
+  memberships,
+  subscriptions,
+  youtubeChannelSyncs,
+} from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { onboardingSchema } from "@/lib/validations/onboarding";
 import { slugify } from "@/lib/utils";
 import { stripe, getStripePriceId } from "@/lib/stripe";
 import { getPlanLimits, TRIAL_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
+import { canUseYouTubeSync } from "@/lib/plan-gating";
+import { resolveChannel } from "@/trigger/utils/youtube-channel";
+import { upsertChurchSyncSchedule } from "@/lib/youtube-sync/trigger-schedules";
 
 export async function getExistingChurch() {
   const session = await getServerSession(authOptions);
@@ -96,6 +106,18 @@ export async function createChurch(input: {
   name: string;
   slug?: string;
   plan: "standard" | "enterprise";
+  /**
+   * Optional YouTube auto-sync setup captured during onboarding. Only
+   * persisted on Enterprise — silently ignored on Standard so the form
+   * state is forgiving. The initial backfill is fired after the response
+   * flushes so checkout isn't blocked by it.
+   */
+  youtubeChannelUrl?: string;
+  youtubeSchedule?: {
+    dayOfWeek: number;
+    hourLocal: number;
+    timezone: string;
+  };
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -127,6 +149,25 @@ export async function createChurch(input: {
   const isTrial = true;
   const limits = getPlanLimits(parsed.data.plan);
 
+  const wantsYouTubeSync =
+    canUseYouTubeSync(parsed.data.plan) && !!input.youtubeChannelUrl?.trim();
+
+  // Validate the YouTube channel before we touch the database so the user
+  // gets a clean "channel not found" message and can go back to fix it.
+  let resolvedChannel: Awaited<ReturnType<typeof resolveChannel>> | null = null;
+  if (wantsYouTubeSync) {
+    try {
+      resolvedChannel = await resolveChannel(input.youtubeChannelUrl!);
+    } catch (err) {
+      return {
+        error:
+          err instanceof Error
+            ? `Could not find YouTube channel: ${err.message}`
+            : "Could not find YouTube channel",
+      };
+    }
+  }
+
   const result = await db.transaction(async (tx) => {
     const [church] = await tx
       .insert(churches)
@@ -149,6 +190,21 @@ export async function createChurch(input: {
       status: "incomplete",
       questionLimit: limits.questionLimit,
     });
+
+    if (wantsYouTubeSync && resolvedChannel) {
+      await tx.insert(youtubeChannelSyncs).values({
+        churchId: church.id,
+        channelUrl: input.youtubeChannelUrl!,
+        channelId: resolvedChannel.channelId,
+        channelHandle: resolvedChannel.handle ?? null,
+        channelTitle: resolvedChannel.title,
+        channelThumbnail: resolvedChannel.thumbnail ?? null,
+        dayOfWeek: input.youtubeSchedule?.dayOfWeek ?? 1,
+        hourLocal: input.youtubeSchedule?.hourLocal ?? 3,
+        timezone: input.youtubeSchedule?.timezone ?? "UTC",
+        createdBy: session.user.id,
+      });
+    }
 
     return church;
   });
@@ -181,6 +237,46 @@ export async function createChurch(input: {
       ...(isTrial && { trial_period_days: TRIAL_DAYS }),
     },
   });
+
+  // If the admin wired up auto-sync, arm the weekly schedule and kick off
+  // the first backfill in the background. Deliberately after() so the
+  // redirect to Stripe happens immediately.
+  if (wantsYouTubeSync) {
+    after(async () => {
+      const sync = await db.query.youtubeChannelSyncs.findFirst({
+        where: eq(youtubeChannelSyncs.churchId, result.id),
+      });
+      if (!sync) return;
+      try {
+        const scheduleId = await upsertChurchSyncSchedule({
+          syncId: sync.id,
+          dayOfWeek: sync.dayOfWeek,
+          hourLocal: sync.hourLocal,
+          timezone: sync.timezone,
+        });
+        await db
+          .update(youtubeChannelSyncs)
+          .set({ triggerScheduleId: scheduleId, updatedAt: new Date() })
+          .where(eq(youtubeChannelSyncs.id, sync.id));
+      } catch (err) {
+        console.error(
+          `[createChurch] schedules.create failed for sync ${sync.id}:`,
+          err
+        );
+      }
+      try {
+        await tasks.trigger("sync-youtube-channel", {
+          syncId: sync.id,
+          mode: "initial",
+        });
+      } catch (err) {
+        console.error(
+          `[createChurch] initial YouTube sync trigger failed for ${sync.id}:`,
+          err
+        );
+      }
+    });
+  }
 
   return { success: true, checkoutUrl: checkoutSession.url };
 }

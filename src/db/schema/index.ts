@@ -13,3 +13,5 @@ export * from "./folders";
 export * from "./bible";
 export * from "./topics";
 export * from "./sermon-sessions";
+export * from "./youtube-channel-syncs";
+export * from "./youtube-sync-playlists";

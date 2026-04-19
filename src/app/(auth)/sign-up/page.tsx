@@ -4,21 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, User, Lock } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { signUpSchema } from "@/lib/validations/auth";
 import { signUp } from "@/lib/actions/auth";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { SignUpAside } from "@/components/auth/auth-asides";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -66,7 +61,6 @@ export default function SignUpPage() {
         return;
       }
 
-      // Auto sign-in after successful registration
       const signInResult = await signIn("credentials", {
         email,
         password,
@@ -91,53 +85,85 @@ export default function SignUpPage() {
   }
 
   return (
-    <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
-      <CardHeader className="text-center">
-        <CardTitle className="font-heading text-2xl">
-          Create an account
-        </CardTitle>
-        <CardDescription>
-          Get started with Doctrinally.AI for your church
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <AuthShell
+      aside={<SignUpAside />}
+      steps={[
+        { label: "Create your account", description: "30 seconds" },
+        { label: "Name your church", description: "Pick a URL" },
+        { label: "Pick a plan", description: "14 days free" },
+      ]}
+      currentStep={0}
+    >
+      <div className="animate-fade-up stagger-1 space-y-6">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/80">
+            Start free · no card today
+          </div>
+          <h1 className="mt-1 font-heading text-3xl leading-tight sm:text-4xl">
+            Your church&rsquo;s own AI,
+            <span className="italic text-primary"> in minutes.</span>
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Create your account to get started. Already have one?{" "}
+            <Link
+              href="/sign-in"
+              className="font-semibold text-primary transition-colors hover:text-primary/80"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading}
-            />
+            <div className="relative">
+              <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="name"
+                placeholder="Pastor John Smith"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={loading}
+                className="pl-9"
+              />
+            </div>
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@church.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={loading}
-            />
+            <div className="relative">
+              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@church.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="pl-9"
+              />
+            </div>
             {errors.email && (
               <p className="text-sm text-destructive">{errors.email}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-            />
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="At least 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                className="pl-9"
+              />
+            </div>
             {errors.password && (
               <p className="text-sm text-destructive">{errors.password}</p>
             )}
@@ -184,21 +210,16 @@ export default function SignUpPage() {
               <p className="text-sm text-destructive">{errors.agreed}</p>
             )}
           </div>
-          <Button className="w-full" type="submit" disabled={loading || !agreed}>
+          <Button
+            className="h-11 w-full font-semibold"
+            type="submit"
+            disabled={loading || !agreed}
+          >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create account
+            Create my account
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            href="/sign-in"
-            className="font-semibold text-primary transition-colors hover:text-primary/80"
-          >
-            Sign in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+      </div>
+    </AuthShell>
   );
 }

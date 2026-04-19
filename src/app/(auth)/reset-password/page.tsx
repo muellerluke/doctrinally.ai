@@ -16,12 +16,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { resetPassword } from "@/lib/actions/auth";
+import { CenteredAuth } from "@/components/auth/centered-auth";
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={null}>
-      <ResetPasswordContent />
-    </Suspense>
+    <CenteredAuth>
+      <Suspense fallback={null}>
+        <ResetPasswordContent />
+      </Suspense>
+    </CenteredAuth>
   );
 }
 
