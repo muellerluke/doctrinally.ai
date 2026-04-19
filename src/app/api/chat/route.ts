@@ -450,6 +450,21 @@ export async function POST(request: Request) {
     // replies. 6 steps allows retries with different queries when the
     // first search returns nothing useful.
     stopWhen: stepCountIs(6),
+    // Defenses against Mercury 2 post-answer degeneracy — we've seen
+    // the model run clean through the response + attribution, then get
+    // stuck in a loop emitting thousands of `<b>\n</b>` / `</br>` junk
+    // tags until the step runs out. Each of these caps/triggers kills
+    // that tail:
+    //   - maxOutputTokens: hard ceiling so a degenerate tail can't run
+    //     past ~3-4 paragraphs' worth of output
+    //   - stopSequences: Mercury's known-bad escape patterns. The
+    //     system prompt doesn't ask for HTML at all; markdown emphasis
+    //     uses `*…*`. Any `<b`, `<br`, `</b`, `</br` is noise.
+    //   - temperature 0.7: slightly more deterministic than the default
+    //     1.0, reduces the chance of getting stuck in the loop state.
+    maxOutputTokens: 1500,
+    stopSequences: ["<b>", "</b>", "<br", "</br"],
+    temperature: 0.7,
   });
 
   const encoder = new TextEncoder();
