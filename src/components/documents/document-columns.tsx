@@ -6,6 +6,7 @@ import {
   FileText,
   Video,
   FileEdit,
+  Globe,
   MoreHorizontal,
   Eye,
   Pencil,
@@ -45,12 +46,14 @@ const typeIcons: Record<string, typeof FileText> = {
   word: FileText,
   video: Video,
   platejs: FileEdit,
+  website_page: Globe,
 };
 
 function capitalizeType(type: string) {
   if (type === "youtube") return "YouTube";
   if (type === "platejs") return "Document";
   if (type === "pdf") return "PDF";
+  if (type === "website_page") return "Website";
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 

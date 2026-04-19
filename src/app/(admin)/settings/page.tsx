@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { subscriptions } from "@/db/schema";
+import { subscriptions, churchWebsiteConfigs } from "@/db/schema";
 import { requireMembership } from "@/lib/auth-guards";
 import { canUseCustomBranding } from "@/lib/plan-gating";
 import { PageHeader } from "@/components/shared/page-header";
@@ -10,6 +10,7 @@ import { BrandingForm } from "@/components/settings/branding-form";
 import { DomainForm } from "@/components/settings/domain-form";
 import { QrCodeCard } from "@/components/settings/qr-code-card";
 import { AiFallbackForm } from "@/components/settings/ai-fallback-form";
+import { WebsiteCrawlingForm } from "@/components/settings/website-crawling-form";
 
 export default async function SettingsPage() {
   const { membership, church } = await requireMembership();
@@ -29,6 +30,23 @@ export default async function SettingsPage() {
       ? `${protocol}://${church.customDomain}/chat`
       : `${protocol}://${church.slug}.${appDomain}/chat`;
 
+  // Lazy-create the website config row so older churches that signed up
+  // before this feature don't need a separate backfill migration.
+  let [websiteConfig] = await db
+    .select()
+    .from(churchWebsiteConfigs)
+    .where(eq(churchWebsiteConfigs.churchId, church.id))
+    .limit(1);
+
+  if (!websiteConfig) {
+    [websiteConfig] = await db
+      .insert(churchWebsiteConfigs)
+      .values({ churchId: church.id })
+      .returning();
+  }
+
+  const websitePageLimit = isEnterprise ? 100 : 50;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -41,6 +59,7 @@ export default async function SettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="domain">Domain</TabsTrigger>
+          <TabsTrigger value="website">Website</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
         </TabsList>
 
@@ -86,6 +105,23 @@ export default async function SettingsPage() {
             isEnterprise={isEnterprise}
             isOwner={isOwner}
             appDomain={appDomain}
+          />
+        </TabsContent>
+
+        <TabsContent value="website" className="mt-6">
+          <WebsiteCrawlingForm
+            initial={{
+              websiteDomain: church.websiteDomain,
+              additionalDomains: websiteConfig.additionalDomains,
+              includePatterns: websiteConfig.includePatterns,
+              excludePatterns: websiteConfig.excludePatterns,
+              lastCrawlAt: websiteConfig.lastCrawlAt,
+              lastCrawlStatus: websiteConfig.lastCrawlStatus,
+              lastCrawlPagesIngested: websiteConfig.lastCrawlPagesIngested,
+              lastCrawlError: websiteConfig.lastCrawlError,
+            }}
+            pageLimit={websitePageLimit}
+            isEnterprise={isEnterprise}
           />
         </TabsContent>
 

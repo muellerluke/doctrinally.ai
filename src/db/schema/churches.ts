@@ -9,6 +9,10 @@ export const churches = pgTable("churches", {
   address: text("address"),
   logoUrl: text("logo_url"),
   customDomain: text("custom_domain").unique(),
+  // Public church website used to bootstrap branding at signup and to seed
+  // the monthly content crawl. Stored as the user typed it (with or without
+  // protocol); normalized to a full URL by the Firecrawl wrapper before use.
+  websiteDomain: text("website_domain"),
   isActive: boolean("is_active").notNull().default(false),
 
   // Branding — light mode

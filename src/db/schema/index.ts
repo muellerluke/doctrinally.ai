@@ -13,3 +13,4 @@ export * from "./folders";
 export * from "./bible";
 export * from "./topics";
 export * from "./sermon-sessions";
+export * from "./church-website-configs";

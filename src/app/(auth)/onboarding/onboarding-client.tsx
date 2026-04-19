@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Globe, ArrowLeft, ArrowRight } from "lucide-react";
+import { Loader2, Globe, ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -15,12 +15,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PlanCard } from "@/components/billing/plan-card";
-import { churchInfoSchema } from "@/lib/validations/onboarding";
+import {
+  churchInfoSchema,
+  websiteDomainSchema,
+} from "@/lib/validations/onboarding";
 import { createChurch, resumeCheckout } from "@/lib/actions/onboarding";
 import { slugify } from "@/lib/utils";
 import { PLANS, type PlanType } from "@/lib/plans";
 
 type InitialChurch = { name: string; slug: string } | null;
+
+type Step = 1 | 2 | 3;
 
 export function OnboardingClient({
   initialChurch,
@@ -32,10 +37,14 @@ export function OnboardingClient({
   const canceled = searchParams.get("canceled") === "true";
 
   const hasExistingChurch = !!initialChurch;
-  const [step, setStep] = useState<1 | 2>(hasExistingChurch ? 2 : 1);
+  // Returning users (church already exists) jump straight to plan select;
+  // they configured the website on their first attempt and editing it now
+  // would mean re-running branding extraction at an awkward time.
+  const [step, setStep] = useState<Step>(hasExistingChurch ? 3 : 1);
   const [name, setName] = useState(initialChurch?.name ?? "");
   const [slug, setSlug] = useState(initialChurch?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(false);
+  const [websiteDomain, setWebsiteDomain] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanType>("standard");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -62,7 +71,7 @@ export function OnboardingClient({
     );
   }
 
-  function handleNextStep() {
+  function handleNextFromInfo() {
     setErrors({});
     const parsed = churchInfoSchema.safeParse({ name, slug });
     if (!parsed.success) {
@@ -77,6 +86,24 @@ export function OnboardingClient({
     setStep(2);
   }
 
+  function handleNextFromWebsite() {
+    setErrors({});
+    if (websiteDomain.trim().length > 0) {
+      const parsed = websiteDomainSchema.safeParse(websiteDomain);
+      if (!parsed.success) {
+        setErrors({ websiteDomain: parsed.error.issues[0].message });
+        return;
+      }
+    }
+    setStep(3);
+  }
+
+  function skipWebsite() {
+    setErrors({});
+    setWebsiteDomain("");
+    setStep(3);
+  }
+
   async function handleSubmit() {
     setLoading(true);
     try {
@@ -85,7 +112,12 @@ export function OnboardingClient({
       if (hasExistingChurch) {
         result = await resumeCheckout(selectedPlan);
       } else {
-        result = await createChurch({ name, slug, plan: selectedPlan });
+        result = await createChurch({
+          name,
+          slug,
+          plan: selectedPlan,
+          websiteDomain: websiteDomain.trim() || null,
+        });
       }
 
       if (result.error) {
@@ -159,7 +191,7 @@ export function OnboardingClient({
                   <p className="text-sm text-destructive">{errors.slug}</p>
                 )}
               </div>
-              <Button className="w-full" onClick={handleNextStep}>
+              <Button className="w-full" onClick={handleNextFromInfo}>
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -169,6 +201,74 @@ export function OnboardingClient({
       )}
 
       {step === 2 && (
+        <Card className="mx-auto max-w-sm animate-fade-up shadow-xl shadow-primary/[0.04]">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <CardTitle className="font-heading text-2xl">
+              Connect your website
+            </CardTitle>
+            <CardDescription>
+              We&apos;ll pull your logo, brand colors, and key pages so your
+              assistant feels like part of your church from day one.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="websiteDomain">Church website</Label>
+                <Input
+                  id="websiteDomain"
+                  placeholder="mychurch.com"
+                  value={websiteDomain}
+                  onChange={(e) => setWebsiteDomain(e.target.value)}
+                  autoFocus
+                />
+                {errors.websiteDomain ? (
+                  <p className="text-sm text-destructive">
+                    {errors.websiteDomain}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    You can change this anytime in settings.
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-md border border-primary/15 bg-primary/[0.04] p-3 text-xs text-muted-foreground">
+                We&apos;ll crawl up to 50 pages on Standard or 100 on Enterprise
+                each month so the AI can answer questions from your existing
+                site content. You control which pages get included from
+                settings.
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  className="shrink-0"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={skipWebsite}
+                  className="flex-1"
+                >
+                  Skip for now
+                </Button>
+                <Button onClick={handleNextFromWebsite} className="flex-1">
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 3 && (
         <div className="mx-auto animate-fade-up w-full max-w-2xl space-y-6">
           <div className="text-center">
             <h2 className="font-heading text-2xl">Choose your plan</h2>
@@ -203,7 +303,7 @@ export function OnboardingClient({
             {!hasExistingChurch && (
               <Button
                 variant="outline"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 disabled={loading}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />

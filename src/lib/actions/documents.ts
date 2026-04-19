@@ -27,6 +27,7 @@ const DOC_TYPE_TO_TASK: Record<string, string> = {
   platejs: "process-platejs",
   // Sermons reuse the Platejs processing pipeline — same chunking, same index.
   sermon: "process-platejs",
+  website_page: "process-website-page",
 };
 
 async function triggerProcessing(docType: string, documentId: string) {

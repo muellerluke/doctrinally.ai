@@ -2,6 +2,7 @@
 
 import { getServerSession } from "next-auth";
 import { eq, and, lte, gte } from "drizzle-orm";
+import { tasks } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
 import {
   churches,
@@ -107,6 +108,29 @@ export async function verifyCheckoutSession(sessionId: string) {
         })
         .onConflictDoNothing();
     });
+
+    // The signup-time content crawl is gated on payment so we don't
+    // burn Firecrawl credits on abandoned checkouts. Only fires when
+    // the church actually entered a website during onboarding.
+    const [activatedChurch] = await db
+      .select({ websiteDomain: churches.websiteDomain })
+      .from(churches)
+      .where(eq(churches.id, churchId))
+      .limit(1);
+
+    if (activatedChurch?.websiteDomain) {
+      try {
+        await tasks.trigger("crawl-church-website", {
+          churchId,
+          triggeredBy: "signup" as const,
+        });
+      } catch (err) {
+        console.error(
+          `[billing] failed to trigger signup crawl for ${churchId}`,
+          err
+        );
+      }
+    }
   }
 
   return { success: true };

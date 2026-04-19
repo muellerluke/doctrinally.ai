@@ -2,7 +2,7 @@ export interface Citation {
   index: number;
   documentId: string;
   documentTitle: string;
-  documentType: "youtube" | "video" | "pdf" | "word" | "platejs";
+  documentType: "youtube" | "video" | "pdf" | "word" | "platejs" | "website_page";
   sourceUrl?: string;
   heading?: string;
   startTime?: number;
@@ -15,7 +15,7 @@ export interface RetrievedChunk {
   chunkId: string;
   documentId: string;
   documentTitle: string;
-  documentType: "youtube" | "video" | "pdf" | "word" | "platejs";
+  documentType: "youtube" | "video" | "pdf" | "word" | "platejs" | "website_page";
   content: string;
   /** Cosine similarity from the embedding vector, in [0, 1]. Set only when
    *  the chunk was found via semantic search. */

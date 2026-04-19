@@ -6,6 +6,7 @@ import {
   BookOpen,
   ExternalLink,
   Video,
+  Globe,
 } from "lucide-react";
 import type { Citation } from "@/lib/types/citations";
 
@@ -126,6 +127,35 @@ export function DocumentEmbed({ citation }: DocumentEmbedProps) {
           )}
         </div>
       </div>
+    );
+  }
+
+  // Website page: link card with hostname
+  if (documentType === "website_page" && sourceUrl) {
+    let hostname: string | null = null;
+    try {
+      hostname = new URL(sourceUrl).hostname;
+    } catch {
+      hostname = null;
+    }
+    return (
+      <a
+        href={sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="my-3 flex max-w-md items-center gap-3 overflow-hidden rounded-lg border bg-card px-4 py-3 shadow-sm transition-colors hover:bg-muted/40"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <Globe className="h-5 w-5 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{documentTitle}</p>
+          {hostname && (
+            <p className="truncate text-xs text-muted-foreground">{hostname}</p>
+          )}
+        </div>
+        <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </a>
     );
   }
 
