@@ -11,18 +11,12 @@ import { tasks } from "@trigger.dev/sdk/v3";
 import type { Citation, RetrievedChunk } from "@/lib/types/citations";
 import { logger } from "@/lib/logger";
 import { isSuperAdminEmail } from "@/lib/super-admin";
-import { buildRagContext } from "@/lib/chat/rag";
 import {
   estimateMessageTokens,
   estimateTokens,
   trimHistoryToBudget,
 } from "@/lib/chat/tokens";
 
-// Same thresholds as createSearchTool — a chunk must clear one of these
-// to be considered "relevant" enough to pass to the model.
-const SEMANTIC_FLOOR = 0.3;
-const KEYWORD_FLOOR = 0.01;
-const RAG_TOP_K = 6;
 const TOTAL_TOKEN_BUDGET = 100_000;
 const OUTPUT_RESERVE = 4_000;
 
@@ -53,15 +47,24 @@ function buildSystemPrompt(
 
   return `You are a helpful, knowledgeable assistant for ${churchName}. Your role is to answer questions using the Bible and the church's own teachings, sermons, and documents.
 
-You have access to a search tool that lets you find relevant content from the church's library of sermons, documents, and videos. ALWAYS use the search tool at least once before answering — do not guess or make up information about the church's specific teachings.
+You have access to a search tool that lets you find relevant content from the church's library of sermons, documents, and videos. ALWAYS use the search tool at least once before answering — do not guess or make up information about the church's specific teachings. Search multiple times with different queries if the first search doesn't find what you need.
 
-Guidelines:
-- Search the church's content library before answering. You can search multiple times with different queries if the first search doesn't find what you need.
-- When you reference a search result, cite it by embedding the source using <document>DOCUMENT_ID</document> where DOCUMENT_ID is the documentId from the search result.
-- IMPORTANT: <document> tags must ALWAYS be on their own line, separated from surrounding text by blank lines. Never place a <document> tag inside a sentence or paragraph. Always finish your sentence or paragraph first, then place the tag on the next line.
-- Include the most relevant 1-3 sources as <document> embeds. You don't need to embed every result.
+How to cite — READ CAREFULLY:
+Each result from the search tool has a "documentId" field — a UUID like "07c6d2c8-4f91-4302-9cec-a06e0eaf5c20". When you reference information from a search result, emit a citation tag using the EXACT format:
+
+  <document>DOCUMENT_ID</document>
+
+where DOCUMENT_ID is copied verbatim from the result's documentId field. The ID goes BETWEEN the opening and closing tags.
+
+STRICT RULES for <document> tags — violating these breaks citation rendering:
+- Every <document> tag MUST contain a document ID between the opening and closing tags. Never emit an empty "<document></document>" or a bare "<document>" with no closing tag.
+- The opening "<document>", the ID, and the closing "</document>" must all appear together on a single line.
+- Place each <document>…</document> tag on its own line, with blank lines before and after. Never place a tag inside a sentence or paragraph.
+- Include 1-3 citations total for the whole response — the single most relevant result per point you want to cite.
+
+Other guidelines:
 - Be warm, pastoral, and helpful. Speak in a way that is accessible to church members of all backgrounds.
-- Keep responses focused and concise unless the user asks for a detailed explanation.
+- Keep responses focused and concise — typically 2-4 paragraphs. Only go longer when the user explicitly asks for a detailed explanation.
 
 Bible quotations — copyright rules you MUST follow:
 - You may quote Bible passages from memory. Always include the book, chapter, and verse reference (e.g. "John 3:16").
@@ -397,38 +400,16 @@ export async function POST(request: Request) {
     church?.aiFallbackInstruction
   );
 
-  // Eager RAG: pre-fetch relevant chunks for the current user question and
-  // attach them as a context block on the final user message. The agentic
-  // `search` tool remains available so the model can dig deeper if the
-  // eager fetch missed something.
-  const rawChunks = await hybridSearch(churchId, userQuery, RAG_TOP_K);
-  const ragChunks: RetrievedChunk[] = rawChunks.filter(
-    (c) =>
-      (c.semanticSimilarity ?? 0) >= SEMANTIC_FLOOR ||
-      (c.keywordRank ?? 0) >= KEYWORD_FLOOR
-  );
-  const ragContext = buildRagContext(ragChunks);
-
-  // Prepend RAG context to the last user message. Note: the message we
-  // persist to the DB uses the original `userQuery` below — the RAG prefix
-  // is only present in what we send to the model.
-  const enrichedMessages =
-    ragContext && coreMessages.length > 0
-      ? coreMessages.map((m, i) =>
-          i === coreMessages.length - 1 && m.role === "user"
-            ? { ...m, content: ragContext + m.content }
-            : m
-        )
-      : coreMessages;
-
-  // Trim older messages to fit the 100k total input budget. The last
-  // message (current user turn, RAG-enriched) is always kept.
-  const lastMessage = enrichedMessages.at(-1);
-  const olderMessages = enrichedMessages.slice(0, -1);
+  // Trim older messages to fit the 100k total input budget. The last message
+  // (current user turn) is always kept. The chat route is purely agentic —
+  // retrieval happens via the `search` tool at the model's discretion, not
+  // via eager pre-fetching into the prompt.
+  const lastMessage = coreMessages.at(-1);
+  const olderMessages = coreMessages.slice(0, -1);
   const trimmedOlder = lastMessage
     ? trimHistoryToBudget(olderMessages, {
         systemPromptTokens: estimateTokens(systemPrompt),
-        ragContextTokens: estimateTokens(ragContext),
+        ragContextTokens: 0,
         currentUserTokens: estimateMessageTokens(lastMessage),
         totalBudget: TOTAL_TOKEN_BUDGET,
         outputReserve: OUTPUT_RESERVE,
@@ -436,7 +417,7 @@ export async function POST(request: Request) {
     : [];
   const messagesToSend = lastMessage
     ? [...trimmedOlder, lastMessage]
-    : enrichedMessages;
+    : coreMessages;
 
   logger.info("[chat] request started", {
     churchId,
@@ -446,7 +427,6 @@ export async function POST(request: Request) {
     model: process.env.AI_MODEL || DEFAULT_MODEL,
     messageCount: messagesToSend.length,
     historyDropped: olderMessages.length - trimmedOlder.length,
-    ragChunkCount: ragChunks.length,
   });
 
   logger.debug("[chat] system prompt", {
@@ -466,6 +446,9 @@ export async function POST(request: Request) {
     tools: {
       search: createSearchTool(churchId),
     },
+    // Pure agentic flow: the model typically runs search once, then
+    // replies. 6 steps allows retries with different queries when the
+    // first search returns nothing useful.
     stopWhen: stepCountIs(6),
   });
 
@@ -514,20 +497,17 @@ export async function POST(request: Request) {
           }
         }
 
+        // Citations come solely from whatever the agentic `search` tool
+        // returned — the chat route no longer pre-fetches RAG.
         const searchResults = extractSearchResults(steps as unknown[]);
-        // Merge the eager-RAG chunks with any chunks the agentic search
-        // tool pulled in. chunksToMetadata dedupes by documentId, so
-        // overlap between the two sources collapses into a single citation.
-        const allChunks = [...ragChunks, ...searchResults];
-        const citations = chunksToMetadata(allChunks);
+        const citations = chunksToMetadata(searchResults);
 
         logger.info("[chat] response completed", {
           churchId,
           chatId: chatId ?? null,
           responseLength: fullText.length,
           totalSteps: steps.length,
-          ragChunkCount: ragChunks.length,
-          toolSearchResults: searchResults.length,
+          searchResultsRaw: searchResults.length,
           citationsDeduped: citations.length,
           citationDocIds: citations.map((c) => c.documentId),
         });
