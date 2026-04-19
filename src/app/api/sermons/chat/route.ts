@@ -18,6 +18,7 @@ import { buildSermonSystemPrompt } from "@/lib/sermons/system-prompt";
 import { createDoctrineCheckTool } from "@/lib/sermons/doctrine-check";
 import { DEFAULT_MODEL, priceTokens } from "@/lib/sermons/token-budget";
 import type { Citation, RetrievedChunk } from "@/lib/types/citations";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 import { logger } from "@/lib/logger";
 
 interface ClientMessage {
@@ -152,14 +153,17 @@ export async function POST(request: Request) {
     return new Response("Sermon not found", { status: 404 });
   }
 
-  const membership = await db.query.memberships.findFirst({
-    where: and(
-      eq(memberships.userId, session.user.id),
-      eq(memberships.churchId, doc.churchId)
-    ),
-  });
-  if (!membership || membership.role === "member") {
-    return new Response("Forbidden", { status: 403 });
+  // Super-admin bypasses the per-church membership check for support/debugging.
+  if (!isSuperAdminEmail(session.user.email)) {
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, session.user.id),
+        eq(memberships.churchId, doc.churchId)
+      ),
+    });
+    if (!membership || membership.role === "member") {
+      return new Response("Forbidden", { status: 403 });
+    }
   }
 
   // Enterprise-only feature gate

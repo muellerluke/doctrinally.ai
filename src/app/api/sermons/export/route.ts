@@ -5,6 +5,7 @@ import { documents, memberships } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { plateToSermonMarkdown } from "@/lib/sermons/markdown-serializer";
 import { lookupByReference } from "@/lib/bible";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 
 /**
  * Export a sermon as plain markdown. The response is `text/markdown` with a
@@ -33,14 +34,17 @@ export async function GET(request: Request) {
   });
   if (!doc) return new Response("Not found", { status: 404 });
 
-  const membership = await db.query.memberships.findFirst({
-    where: and(
-      eq(memberships.userId, session.user.id),
-      eq(memberships.churchId, doc.churchId)
-    ),
-  });
-  if (!membership || membership.role === "member") {
-    return new Response("Forbidden", { status: 403 });
+  // Super-admin bypasses the per-church membership check for support/debugging.
+  if (!isSuperAdminEmail(session.user.email)) {
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, session.user.id),
+        eq(memberships.churchId, doc.churchId)
+      ),
+    });
+    if (!membership || membership.role === "member") {
+      return new Response("Forbidden", { status: 403 });
+    }
   }
 
   let plateNodes: unknown[] = [];

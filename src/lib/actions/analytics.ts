@@ -22,6 +22,7 @@ import {
 } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { getDateBounds, getGrouping, calcDelta, type DateRange } from "@/lib/date-utils";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 export type { DateRange } from "@/lib/date-utils";
 
 export interface AnalyticsSummary {
@@ -56,6 +57,21 @@ export interface UncoveredTopic {
 async function requireAdmin(churchId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return null;
+
+  // Platform super-admin (luke@doctrinally.ai) gets synthetic owner access
+  // to any church in the DB — mirrors the impersonation path in
+  // active-church.ts so the dashboard renders analytics for churches he's
+  // switched into but has no real membership for.
+  if (isSuperAdminEmail(session.user.email)) {
+    return {
+      id: "super-admin-synthetic",
+      userId: session.user.id,
+      churchId,
+      role: "owner" as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
 
   const membership = await db.query.memberships.findFirst({
     where: and(

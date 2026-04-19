@@ -10,6 +10,7 @@ import { incrementQuestionCount, getCurrentUsage, getEffectiveMessageLimit } fro
 import { tasks } from "@trigger.dev/sdk/v3";
 import type { Citation, RetrievedChunk } from "@/lib/types/citations";
 import { logger } from "@/lib/logger";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 import { buildRagContext } from "@/lib/chat/rag";
 import {
   estimateMessageTokens,
@@ -342,8 +343,10 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
 
-  // Validate authenticated user belongs to this church
-  if (userId) {
+  // Validate authenticated user belongs to this church. Platform super-admin
+  // (luke@doctrinally.ai) bypasses — he can chat-test any church he's
+  // impersonating via the admin switcher.
+  if (userId && !isSuperAdminEmail(session?.user?.email)) {
     const membership = await db.query.memberships.findFirst({
       where: and(
         eq(memberships.userId, userId),

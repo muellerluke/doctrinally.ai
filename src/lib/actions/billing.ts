@@ -15,6 +15,7 @@ import { env } from "@/lib/env";
 import { getPlanLimits, getOverageRates, PLANS } from "@/lib/plans";
 import type { PlanType } from "@/lib/plans";
 import { getActiveMembershipForUser } from "@/lib/active-church";
+import { isSuperAdminEmail } from "@/lib/super-admin";
 
 export async function verifyCheckoutSession(sessionId: string) {
   const session = await getServerSession(authOptions);
@@ -194,16 +195,21 @@ export async function updateOverageSettings(
     return { error: "You must be signed in" };
   }
 
-  // Only owners can change overage settings
-  const membership = await db.query.memberships.findFirst({
-    where: and(
-      eq(memberships.userId, session.user.id),
-      eq(memberships.churchId, churchId)
-    ),
-  });
+  // Only owners can change overage settings — except the platform
+  // super-admin, who gets owner-equivalent powers on any church for
+  // support/debugging.
+  const isSuperAdmin = isSuperAdminEmail(session.user.email);
+  if (!isSuperAdmin) {
+    const membership = await db.query.memberships.findFirst({
+      where: and(
+        eq(memberships.userId, session.user.id),
+        eq(memberships.churchId, churchId)
+      ),
+    });
 
-  if (!membership || membership.role !== "owner") {
-    return { error: "Only owners can change overage settings" };
+    if (!membership || membership.role !== "owner") {
+      return { error: "Only owners can change overage settings" };
+    }
   }
 
   // Validate cap range: 0–5000 in steps of 100
