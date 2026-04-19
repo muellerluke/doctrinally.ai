@@ -21,6 +21,7 @@ export const documentTypeEnum = pgEnum("document_type", [
   "word",
   "platejs",
   "sermon",
+  "website_page",
 ]);
 
 export const documentStatusEnum = pgEnum("document_status", [

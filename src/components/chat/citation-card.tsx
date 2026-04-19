@@ -4,6 +4,7 @@ import {
   FileText,
   Video,
   BookOpen,
+  Globe,
   X,
   ExternalLink,
   Play,
@@ -41,12 +42,13 @@ function getYouTubeEmbedUrl(sourceUrl: string, startTime?: number): string {
 }
 
 export function CitationCard({ citation, onClose }: CitationCardProps) {
-  const typeIcons = {
+  const typeIcons: Record<Citation["documentType"], typeof FileText> = {
     youtube: Video,
     video: Video,
     pdf: FileText,
     word: FileText,
     platejs: BookOpen,
+    website_page: Globe,
   };
   const Icon = typeIcons[citation.documentType] || FileText;
 

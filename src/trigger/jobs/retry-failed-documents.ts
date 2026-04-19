@@ -9,6 +9,7 @@ const DOC_TYPE_TO_TASK: Record<string, string> = {
   word: "process-word",
   video: "process-video",
   platejs: "process-platejs",
+  website_page: "process-website-page",
 };
 
 /**

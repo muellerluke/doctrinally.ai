@@ -420,6 +420,7 @@ export function DocumentLibrary({
             <SelectItem value="pdf">PDF</SelectItem>
             <SelectItem value="word">Word</SelectItem>
             <SelectItem value="platejs">Document</SelectItem>
+            <SelectItem value="website_page">Website</SelectItem>
           </SelectContent>
         </Select>
 

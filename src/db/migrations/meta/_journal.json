@@ -127,6 +127,13 @@
       "when": 1776562078823,
       "tag": "0017_elite_iceman",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1776636398555,
+      "tag": "0018_early_butterfly",
+      "breakpoints": true
     }
   ]
 }
