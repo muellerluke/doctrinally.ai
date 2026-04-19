@@ -66,7 +66,7 @@ export function SermonPreview() {
             <span>Sermon · Psalm 23 · draft</span>
             <span className="text-muted-foreground/50">· auto-saved</span>
           </div>
-          <span className="rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gold-foreground/70">
+          <span className="rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gold">
             Enterprise
           </span>
         </div>
@@ -89,7 +89,7 @@ export function SermonPreview() {
               </div>
               {/* Assistant turn */}
               <div className="max-w-[92%] text-[11px] leading-relaxed text-foreground/80">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gold-foreground/60">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gold">
                   Suggested outline
                 </p>
                 <ol className="mt-1 list-decimal space-y-1 pl-4 marker:text-gold">

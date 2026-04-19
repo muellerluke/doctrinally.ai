@@ -124,7 +124,7 @@ export default function PricingPage() {
                         <div className="text-[0.9rem] leading-snug">
                           <div className="font-semibold text-foreground">
                             Sermon AI{" "}
-                            <span className="ml-1 rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-gold-foreground/70">
+                            <span className="ml-1 rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-gold">
                               Exclusive
                             </span>
                           </div>
