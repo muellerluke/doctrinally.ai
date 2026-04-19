@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Clock,
   TrendingUp,
+  Rss,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -110,6 +111,34 @@ export default function PricingPage() {
                 {enterpriseFeatures.map((f, i) => {
                   const isHeader = i === 0;
                   const isSermonAi = f.startsWith("Sermon AI");
+                  const isAutoSync = f.startsWith("Auto-sync");
+                  if (isAutoSync) {
+                    // Headline Enterprise differentiator — render as a
+                    // mini-card that echoes the Sermon AI treatment below.
+                    return (
+                      <li
+                        key={f}
+                        className="relative flex items-start gap-3 rounded-xl border border-gold/40 bg-gold/[0.06] p-3"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gold/40 bg-background text-gold">
+                          <Rss className="h-4 w-4" />
+                        </div>
+                        <div className="text-[0.9rem] leading-snug">
+                          <div className="font-semibold text-foreground">
+                            YouTube auto-sync{" "}
+                            <span className="ml-1 rounded-md border border-gold/40 bg-gold/10 px-1.5 py-0.5 align-middle text-[9px] font-semibold uppercase tracking-wide text-gold">
+                              New
+                            </span>
+                          </div>
+                          <div className="text-[0.82rem] text-muted-foreground">
+                            Paste your channel once. We pull every sermon,
+                            short, and live replay — and keep it fresh every
+                            week.
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  }
                   if (isSermonAi) {
                     // Flagship Enterprise feature — render as a mini-card
                     // that visually lifts off the plain bullet list.
@@ -185,6 +214,82 @@ export default function PricingPage() {
             charged for overages unless you opt in. If enabled, extra messages
             are just $0.25 each with a cap you control.
           </p>
+        </div>
+      </section>
+
+      {/* ─── YouTube Auto-Sync explainer ───────────────────────────
+          Headline Enterprise differentiator. Churches with 200+ existing
+          sermons skip a week of manual uploads with this one input. */}
+      <section className="relative overflow-hidden border-b py-14 sm:py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto grid max-w-5xl items-center gap-10 rounded-3xl border border-gold/30 bg-gradient-to-br from-destructive/[0.04] via-background to-gold/[0.08] p-8 sm:p-12 lg:grid-cols-2">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1">
+                <Rss className="h-3.5 w-3.5 text-gold" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                  Enterprise &middot; new
+                </span>
+              </div>
+              <h2 className="mt-4 font-heading text-[1.75rem] leading-tight tracking-tight sm:text-[2.25rem]">
+                Your whole YouTube channel,{" "}
+                <span className="italic text-primary">indexed overnight.</span>
+              </h2>
+              <p className="mt-3 text-[0.98rem] leading-relaxed text-muted-foreground">
+                Paste your channel once. We pull every sermon, short, live
+                replay, and playlist into auto-generated folders. Every week,
+                at a time you choose, we check for new uploads and import them
+                — never re-importing what you already have.
+              </p>
+              <ul className="mt-5 space-y-2 text-sm">
+                {[
+                  "Folders for Videos, Shorts, Live Streams, and each playlist",
+                  "Weekly schedule in your own timezone — pick your day and hour",
+                  "Transcription and citations work the same as manual uploads",
+                  "Admin sees last-run stats, can force-sync anytime, or pause",
+                ].map((line) => (
+                  <li key={line} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="mt-7 h-11 px-6 font-semibold"
+                render={<Link href="/sign-up" />}
+              >
+                Start with auto-sync
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="relative">
+              <div className="rounded-2xl border bg-background/80 p-5 shadow-xl shadow-primary/[0.06]">
+                <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Rss className="h-3.5 w-3.5 text-destructive" />
+                  youtube.com/@yourchurch
+                </div>
+                <div className="ml-3 h-4 w-px bg-border" />
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    "Videos",
+                    "Shorts",
+                    "Live Streams",
+                    "Playlists",
+                  ].map((f, i) => (
+                    <div
+                      key={f}
+                      className={`flex items-center gap-2 rounded-lg border bg-background/60 p-3 text-sm animate-fade-up stagger-${i + 1}`}
+                    >
+                      <div className="h-3 w-3 rounded-sm bg-primary/70" />
+                      <span className="font-medium">{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  Every Monday at 3:00 AM &middot; America/New_York
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

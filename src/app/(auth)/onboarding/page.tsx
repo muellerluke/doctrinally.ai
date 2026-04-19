@@ -38,5 +38,9 @@ export default async function OnboardingPage() {
     }
   }
 
-  return <OnboardingClient initialChurch={initialChurch} />;
+  const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "doctrinally.ai";
+
+  return (
+    <OnboardingClient initialChurch={initialChurch} appDomain={appDomain} />
+  );
 }

@@ -10,6 +10,7 @@ import {
   PenLine,
   CheckCircle2,
   Send,
+  Rss,
 } from "lucide-react";
 
 // ─── Hero ──────────────────────────────────────────────────────────
@@ -38,6 +39,13 @@ export const bentoFeatures: BentoFeature[] = [
       "Paste a YouTube sermon link, upload a video or PDF, or write new devotions in our built-in editor. Your AI starts learning from your teaching the moment you add it.",
     span: "lg:col-span-4 lg:row-span-2",
     accent: true,
+  },
+  {
+    icon: Rss,
+    title: "Your whole YouTube channel, synced overnight",
+    description:
+      "Paste your channel once. Every sermon, short, live replay, and playlist lands in the right folder — and stays fresh every week.",
+    span: "lg:col-span-2 lg:row-span-1",
   },
   {
     icon: BookOpen,
@@ -217,6 +225,7 @@ export const standardFeatures = [
 
 export const enterpriseFeatures = [
   "Everything in Standard, plus:",
+  "Auto-sync your entire YouTube channel — sermons, shorts, live replays, and playlists ingested every week",
   "Sermon AI — draft sermons with an assistant trained on your church",
   "Use your own custom domain",
   "Your church's logo and branding",
@@ -245,7 +254,12 @@ export const faqs: FAQ[] = [
   {
     question: "What types of content can I upload?",
     answer:
-      "YouTube sermon videos (as links), video files, PDF documents, Word documents, and rich text documents created in our built-in editor. YouTube playlist uploads are coming soon — for now, just add videos one at a time.",
+      "YouTube sermon videos (as links), video files, PDF documents, Word documents, and rich text documents created in our built-in editor. Enterprise churches can also auto-sync their entire YouTube channel, and we'll keep pulling in new uploads every week.",
+  },
+  {
+    question: "How does YouTube auto-sync work?",
+    answer:
+      "Paste your channel URL once. Doctrinally.AI pulls every existing sermon, short, live replay, and playlist into your library and files them into auto-generated folders. Every week at a time you choose, it checks for new uploads and imports them automatically. We never re-import a video you already have. Auto-sync is included on the Enterprise plan.",
   },
   {
     question: "How is this different from ChatGPT?",

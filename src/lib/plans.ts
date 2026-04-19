@@ -7,6 +7,7 @@ export const PLANS = {
       customDomain: false,
       customBranding: false,
       sermonWriter: false,
+      youtubeSync: false,
     },
     description: "Perfect for churches getting started with AI-powered chat",
     highlights: [
@@ -24,6 +25,7 @@ export const PLANS = {
       customDomain: true,
       customBranding: true,
       sermonWriter: true,
+      youtubeSync: true,
     },
     description: "For churches that want full control over their experience",
     highlights: [
@@ -32,6 +34,7 @@ export const PLANS = {
       "3,000 messages per month",
       "Your own logo and branding",
       "AI-assisted sermon writer ($10/mo AI budget)",
+      "Auto-sync your entire YouTube channel every week",
     ],
   },
 } as const;
@@ -66,4 +69,13 @@ export function getOverageRates() {
 export function hasSermonWriter(plan: PlanType | undefined | null): boolean {
   if (!plan) return false;
   return PLANS[plan].features.sermonWriter === true;
+}
+
+/**
+ * Whether a plan can auto-sync an entire YouTube channel into the library.
+ * Enterprise only.
+ */
+export function hasYouTubeSync(plan: PlanType | undefined | null): boolean {
+  if (!plan) return false;
+  return PLANS[plan].features.youtubeSync === true;
 }

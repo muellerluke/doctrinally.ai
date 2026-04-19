@@ -6,6 +6,9 @@ import {
   Video,
   Sparkles,
   ArrowRight,
+  Rss,
+  Folder,
+  Clock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -113,6 +116,129 @@ export default function FeaturesPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── YouTube Auto-Sync ─────────────────────────────────────
+          Placed before Sermon AI because it's the first Enterprise
+          differentiator most churches will evaluate when sizing the
+          onboarding effort. */}
+      <section
+        id="youtube-sync"
+        className="relative overflow-hidden border-b py-20 sm:py-28"
+      >
+        <div className="container mx-auto px-4">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1">
+                <Rss className="h-3.5 w-3.5 text-gold" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                  Enterprise · new
+                </span>
+              </div>
+              <h2 className="mt-5 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
+                One URL. Your whole{" "}
+                <span className="italic text-primary">channel.</span>
+              </h2>
+              <p className="mt-5 text-lg text-muted-foreground">
+                Enterprise churches connect their YouTube channel at onboarding.
+                We pull every existing sermon, short, live replay, and playlist
+                into auto-generated folders &mdash; and we keep running every
+                week so new uploads appear in your chat without you lifting a
+                finger.
+              </p>
+              <ul className="mt-7 space-y-4">
+                <li className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10">
+                    <Folder className="h-4 w-4 text-gold" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">
+                      Folders generated for you
+                    </div>
+                    <div className="text-[0.95rem] leading-relaxed text-muted-foreground">
+                      Videos, Shorts, Live Streams, and one folder per playlist
+                      you attach. Videos land in the right place automatically.
+                    </div>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10">
+                    <Clock className="h-4 w-4 text-gold" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">
+                      Weekly on your schedule
+                    </div>
+                    <div className="text-[0.95rem] leading-relaxed text-muted-foreground">
+                      Pick the day and hour in your own timezone. Disable or
+                      force-sync from Settings any time.
+                    </div>
+                  </div>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10">
+                    <Check className="h-4 w-4 text-gold" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">Never re-imports</div>
+                    <div className="text-[0.95rem] leading-relaxed text-muted-foreground">
+                      Manual uploads and prior syncs are respected &mdash; we
+                      skip anything already in your library.
+                    </div>
+                  </div>
+                </li>
+              </ul>
+              <Button
+                className="mt-8 h-11 px-6 font-semibold"
+                render={<Link href="/sign-up" />}
+              >
+                Try it free for 14 days
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="relative">
+              <div className="overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-primary/[0.08]">
+                <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-gold/60" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+                  <div className="ml-2 flex-1 truncate rounded-md bg-background/60 px-2 py-1 text-[11px] text-muted-foreground">
+                    doctrinally.ai/documents
+                  </div>
+                </div>
+                <div className="space-y-3 p-6">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Folder className="h-3.5 w-3.5" />
+                    YouTube
+                  </div>
+                  {[
+                    { name: "Videos", count: 184 },
+                    { name: "Shorts", count: 27 },
+                    { name: "Live Streams", count: 62 },
+                    { name: "Playlists / Ephesians Series", count: 14 },
+                  ].map((f, i) => (
+                    <div
+                      key={f.name}
+                      className={`flex items-center justify-between rounded-lg border bg-muted/20 p-3 text-sm animate-fade-up stagger-${i + 1}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4 text-primary" />
+                        <span className="font-medium">{f.name}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {f.count} videos
+                      </span>
+                    </div>
+                  ))}
+                  <p className="pt-1 text-[11px] text-muted-foreground">
+                    Last synced 6 hours ago · Next run Monday 3:00 AM
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

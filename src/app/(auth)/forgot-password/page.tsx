@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
 import { forgotPassword } from "@/lib/actions/auth";
+import { CenteredAuth } from "@/components/auth/centered-auth";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -58,35 +59,38 @@ export default function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="font-heading text-2xl">
-            Check your email
-          </CardTitle>
-          <CardDescription>
-            If an account exists for {email}, we&apos;ve sent a password reset
-            link.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-sm text-muted-foreground">
-            <Link
-              href="/sign-in"
-              className="font-semibold text-primary transition-colors hover:text-primary/80"
-            >
-              Back to sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+      <CenteredAuth>
+        <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle2 className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="font-heading text-2xl">
+              Check your email
+            </CardTitle>
+            <CardDescription>
+              If an account exists for {email}, we&apos;ve sent a password reset
+              link.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center text-sm text-muted-foreground">
+              <Link
+                href="/sign-in"
+                className="font-semibold text-primary transition-colors hover:text-primary/80"
+              >
+                Back to sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </CenteredAuth>
     );
   }
 
   return (
-    <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
+    <CenteredAuth>
+      <Card className="mx-auto max-w-sm animate-fade-up stagger-1 shadow-xl shadow-primary/[0.04]">
       <CardHeader className="text-center">
         <CardTitle className="font-heading text-2xl">
           Forgot password
@@ -126,5 +130,6 @@ export default function ForgotPasswordPage() {
         </p>
       </CardContent>
     </Card>
+    </CenteredAuth>
   );
 }

@@ -134,6 +134,13 @@
       "when": 1776636398555,
       "tag": "0018_early_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1776642577846,
+      "tag": "0019_hard_bloodscream",
+      "breakpoints": true
     }
   ]
 }
