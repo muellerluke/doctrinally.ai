@@ -24,7 +24,7 @@ import {
 
 // Ceiling passed to Vercel Blob. Per-type limits are enforced below
 // against the clientPayload size before the token is signed.
-const GLOBAL_MAX_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
+const GLOBAL_MAX_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
 
 interface ClientPayload {
   title: string;
@@ -113,11 +113,11 @@ export async function POST(request: Request) {
 
         // Prefer the MIME-specific ceiling, fall back to the per-docType
         // default so novel video MIMEs (e.g. Safari sending video/x-m4v)
-        // still get the 2 GB video cap instead of the 50 MB pdf/word cap.
+        // still get the 5 GB video cap instead of the 50 MB pdf/word cap.
         const maxSize =
           MAX_FILE_SIZE[fileType] ??
           (docType === "video"
-            ? 2 * 1024 * 1024 * 1024
+            ? 5 * 1024 * 1024 * 1024
             : 50 * 1024 * 1024);
         if (typeof fileSize !== "number" || fileSize <= 0) {
           throw new Error("Invalid file size");

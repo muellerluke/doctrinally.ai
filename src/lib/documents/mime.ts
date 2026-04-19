@@ -65,7 +65,12 @@ const EXT_TO_TYPE: Record<string, UploadDocType> = {
 const DEFAULT_MAX_BY_TYPE: Record<UploadDocType, number> = {
   pdf: 50 * 1024 * 1024, // 50 MB
   word: 50 * 1024 * 1024, // 50 MB
-  video: 2 * 1024 * 1024 * 1024, // 2 GB
+  // 5 GB fits a 45-min sermon at high 1080p bitrates (~12 Mbps ≈ 4 GB) or
+  // a 90-min sermon at typical quality, with margin. We stream uploads
+  // straight to disk on the worker and delete the temp video right after
+  // audio extraction, so disk usage scales with the upload but never
+  // persists or inflates.
+  video: 5 * 1024 * 1024 * 1024, // 5 GB
 };
 
 // Per-MIME upload ceilings. Kept for backward compat with callers that

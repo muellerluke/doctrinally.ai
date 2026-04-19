@@ -347,7 +347,7 @@ export function FileUploadDialog({
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  PDF or DOCX up to 50 MB &middot; video up to 2 GB
+                  PDF or DOCX up to 50 MB &middot; video up to 5 GB
                 </p>
               </div>
             )}
