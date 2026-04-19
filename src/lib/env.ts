@@ -21,6 +21,9 @@ const envSchema = z.object({
   // Supadata - YouTube transcript fallback
   SUPADATA_API_KEY: z.string().optional(),
 
+  // Firecrawl - church website crawling + branding extraction
+  FIRECRAWL_API_KEY: z.string().optional(),
+
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),

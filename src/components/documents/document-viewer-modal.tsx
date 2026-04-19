@@ -6,6 +6,7 @@ import {
   Play,
   Video,
   FileEdit,
+  Globe,
   Calendar,
   User,
   Tag,
@@ -55,6 +56,11 @@ const typeConfig: Record<
     label: "Document",
     icon: FileEdit,
     accent: "text-emerald-500 bg-emerald-500/10",
+  },
+  website_page: {
+    label: "Website",
+    icon: Globe,
+    accent: "text-sky-500 bg-sky-500/10",
   },
 };
 

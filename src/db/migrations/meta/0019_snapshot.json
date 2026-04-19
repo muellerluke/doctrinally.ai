@@ -1,6 +1,6 @@
 {
-  "id": "77551539-9462-4218-9571-c468ddeaa079",
-  "prevId": "3e56969d-4ff4-4fb9-bb6c-aa30fdc66608",
+  "id": "8b7ec8ce-b331-4db6-8473-fb7570d1a24b",
+  "prevId": "77551539-9462-4218-9571-c468ddeaa079",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -558,6 +558,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "youtube_video_id": {
+          "name": "youtube_video_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "blob_path": {
           "name": "blob_path",
           "type": "text",
@@ -623,7 +629,30 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "documents_church_youtube_video_idx": {
+          "name": "documents_church_youtube_video_idx",
+          "columns": [
+            {
+              "expression": "church_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "youtube_video_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"documents\".\"youtube_video_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "documents_church_id_churches_id_fk": {
           "name": "documents_church_id_churches_id_fk",
@@ -1868,6 +1897,372 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.youtube_channel_syncs": {
+      "name": "youtube_channel_syncs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "church_id": {
+          "name": "church_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel_url": {
+          "name": "channel_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "channel_id": {
+          "name": "channel_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channel_handle": {
+          "name": "channel_handle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channel_title": {
+          "name": "channel_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "channel_thumbnail": {
+          "name": "channel_thumbnail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "youtube_sync_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "day_of_week": {
+          "name": "day_of_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "hour_local": {
+          "name": "hour_local",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'UTC'"
+        },
+        "trigger_schedule_id": {
+          "name": "trigger_schedule_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_sync_started_at": {
+          "name": "last_sync_started_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_sync_ended_at": {
+          "name": "last_sync_ended_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_sync_error": {
+          "name": "last_sync_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_sync_stats": {
+          "name": "last_sync_stats",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "root_folder_id": {
+          "name": "root_folder_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "videos_folder_id": {
+          "name": "videos_folder_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shorts_folder_id": {
+          "name": "shorts_folder_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "live_folder_id": {
+          "name": "live_folder_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "playlists_root_folder_id": {
+          "name": "playlists_root_folder_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "youtube_channel_syncs_church_id_churches_id_fk": {
+          "name": "youtube_channel_syncs_church_id_churches_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "churches",
+          "columnsFrom": [
+            "church_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "youtube_channel_syncs_root_folder_id_folders_id_fk": {
+          "name": "youtube_channel_syncs_root_folder_id_folders_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "folders",
+          "columnsFrom": [
+            "root_folder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "youtube_channel_syncs_videos_folder_id_folders_id_fk": {
+          "name": "youtube_channel_syncs_videos_folder_id_folders_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "folders",
+          "columnsFrom": [
+            "videos_folder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "youtube_channel_syncs_shorts_folder_id_folders_id_fk": {
+          "name": "youtube_channel_syncs_shorts_folder_id_folders_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "folders",
+          "columnsFrom": [
+            "shorts_folder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "youtube_channel_syncs_live_folder_id_folders_id_fk": {
+          "name": "youtube_channel_syncs_live_folder_id_folders_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "folders",
+          "columnsFrom": [
+            "live_folder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "youtube_channel_syncs_playlists_root_folder_id_folders_id_fk": {
+          "name": "youtube_channel_syncs_playlists_root_folder_id_folders_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "folders",
+          "columnsFrom": [
+            "playlists_root_folder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "youtube_channel_syncs_created_by_users_id_fk": {
+          "name": "youtube_channel_syncs_created_by_users_id_fk",
+          "tableFrom": "youtube_channel_syncs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "youtube_channel_syncs_church_id_unique": {
+          "name": "youtube_channel_syncs_church_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "church_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.youtube_sync_playlists": {
+      "name": "youtube_sync_playlists",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "sync_id": {
+          "name": "sync_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playlist_id": {
+          "name": "playlist_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playlist_title": {
+          "name": "playlist_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "folder_id": {
+          "name": "folder_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "youtube_sync_playlists_sync_id_youtube_channel_syncs_id_fk": {
+          "name": "youtube_sync_playlists_sync_id_youtube_channel_syncs_id_fk",
+          "tableFrom": "youtube_sync_playlists",
+          "tableTo": "youtube_channel_syncs",
+          "columnsFrom": [
+            "sync_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "youtube_sync_playlists_folder_id_folders_id_fk": {
+          "name": "youtube_sync_playlists_folder_id_folders_id_fk",
+          "tableFrom": "youtube_sync_playlists",
+          "tableTo": "folders",
+          "columnsFrom": [
+            "folder_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "youtube_sync_playlists_sync_id_playlist_id_unique": {
+          "name": "youtube_sync_playlists_sync_id_playlist_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "sync_id",
+            "playlist_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -1951,6 +2346,17 @@
         "queued",
         "running",
         "succeeded",
+        "failed"
+      ]
+    },
+    "public.youtube_sync_status": {
+      "name": "youtube_sync_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "syncing",
+        "active",
+        "paused",
         "failed"
       ]
     }

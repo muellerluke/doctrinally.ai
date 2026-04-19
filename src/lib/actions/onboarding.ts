@@ -7,6 +7,7 @@ import { tasks } from "@trigger.dev/sdk/v3";
 import { db } from "@/db";
 import {
   churches,
+  churchWebsiteConfigs,
   memberships,
   subscriptions,
   youtubeChannelSyncs,
@@ -20,6 +21,7 @@ import { env } from "@/lib/env";
 import { canUseYouTubeSync } from "@/lib/plan-gating";
 import { resolveChannel } from "@/trigger/utils/youtube-channel";
 import { upsertChurchSyncSchedule } from "@/lib/youtube-sync/trigger-schedules";
+import { normalizeUrl } from "@/lib/firecrawl";
 
 export async function getExistingChurch() {
   const session = await getServerSession(authOptions);
@@ -106,6 +108,7 @@ export async function createChurch(input: {
   name: string;
   slug?: string;
   plan: "standard" | "enterprise";
+  websiteDomain?: string | null;
   /**
    * Optional YouTube auto-sync setup captured during onboarding. Only
    * persisted on Enterprise — silently ignored on Standard so the form
@@ -130,6 +133,7 @@ export async function createChurch(input: {
     name: input.name,
     slug,
     plan: input.plan,
+    websiteDomain: input.websiteDomain || null,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
@@ -148,6 +152,9 @@ export async function createChurch(input: {
   // Both plans start as a 14-day free trial with full plan limits.
   const isTrial = true;
   const limits = getPlanLimits(parsed.data.plan);
+  const normalizedWebsite = parsed.data.websiteDomain
+    ? normalizeUrl(parsed.data.websiteDomain)
+    : null;
 
   const wantsYouTubeSync =
     canUseYouTubeSync(parsed.data.plan) && !!input.youtubeChannelUrl?.trim();
@@ -175,6 +182,7 @@ export async function createChurch(input: {
         name: parsed.data.name,
         slug: parsed.data.slug,
         isActive: false,
+        websiteDomain: normalizedWebsite,
       })
       .returning({ id: churches.id, slug: churches.slug });
 
@@ -189,6 +197,12 @@ export async function createChurch(input: {
       plan: parsed.data.plan,
       status: "incomplete",
       questionLimit: limits.questionLimit,
+    });
+
+    // Seed the per-church crawl configuration with empty filter arrays
+    // so the settings page can read it without an extra round trip.
+    await tx.insert(churchWebsiteConfigs).values({
+      churchId: church.id,
     });
 
     if (wantsYouTubeSync && resolvedChannel) {
@@ -208,6 +222,24 @@ export async function createChurch(input: {
 
     return church;
   });
+
+  // Fire-and-forget branding bootstrap. Runs while the user is in
+  // Stripe checkout, so by the time they bounce back to /settings their
+  // logo and colors should already be themed. Failure is non-fatal —
+  // the church just keeps default branding.
+  if (normalizedWebsite) {
+    try {
+      await tasks.trigger("extract-website-branding", {
+        churchId: result.id,
+        domain: normalizedWebsite,
+      });
+    } catch (err) {
+      console.error(
+        `[onboarding] failed to trigger extract-website-branding for ${result.id}`,
+        err
+      );
+    }
+  }
 
   // Create Stripe customer
   const customer = await stripe.customers.create({

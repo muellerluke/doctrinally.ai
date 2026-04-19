@@ -22,7 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PlanCard } from "@/components/billing/plan-card";
-import { churchInfoSchema } from "@/lib/validations/onboarding";
+import {
+  churchInfoSchema,
+  websiteDomainSchema,
+} from "@/lib/validations/onboarding";
 import { createChurch, resumeCheckout } from "@/lib/actions/onboarding";
 import { slugify } from "@/lib/utils";
 import { PLANS, type PlanType } from "@/lib/plans";
@@ -34,6 +37,7 @@ import {
 } from "@/components/auth/auth-asides";
 
 type InitialChurch = { name: string; slug: string } | null;
+type Step = 1 | 2 | 3 | 4;
 
 const DAYS = [
   { value: "0", label: "Sunday" },
@@ -75,13 +79,16 @@ export function OnboardingClient({
   const canceled = searchParams.get("canceled") === "true";
 
   const hasExistingChurch = !!initialChurch;
-  const [step, setStep] = useState<1 | 2 | 3>(hasExistingChurch ? 2 : 1);
+  // Returning users (church already exists) jump straight to plan select;
+  // they configured the name and website on their first attempt.
+  const [step, setStep] = useState<Step>(hasExistingChurch ? 3 : 1);
   const [name, setName] = useState(initialChurch?.name ?? "");
   const [slug, setSlug] = useState(initialChurch?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(false);
+  const [websiteDomain, setWebsiteDomain] = useState("");
   const [selectedPlan, setSelectedPlan] = useState<PlanType>("enterprise");
 
-  // Step 3 (YouTube) state — Enterprise only. Skippable.
+  // Step 4 (YouTube) state — Enterprise only. Skippable.
   const [channelUrl, setChannelUrl] = useState("");
   const [ytDayOfWeek, setYtDayOfWeek] = useState("1");
   const [ytHour, setYtHour] = useState("3");
@@ -129,10 +136,28 @@ export function OnboardingClient({
     setStep(2);
   }
 
-  function handleNextFromStep2() {
+  function handleNextFromWebsite() {
+    setErrors({});
+    if (websiteDomain.trim().length > 0) {
+      const parsed = websiteDomainSchema.safeParse(websiteDomain);
+      if (!parsed.success) {
+        setErrors({ websiteDomain: parsed.error.issues[0].message });
+        return;
+      }
+    }
+    setStep(3);
+  }
+
+  function skipWebsite() {
+    setErrors({});
+    setWebsiteDomain("");
+    setStep(3);
+  }
+
+  function handleNextFromStep3() {
     // Enterprise → YouTube step. Standard → submit straight to checkout.
     if (selectedPlan === "enterprise") {
-      setStep(3);
+      setStep(4);
     } else {
       submitCheckout({ withYouTube: false });
     }
@@ -150,6 +175,7 @@ export function OnboardingClient({
           name,
           slug,
           plan: selectedPlan,
+          websiteDomain: websiteDomain.trim() || null,
           ...(withYouTube && channelUrl.trim()
             ? {
                 youtubeChannelUrl: channelUrl.trim(),
@@ -169,7 +195,7 @@ export function OnboardingClient({
           setStep(1);
         } else if (result.error.toLowerCase().includes("youtube")) {
           setErrors({ channelUrl: result.error });
-          setStep(3);
+          setStep(4);
         } else {
           toast.error(result.error);
         }
@@ -202,16 +228,19 @@ export function OnboardingClient({
       ]
     : [
         { label: "Name your church", description: "Pick a URL" },
+        { label: "Connect your website", description: "Optional" },
         { label: "Pick a plan", description: "14 days free" },
         { label: "YouTube channel", description: "Optional" },
       ];
 
-  const currentStepIndex = hasExistingChurch ? step - 2 : step - 1;
+  const currentStepIndex = hasExistingChurch ? step - 3 : step - 1;
 
   const aside =
     step === 1 ? (
       <OnboardingChurchAside name={name} slug={slug} appDomain={appDomain} />
     ) : step === 2 ? (
+      <OnboardingChurchAside name={name} slug={slug} appDomain={appDomain} />
+    ) : step === 3 ? (
       <OnboardingPlanAside plan={selectedPlan} />
     ) : (
       <OnboardingYouTubeAside />
@@ -281,7 +310,83 @@ export function OnboardingClient({
         <div className="animate-fade-up stagger-1 space-y-6">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/80">
-              Step {hasExistingChurch ? 1 : 2} · Choose your plan
+              Step 2 · Connect your website
+            </div>
+            <h2 className="mt-1 font-heading text-3xl leading-tight">
+              Bring your site along for the ride.
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              We&apos;ll pull your logo, brand colors, and key pages so your
+              assistant feels like part of your church from day one.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="websiteDomain">Church website</Label>
+              <Input
+                id="websiteDomain"
+                placeholder="mychurch.com"
+                value={websiteDomain}
+                onChange={(e) => setWebsiteDomain(e.target.value)}
+                className="h-11"
+                autoFocus
+              />
+              {errors.websiteDomain ? (
+                <p className="text-sm text-destructive">
+                  {errors.websiteDomain}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  You can change this anytime in settings.
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-md border border-primary/15 bg-primary/[0.04] p-3 text-xs leading-relaxed text-muted-foreground">
+              We&apos;ll crawl up to 50 pages on Standard or 100 on Enterprise
+              each month so the AI can answer questions from your existing
+              site content. You control which pages get included from settings.
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <Button
+                variant="ghost"
+                onClick={skipWebsite}
+                disabled={loading}
+                className="h-11"
+              >
+                Skip for now
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  disabled={loading}
+                  className="h-11"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back
+                </Button>
+                <Button
+                  className="h-11 font-semibold"
+                  onClick={handleNextFromWebsite}
+                  disabled={loading}
+                >
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="animate-fade-up stagger-1 space-y-6">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/80">
+              Step {hasExistingChurch ? 1 : 3} · Choose your plan
             </div>
             <h2 className="mt-1 font-heading text-3xl leading-tight">
               Start with a 14-day free trial.
@@ -317,7 +422,7 @@ export function OnboardingClient({
             {!hasExistingChurch && (
               <Button
                 variant="outline"
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 disabled={loading}
                 className="h-11"
               >
@@ -327,7 +432,7 @@ export function OnboardingClient({
             )}
             <Button
               className="h-11 flex-1 font-semibold"
-              onClick={handleNextFromStep2}
+              onClick={handleNextFromStep3}
               disabled={loading}
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -342,7 +447,7 @@ export function OnboardingClient({
         </div>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <div className="animate-fade-up stagger-1 space-y-6">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-gold">
@@ -449,7 +554,7 @@ export function OnboardingClient({
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 disabled={loading}
                 className="h-11"
               >
