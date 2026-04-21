@@ -9,7 +9,6 @@ interface ChatPreviewProps {
   accentColor: string;
   backgroundColor: string;
   textColor: string;
-  darkMode?: boolean;
   logoHeight?: number;
   fontFamily?: string;
 }
@@ -21,7 +20,6 @@ export function ChatPreview({
   accentColor,
   backgroundColor,
   textColor,
-  darkMode,
   logoHeight = 20,
   fontFamily,
 }: ChatPreviewProps) {

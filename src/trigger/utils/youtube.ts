@@ -1,5 +1,4 @@
 import { Innertube } from "youtubei.js";
-import { Supadata } from "@supadata/js";
 import type { WhisperSegment } from "./whisper";
 
 export class CaptionsUnavailableError extends Error {
@@ -30,8 +29,19 @@ export async function withRetry<T>(
       lastError = err;
       const message =
         err instanceof Error ? err.message : String(err);
+      // Supadata wraps non-JSON upstream responses (Cloudflare HTML pages,
+      // 5xx without JSON bodies) as `SupadataError` with
+      // `error: "internal-error"` and `message: "Unexpected error response
+      // format"`. Those are transient — retry alongside the usual
+      // network/rate-limit signals.
+      const isSupadataInternalError =
+        err &&
+        typeof err === "object" &&
+        "error" in err &&
+        (err as { error?: unknown }).error === "internal-error";
       const isRetryable =
-        /429|rate.?limit|too many requests|500|502|503|504|ECONNRESET|ETIMEDOUT|fetch failed/i.test(
+        isSupadataInternalError ||
+        /429|rate.?limit|too many requests|500|502|503|504|ECONNRESET|ETIMEDOUT|fetch failed|unexpected error response|invalid response format|failed to parse response/i.test(
           message
         );
       if (!isRetryable || attempt === maxAttempts) break;
@@ -46,9 +56,10 @@ export async function withRetry<T>(
 }
 
 /**
- * Tier 1 — Free: pull captions from YouTube's InnerTube API via youtubei.js.
- * Works on most videos, including ones where the old timedtext endpoint
- * returns "Transcript is disabled".
+ * Pull captions from YouTube's InnerTube API via youtubei.js. Used during
+ * the actual processing pass to fetch transcript segments. Throws
+ * `CaptionsUnavailableError` if the video has no caption tracks or an
+ * empty transcript.
  */
 export async function fetchYouTubeCaptions(
   videoId: string
@@ -105,78 +116,53 @@ export async function fetchYouTubeCaptions(
 }
 
 /**
- * Tier 2 — Cheap (~$0.001/req): use Supadata's YouTube transcript API.
- * Handles bot-detection and datacenter IP issues on their end.
- * Falls back to their AI-generated transcript if native captions are missing.
+ * Cheap caption-availability probe. Returns true if the video has at least
+ * one caption track exposed by InnerTube (including YouTube's auto-generated
+ * ASR track, since `fetchYouTubeCaptions` happily consumes those too).
+ *
+ * Falls through to attempting a full transcript fetch if the player response
+ * doesn't expose a usable `caption_tracks` array — some shorts / live
+ * archives don't populate the metadata object the same way as regular
+ * uploads, but still have a transcript available.
+ *
+ * Throws on network/transport errors so callers can retry. A clean "video
+ * has no captions" outcome resolves to `false`.
  */
-export async function fetchSupadataTranscript(
-  videoId: string
-): Promise<WhisperSegment[]> {
-  const apiKey = process.env.SUPADATA_API_KEY;
-  if (!apiKey) {
-    throw new Error("SUPADATA_API_KEY is not set — cannot use Supadata fallback");
-  }
-
-  const supadata = new Supadata({ apiKey });
-
-  const url = `https://www.youtube.com/watch?v=${videoId}`;
-  const result = await withRetry(
-    () => supadata.transcript({ url, lang: "en" }),
-    { label: "Supadata transcript" }
+export async function hasYouTubeCaptions(videoId: string): Promise<boolean> {
+  const inspect = await withRetry(
+    async () => {
+      const yt = await Innertube.create({
+        lang: "en",
+        retrieve_player: false,
+      });
+      const info = await yt.getInfo(videoId);
+      // The youtubei.js typings don't surface `captions.caption_tracks`
+      // consistently across shape-shifting player responses — read through
+      // a loose cast rather than disabling type-checking on the whole file.
+      const captions = (info as unknown as {
+        captions?: { caption_tracks?: unknown[] };
+      }).captions;
+      const tracks = captions?.caption_tracks;
+      return {
+        hasTrackMetadata: Array.isArray(tracks),
+        trackCount: Array.isArray(tracks) ? tracks.length : 0,
+      };
+    },
+    { label: "YouTube caption probe" }
   );
 
-  // Handle async jobs (large files return a jobId instead of immediate content)
-  type TranscriptContent = import("@supadata/js").TranscriptChunk[] | string;
-  let content: TranscriptContent | undefined;
-
-  if ("jobId" in result) {
-    const jobId = result.jobId;
-    const maxAttempts = 60; // ~60 seconds max
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise((r) => setTimeout(r, 1000));
-      const job = await withRetry(
-        () => supadata.transcript.getJobStatus(jobId),
-        { maxAttempts: 3, baseDelayMs: 1000, label: "Supadata job poll" }
-      );
-      if (job.status === "completed" && job.result) {
-        content = job.result.content;
-        break;
-      }
-      if (job.status === "failed") {
-        throw new Error(`Supadata job ${jobId} failed`);
-      }
-    }
-    if (content === undefined) {
-      throw new Error(`Supadata job ${result.jobId} timed out after ${maxAttempts}s`);
-    }
-  } else {
-    content = result.content;
+  if (inspect.hasTrackMetadata) {
+    return inspect.trackCount > 0;
   }
 
-  if (!content) {
-    throw new Error("Supadata returned empty transcript");
+  // No caption metadata exposed — fall back to attempting a transcript
+  // fetch and bucketing CaptionsUnavailableError as "no captions". Any
+  // other error propagates so the caller can retry.
+  try {
+    await fetchYouTubeCaptions(videoId);
+    return true;
+  } catch (err) {
+    if (err instanceof CaptionsUnavailableError) return false;
+    throw err;
   }
-
-  // Timestamped chunks: { text, offset (ms), duration (ms), lang }
-  if (Array.isArray(content)) {
-    const segments: WhisperSegment[] = content
-      .filter((c) => c.text && typeof c.offset === "number")
-      .map((c) => ({
-        text: c.text,
-        start: c.offset / 1000,
-        end: (c.offset + (c.duration || 0)) / 1000,
-      }));
-
-    if (segments.length === 0) {
-      throw new Error("Supadata returned chunks but none had text");
-    }
-    return segments;
-  }
-
-  // Plain text fallback — no timestamps, create a single segment
-  if (typeof content === "string" && content.trim().length > 0) {
-    return [{ text: content.trim(), start: 0, end: 0 }];
-  }
-
-  throw new Error("Supadata returned unrecognized transcript format");
 }

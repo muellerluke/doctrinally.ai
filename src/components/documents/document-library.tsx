@@ -439,6 +439,9 @@ export function DocumentLibrary({
             <SelectItem value="processing">Processing</SelectItem>
             <SelectItem value="indexed">Ready</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="skipped_no_captions">
+              Waiting on captions
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>

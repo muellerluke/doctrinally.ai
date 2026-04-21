@@ -123,10 +123,7 @@ export function ChatSidebar({
               className="h-8 w-8 rounded-lg object-cover"
             />
           ) : (
-            <>
-              <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg dark:hidden" />
-              <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-8 w-8 rounded-lg dark:block" />
-            </>
+            <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-8 w-8 rounded-lg" />
           )}
           <span className="font-heading text-sm font-semibold leading-tight">
             {churchName}

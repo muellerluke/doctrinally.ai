@@ -15,18 +15,12 @@ export const churches = pgTable("churches", {
   websiteDomain: text("website_domain"),
   isActive: boolean("is_active").notNull().default(false),
 
-  // Branding — light mode
+  // Branding — single theme. Member-facing chat renders in the church's
+  // configured colors regardless of the viewer's OS light/dark preference.
   primaryColor: text("primary_color"),
   accentColor: text("accent_color"),
   backgroundColor: text("background_color"),
   textColor: text("text_color"),
-
-  // Branding — dark mode
-  darkPrimaryColor: text("dark_primary_color"),
-  darkAccentColor: text("dark_accent_color"),
-  darkBackgroundColor: text("dark_background_color"),
-  darkTextColor: text("dark_text_color"),
-  darkLogoUrl: text("dark_logo_url"),
 
   // Additional branding
   faviconUrl: text("favicon_url"),
@@ -36,6 +30,13 @@ export const churches = pgTable("churches", {
 
   // AI behavior
   aiFallbackInstruction: text("ai_fallback_instruction"),
+
+  // Embeddable chat widget — Enterprise only. `embedPublicKey` is a public
+  // identifier that the church pastes into its site in a `<script>` tag;
+  // it's visible to every visitor, so it's not a secret — it's just the
+  // lookup key. Rotatable by regenerating from settings.
+  embedPublicKey: text("embed_public_key").unique(),
+  embedEnabled: boolean("embed_enabled").notNull().default(false),
 
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

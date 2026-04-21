@@ -281,7 +281,7 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice) {
 
   if (!usage) return;
 
-  const rates = getOverageRates();
+  const rates = getOverageRates(sub.plan as PlanType);
 
   // Only charge message overage if the church has opted in. When enabled,
   // cap the overage at the admin-configured maximum.

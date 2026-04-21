@@ -5,12 +5,8 @@ import { documents, chunks } from "@/db/schema";
 import { chunkTranscript } from "../utils/chunking";
 import { generateEmbeddings } from "../utils/embeddings";
 import { formatProcessingError, logProcessingError } from "../utils/error-logging";
-import {
-  fetchYouTubeCaptions,
-  fetchSupadataTranscript,
-} from "../utils/youtube";
+import { fetchYouTubeCaptions, CaptionsUnavailableError } from "../utils/youtube";
 import { extractVideoId } from "../utils/extract-video-id";
-import type { WhisperSegment } from "../utils/whisper";
 
 export async function processYouTubeBody(payload: { documentId: string }) {
   const { documentId } = payload;
@@ -35,20 +31,27 @@ export async function processYouTubeBody(payload: { documentId: string }) {
     if (!videoId)
       throw new Error(`Could not extract video ID from: ${doc.sourceUrl}`);
 
-    // Two-tier transcript: free InnerTube captions first, Supadata fallback.
-    let segments: WhisperSegment[];
-    let transcriptSource: "captions" | "supadata";
-
+    // Captions-only pipeline: if the video lacks native captions we mark the
+    // row as `skipped_no_captions` and return cleanly. The scheduled sync
+    // re-checks these rows on the next run so videos that get captions
+    // enabled later flow back into processing automatically.
+    let segments;
     try {
       segments = await fetchYouTubeCaptions(videoId);
-      transcriptSource = "captions";
-    } catch (captionErr) {
-      console.warn(
-        `[process-youtube] Captions unavailable for ${videoId}, falling back to Supadata:`,
-        captionErr instanceof Error ? captionErr.message : captionErr
-      );
-      segments = await fetchSupadataTranscript(videoId);
-      transcriptSource = "supadata";
+    } catch (err) {
+      if (err instanceof CaptionsUnavailableError) {
+        await db
+          .update(documents)
+          .set({
+            status: "skipped_no_captions",
+            hasCaptions: false,
+            errorMessage: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(documents.id, documentId));
+        return { success: true, skipped: true, reason: "no-captions" };
+      }
+      throw err;
     }
 
     if (segments.length === 0) {
@@ -78,13 +81,17 @@ export async function processYouTubeBody(payload: { documentId: string }) {
 
     await db
       .update(documents)
-      .set({ status: "indexed", retryCount: 0, updatedAt: new Date() })
+      .set({
+        status: "indexed",
+        hasCaptions: true,
+        retryCount: 0,
+        updatedAt: new Date(),
+      })
       .where(eq(documents.id, documentId));
 
     return {
       success: true,
       chunkCount: transcriptChunks.length,
-      transcriptSource,
     };
   } catch (error) {
     logProcessingError("process-youtube", error);
@@ -101,7 +108,10 @@ export async function processYouTubeBody(payload: { documentId: string }) {
 
 export const processYouTube = task({
   id: "process-youtube",
-  machine: "small-1x", // 1 vCPU / 512 MB — transcript fetching + embeddings
+  machine: "small-1x",
+  // Without the Supadata AI-transcript fallback, native caption fetches
+  // complete in seconds even on long sermons. A 2-minute cap is ample.
+  maxDuration: 120,
   retry: { maxAttempts: 2 },
   run: processYouTubeBody,
 });

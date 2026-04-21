@@ -114,7 +114,7 @@ const faqPage = {
       name: "What happens if I exceed my monthly limits?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "You can continue using the platform. Overages are billed at $0.25 per additional document upload and $0.25 per additional message.",
+        text: "Document uploads are unlimited on both plans, so there is no upload overage. If you opt in to message overage, extra messages beyond your monthly limit are billed at $0.10 each on the Standard plan and $0.05 each on the Enterprise plan, capped at whatever limit you configure.",
       },
     },
     {

@@ -125,7 +125,7 @@ function DefaultTrustBar() {
     <div className="mt-10 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
       <span className="inline-flex items-center gap-1.5">
         <ShieldCheck className="h-3.5 w-3.5 text-primary/70" />
-        No credit card until day 14
+        14-day free trial · no charge until day 14
       </span>
       <span aria-hidden>·</span>
       <span>Cancel anytime</span>

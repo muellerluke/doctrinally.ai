@@ -44,6 +44,12 @@ const statusConfig: Record<
     className: "bg-destructive/10 text-destructive",
     dot: "bg-destructive",
   },
+  skipped_no_captions: {
+    label: "Waiting on captions",
+    className:
+      "bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-300",
+    dot: "bg-slate-400",
+  },
 };
 
 interface DocumentStatusBadgeProps {

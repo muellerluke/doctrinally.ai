@@ -1,12 +1,13 @@
 "use server";
 
 import { getServerSession } from "next-auth";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { after } from "next/server";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  documents,
   subscriptions,
   youtubeChannelSyncs,
   youtubeSyncPlaylists,
@@ -258,6 +259,49 @@ export async function updateYouTubeSyncSchedule(input: {
   });
 
   return { success: true };
+}
+
+/**
+ * Manual "Rescan captions" action for the settings page. Scopes to the
+ * current church's YouTube sync and re-checks any docs currently queued
+ * or previously skipped for missing captions. Indexed rows already have
+ * captions (by definition) and are counted without re-probing.
+ */
+export async function rescanChannelCaptions() {
+  const gated = await requireEnterpriseContext();
+  if ("error" in gated) return { error: gated.error };
+  const { ctx } = gated;
+
+  const sync = await db.query.youtubeChannelSyncs.findFirst({
+    where: eq(youtubeChannelSyncs.churchId, ctx.membership.churchId),
+  });
+  if (!sync) return { error: "No YouTube sync configured for this church" };
+
+  const rows = await db
+    .select({ id: documents.id })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.churchId, ctx.membership.churchId),
+        eq(documents.type, "youtube"),
+        inArray(documents.status, ["queued", "skipped_no_captions"])
+      )
+    );
+
+  if (rows.length === 0) {
+    return {
+      success: true,
+      scanned: 0,
+      note: "No queued or skipped videos to rescan.",
+    };
+  }
+
+  await tasks.trigger("scan-channel-captions", {
+    syncId: sync.id,
+    documentIds: rows.map((r) => r.id),
+  });
+
+  return { success: true, scanned: rows.length };
 }
 
 export async function triggerManualYouTubeSync() {

@@ -14,7 +14,16 @@ const protectedPaths = [
 const authPaths = ["/sign-in", "/sign-up"];
 
 // Paths that should never be blocked on subdomains (API, assets, etc.)
-const alwaysAllowPaths = ["/api", "/_next", "/favicon.ico"];
+// `/embed` hosts the public iframe + loader and is served from the root
+// domain only — churches paste the root-domain script URL into their own
+// sites, so subdomain rewrites must not interfere with these requests.
+const alwaysAllowPaths = [
+  "/api",
+  "/_next",
+  "/favicon.ico",
+  "/embed",
+  "/embed.js",
+];
 
 export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";

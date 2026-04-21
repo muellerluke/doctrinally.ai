@@ -17,6 +17,9 @@ interface ChatInterfaceProps {
   initialMessages?: ChatMessage[];
   isAuthenticated?: boolean;
   isDemo?: boolean;
+  /** Running inside the embeddable iframe widget. Hides the mobile nav
+   *  (there's no sidebar to toggle) and omits the /chat/{id} URL sync. */
+  embed?: boolean;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -35,6 +38,7 @@ export function ChatInterface({
   initialMessages,
   isAuthenticated,
   isDemo,
+  embed,
 }: ChatInterfaceProps) {
   const router = useRouter();
   const { toggleSidebar } = useChatShell();
@@ -56,48 +60,48 @@ export function ChatInterface({
   // Update the URL when a new chat is created so authenticated users can
   // bookmark or share the conversation. Skip for anonymous users — they
   // don't have chat history and the navigation causes a page reload.
+  // Also skip inside the embed iframe — the URL there points at
+  // /embed/[key] and shouldn't be redirected.
   const prevChatIdRef = useRef(initialChatId);
   useEffect(() => {
+    if (embed) return;
     if (isAuthenticated && chatId && chatId !== prevChatIdRef.current) {
       prevChatIdRef.current = chatId;
       router.replace(`/chat/${chatId}`, { scroll: false });
     }
-  }, [chatId, router, isAuthenticated]);
+  }, [chatId, router, isAuthenticated, embed]);
 
   const hasMessages = messages.length > 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Mobile navbar — visible only on small screens */}
-      <div className="flex items-center gap-3 border-b px-3 py-2.5 md:hidden">
-        <button
-          onClick={toggleSidebar}
-          className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        {churchLogoUrl ? (
-          <img
-            src={churchLogoUrl}
-            alt={churchName}
-            className="h-6 w-6 rounded object-cover"
-          />
-        ) : (
-          <>
+      {/* Mobile navbar — visible only on small screens. Hidden in embed
+          mode because the launcher-injected iframe has no sidebar to toggle
+          and the host page provides its own chrome. */}
+      {!embed && (
+        <div className="flex items-center gap-3 border-b px-3 py-2.5 md:hidden">
+          <button
+            onClick={toggleSidebar}
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          {churchLogoUrl ? (
+            <img
+              src={churchLogoUrl}
+              alt={churchName}
+              className="h-6 w-6 rounded object-cover"
+            />
+          ) : (
             <img
               src="/logo-light-mode.png"
               alt="Doctrinally.AI"
-              className="h-6 w-6 rounded dark:hidden"
+              className="h-6 w-6 rounded"
             />
-            <img
-              src="/logo-dark-mode.png"
-              alt="Doctrinally.AI"
-              className="hidden h-6 w-6 rounded dark:block"
-            />
-          </>
-        )}
-        <span className="truncate text-sm font-semibold">{churchName}</span>
-      </div>
+          )}
+          <span className="truncate text-sm font-semibold">{churchName}</span>
+        </div>
+      )}
 
       {!hasMessages ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-8 p-4">

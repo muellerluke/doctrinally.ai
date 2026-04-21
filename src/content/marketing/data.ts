@@ -269,7 +269,7 @@ export const faqs: FAQ[] = [
   {
     question: "What happens if I go over my monthly limits?",
     answer:
-      "By default, message limits are hard-enforced — members simply see a friendly notice when the limit is reached, and your church is never charged extra. If you want to allow additional messages, you can opt in to overage from your billing settings and set a maximum cap so you always stay in control. Extra messages are $0.25 each, capped at whatever limit you choose. No surprises, ever.",
+      "Document uploads are unlimited on both plans, so the only limit that matters is monthly member messages. By default, message limits are hard-enforced — members simply see a friendly notice when the limit is reached, and your church is never charged extra. If you want to allow additional messages, you can opt in to overage from your billing settings and set a maximum cap so you always stay in control. Extra messages are $0.10 each on Standard and $0.05 each on Enterprise, capped at whatever limit you choose. No surprises, ever.",
   },
   {
     question: "Can I cancel anytime?",

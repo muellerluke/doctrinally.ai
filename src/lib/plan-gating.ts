@@ -18,3 +18,7 @@ export function canUseCustomBranding(plan: string): boolean {
 export function canUseYouTubeSync(plan: string): boolean {
   return plan === "enterprise";
 }
+
+export function canUseEmbedWidget(plan: string): boolean {
+  return plan === "enterprise";
+}

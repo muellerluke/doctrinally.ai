@@ -141,6 +141,27 @@
       "when": 1776642577846,
       "tag": "0019_hard_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1776645625250,
+      "tag": "0020_previous_colossus",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1776692685050,
+      "tag": "0021_optimal_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1776710364730,
+      "tag": "0022_red_lady_bullseye",
+      "breakpoints": true
     }
   ]
 }

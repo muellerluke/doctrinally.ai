@@ -9,6 +9,7 @@ import { getChats } from "@/lib/actions/chats";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { ChatShell } from "@/components/chat/chat-shell";
 import { VisitorTracker } from "@/components/chat/visitor-tracker";
+import { ForceSingleTheme } from "@/components/chat/force-single-theme";
 import type { ChatHistoryItem } from "@/components/chat/chat-sidebar";
 
 const FONT_CSS_MAP: Record<string, string> = {
@@ -42,8 +43,7 @@ export default async function ChatLayout({
   if (!church) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 p-4">
-        <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
-        <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
+        <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl" />
         <h1 className="font-heading text-2xl">Church not found</h1>
         <p className="text-muted-foreground">
           This church doesn&apos;t exist or hasn&apos;t been set up yet.
@@ -76,8 +76,7 @@ export default async function ChatLayout({
   if (!church.isActive || !sub || !activeStatuses.includes(sub.status)) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 p-4">
-        <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl dark:hidden" />
-        <img src="/logo-dark-mode.png" alt="Doctrinally.AI" className="hidden h-16 w-16 rounded-2xl dark:block" />
+        <img src="/logo-light-mode.png" alt="Doctrinally.AI" className="h-16 w-16 rounded-2xl" />
         <h1 className="font-heading text-2xl">Church not found</h1>
         <p className="text-muted-foreground">
           This church doesn&apos;t exist or hasn&apos;t been set up yet.
@@ -88,63 +87,47 @@ export default async function ChatLayout({
 
   const isEnterprise = canUseCustomBranding(sub.plan);
 
-  // Build branding CSS for light and dark modes
+  // Chat renders in a single theme — no OS-driven dark/light switching.
+  // Enterprise churches override the default theme tokens with their own
+  // configured colors; Standard churches fall through to the global
+  // defaults unchanged.
   let brandingCss = "";
   if (isEnterprise) {
-    const light = {
+    const c = {
       primary: church.primaryColor,
       accent: church.accentColor,
       bg: church.backgroundColor,
       text: church.textColor,
     };
-    const dark = {
-      primary: church.darkPrimaryColor,
-      accent: church.darkAccentColor,
-      bg: church.darkBackgroundColor,
-      text: church.darkTextColor,
-    };
+    const rules: string[] = [];
+    if (c.primary) {
+      rules.push(`--primary: ${c.primary} !important`);
+      if (c.bg) rules.push(`--primary-foreground: ${c.bg} !important`);
+    }
+    if (c.accent) rules.push(`--accent: ${c.accent} !important`);
+    if (c.bg) {
+      rules.push(`--background: ${c.bg} !important`);
+      rules.push(`--card: ${c.bg} !important`);
+      rules.push(`--popover: ${c.bg} !important`);
+      rules.push(`--muted: color-mix(in srgb, ${c.bg} 90%, ${c.text || "#000"}) !important`);
+    }
+    if (c.text) {
+      rules.push(`--foreground: ${c.text} !important`);
+      rules.push(`--card-foreground: ${c.text} !important`);
+      rules.push(`--popover-foreground: ${c.text} !important`);
+      rules.push(`--muted-foreground: color-mix(in srgb, ${c.text} 60%, ${c.bg || "#fff"}) !important`);
+      rules.push(`--border: color-mix(in srgb, ${c.text} 12%, ${c.bg || "#fff"}) !important`);
+      rules.push(`--input: color-mix(in srgb, ${c.text} 12%, ${c.bg || "#fff"}) !important`);
+    }
+    const vars = rules.join("; ");
 
-    const buildVars = (c: typeof light) => {
-      const rules: string[] = [];
-      if (c.primary) {
-        rules.push(`--primary: ${c.primary} !important`);
-        if (c.bg) rules.push(`--primary-foreground: ${c.bg} !important`);
-      }
-      if (c.accent) rules.push(`--accent: ${c.accent} !important`);
-      if (c.bg) {
-        rules.push(`--background: ${c.bg} !important`);
-        rules.push(`--card: ${c.bg} !important`);
-        rules.push(`--popover: ${c.bg} !important`);
-        rules.push(`--muted: color-mix(in srgb, ${c.bg} 90%, ${c.text || "#000"}) !important`);
-      }
-      if (c.text) {
-        rules.push(`--foreground: ${c.text} !important`);
-        rules.push(`--card-foreground: ${c.text} !important`);
-        rules.push(`--popover-foreground: ${c.text} !important`);
-        rules.push(`--muted-foreground: color-mix(in srgb, ${c.text} 60%, ${c.bg || "#fff"}) !important`);
-        rules.push(`--border: color-mix(in srgb, ${c.text} 12%, ${c.bg || "#fff"}) !important`);
-        rules.push(`--input: color-mix(in srgb, ${c.text} 12%, ${c.bg || "#fff"}) !important`);
-      }
-      return rules.join("; ");
-    };
-
-    const lightVars = buildVars(light);
-    const darkVars = buildVars(dark);
-
-    // Use :not(.dark) and .dark to properly scope light/dark overrides.
     // Apply to both #church-chat (the main container) AND html/body so the
     // background color extends into iOS safe areas and any pixels outside
     // the chat container (status bar, home indicator bar).
-    if (lightVars) {
-      brandingCss += `:root:not(.dark) #church-chat { ${lightVars} }`;
-      if (light.bg) {
-        brandingCss += ` :root:not(.dark) body { background: ${light.bg} !important; }`;
-      }
-    }
-    if (darkVars) {
-      brandingCss += ` :root.dark #church-chat { ${darkVars} }`;
-      if (dark.bg) {
-        brandingCss += ` :root.dark body { background: ${dark.bg} !important; }`;
+    if (vars) {
+      brandingCss += `#church-chat { ${vars} }`;
+      if (c.bg) {
+        brandingCss += ` body { background: ${c.bg} !important; }`;
       }
     }
   }
@@ -157,6 +140,7 @@ export default async function ChatLayout({
 
   return (
     <>
+      <ForceSingleTheme />
       {brandingCss && (
         <style dangerouslySetInnerHTML={{ __html: brandingCss }} />
       )}

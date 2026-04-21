@@ -8,9 +8,33 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.public.blob.vercel-storage.com",
       },
+      // YouTube channel avatars + video thumbnails. Proxying through
+      // next/image avoids per-IP throttling by Google's CDNs that
+      // intermittently returns 429s when admins hotlink directly.
+      { protocol: "https", hostname: "yt3.googleusercontent.com" },
+      { protocol: "https", hostname: "yt3.ggpht.com" },
+      { protocol: "https", hostname: "yt4.ggpht.com" },
+      { protocol: "https", hostname: "i.ytimg.com" },
     ],
   },
   skipTrailingSlashRedirect: true,
+  async headers() {
+    return [
+      {
+        // Embed iframe must be framable by any church's own site. The
+        // primary enforcement layer is the per-church embed key (only
+        // Enterprise churches with an active subscription can hold one),
+        // so strict `frame-ancestors` whitelisting is a secondary
+        // hardening step that will land once we have edge-friendly
+        // per-key origin resolution wired up.
+        source: "/embed/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+        ],
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

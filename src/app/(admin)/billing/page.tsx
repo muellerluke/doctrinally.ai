@@ -202,6 +202,7 @@ export default async function BillingPage() {
         enabled={data.messageOverageEnabled}
         cap={data.messageOverageCap}
         questionLimit={data.questionLimit}
+        plan={data.plan as "standard" | "enterprise"}
       />
 
       {/* Plan Comparison for Standard (hidden during trial to keep focus on conversion) */}

@@ -128,7 +128,7 @@ export function OnboardingPlanAside({ plan }: { plan: "standard" | "enterprise" 
           {isEnterprise ? "Enterprise" : "Standard"}
         </h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          14-day free trial. No card charged today.
+          14-day free trial. Card required, no charge until day 14.
         </p>
       </div>
 

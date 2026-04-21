@@ -121,7 +121,22 @@ export async function syncYouTubeChannelBody(payload: {
     let skipped = 0;
     let imported = 0;
 
-    if (allIds.length === 0) {
+    // Previously-skipped rows are re-checked every sync so that captions
+    // turned on after initial ingestion flow back into processing without
+    // any manual intervention.
+    const skippedRecheckRows = await db
+      .select({ id: documents.id })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.churchId, sync.churchId),
+          eq(documents.type, "youtube"),
+          eq(documents.status, "skipped_no_captions")
+        )
+      );
+    const skippedRecheckIds = skippedRecheckRows.map((r) => r.id);
+
+    if (allIds.length === 0 && skippedRecheckIds.length === 0) {
       await db
         .update(youtubeChannelSyncs)
         .set({
@@ -134,16 +149,19 @@ export async function syncYouTubeChannelBody(payload: {
       return { success: true, imported: 0, skipped: 0, playlistsDiscovered };
     }
 
-    const existingRows = await db
-      .select({ youtubeVideoId: documents.youtubeVideoId })
-      .from(documents)
-      .where(
-        and(
-          eq(documents.churchId, sync.churchId),
-          isNotNull(documents.youtubeVideoId),
-          inArray(documents.youtubeVideoId, allIds)
-        )
-      );
+    const existingRows =
+      allIds.length > 0
+        ? await db
+            .select({ youtubeVideoId: documents.youtubeVideoId })
+            .from(documents)
+            .where(
+              and(
+                eq(documents.churchId, sync.churchId),
+                isNotNull(documents.youtubeVideoId),
+                inArray(documents.youtubeVideoId, allIds)
+              )
+            )
+        : [];
 
     const existing = new Set(
       existingRows.map((r) => r.youtubeVideoId).filter((v): v is string => !!v)
@@ -168,9 +186,12 @@ export async function syncYouTubeChannelBody(payload: {
       toInsert.push({ videoId: id, kind, folderId });
     }
 
-    // Batch the inserts. Each row triggers a process-youtube run, so we
-    // use batchTrigger to amortize the Trigger.dev API round trips.
+    // Insert new rows (status "queued" pending caption check) in batches.
+    // Unlike the old pipeline, we do NOT trigger process-youtube here —
+    // scan-channel-captions fans out caption probes first and only enqueues
+    // processing for rows we know have captions available.
     const BATCH = 100;
+    const insertedIds: string[] = [];
     for (let i = 0; i < toInsert.length; i += BATCH) {
       const slice = toInsert.slice(i, i + BATCH);
 
@@ -202,26 +223,40 @@ export async function syncYouTubeChannelBody(payload: {
         .returning({ id: documents.id });
 
       imported += inserted.length;
-
-      if (inserted.length > 0) {
-        await tasks.batchTrigger(
-          "process-youtube",
-          inserted.map((row) => ({ payload: { documentId: row.id } }))
-        );
-      }
+      for (const row of inserted) insertedIds.push(row.id);
     }
+
+    const scanDocIds = [...insertedIds, ...skippedRecheckIds];
 
     await db
       .update(youtubeChannelSyncs)
       .set({
         status: "active",
         lastSyncEndedAt: new Date(),
-        lastSyncStats: { imported, skipped, playlistsDiscovered },
+        lastSyncStats: {
+          imported,
+          skipped,
+          playlistsDiscovered,
+          recoveredFromSkipped: skippedRecheckIds.length,
+        },
         updatedAt: new Date(),
       })
       .where(eq(youtubeChannelSyncs.id, syncId));
 
-    return { success: true, imported, skipped, playlistsDiscovered };
+    if (scanDocIds.length > 0) {
+      await tasks.trigger("scan-channel-captions", {
+        syncId,
+        documentIds: scanDocIds,
+      });
+    }
+
+    return {
+      success: true,
+      imported,
+      skipped,
+      playlistsDiscovered,
+      queuedForCaptionScan: scanDocIds.length,
+    };
   } catch (error) {
     logProcessingError("sync-youtube-channel", error);
     const message = formatProcessingError(error);

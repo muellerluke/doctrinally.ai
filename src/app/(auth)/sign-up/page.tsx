@@ -90,6 +90,8 @@ export default function SignUpPage() {
       steps={[
         { label: "Create your account", description: "30 seconds" },
         { label: "Name your church", description: "Pick a URL" },
+        { label: "Connect your website", description: "Optional" },
+        { label: "YouTube channel", description: "Optional" },
         { label: "Pick a plan", description: "14 days free" },
       ]}
       currentStep={0}
@@ -97,7 +99,7 @@ export default function SignUpPage() {
       <div className="animate-fade-up stagger-1 space-y-6">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-primary/80">
-            Start free · no card today
+            14-day free trial · card required · cancel anytime
           </div>
           <h1 className="mt-1 font-heading text-3xl leading-tight sm:text-4xl">
             Your church&rsquo;s own AI,

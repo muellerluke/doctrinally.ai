@@ -51,6 +51,24 @@ export const youtubeChannelSyncs = pgTable("youtube_channel_syncs", {
     imported?: number;
     skipped?: number;
     playlistsDiscovered?: number;
+    noCaptionsSkipped?: number;
+    recoveredFromSkipped?: number;
+  }>(),
+
+  // Snapshot of the most recent caption availability scan for this channel.
+  // Powers the "Caption coverage" card in Settings without re-hitting YouTube
+  // on every page load.
+  lastCaptionScan: jsonb("last_caption_scan").$type<{
+    scannedAt: string;
+    total: number;
+    withCaptions: number;
+    withoutCaptions: number;
+    missingSample: Array<{
+      documentId: string;
+      title: string;
+      url: string;
+    }>;
+    notified: boolean;
   }>(),
 
   rootFolderId: uuid("root_folder_id").references(() => folders.id, {

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { PlanType } from "@/lib/plans";
-import { PLANS } from "@/lib/plans";
+import { PLANS, OVERAGE_RATES } from "@/lib/plans";
 
 interface PlanCardProps {
   plan: PlanType;
@@ -59,7 +59,8 @@ export function PlanCard({ plan, selected, onSelect, current }: PlanCardProps) {
           </div>
         ))}
         <div className="mt-3 rounded-md bg-muted/50 p-2.5 text-xs text-muted-foreground">
-          Overages: ${0.25}/upload &middot; ${0.25}/message beyond limits
+          Overage: ${OVERAGE_RATES[plan].question.toFixed(2)}/message beyond
+          your monthly limit · uploads always unlimited
         </div>
       </CardContent>
     </Card>

@@ -210,9 +210,10 @@ export default function PricingPage() {
           </div>
 
           <p className="mx-auto mt-6 max-w-lg text-center text-[12px] text-muted-foreground">
-            Message limits are enforced by default &mdash; you&apos;ll never be
-            charged for overages unless you opt in. If enabled, extra messages
-            are just $0.25 each with a cap you control.
+            Document uploads are always unlimited. Message limits are enforced
+            by default &mdash; you&apos;ll never be charged for overages unless
+            you opt in. If enabled, extra messages are $0.10 each on Standard
+            or $0.05 each on Enterprise, with a cap you control.
           </p>
         </div>
       </section>

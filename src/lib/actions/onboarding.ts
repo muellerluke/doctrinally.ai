@@ -13,15 +13,127 @@ import {
   youtubeChannelSyncs,
 } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
-import { onboardingSchema } from "@/lib/validations/onboarding";
+import { churchInfoSchema, onboardingSchema } from "@/lib/validations/onboarding";
 import { slugify } from "@/lib/utils";
 import { stripe, getStripePriceId } from "@/lib/stripe";
 import { getPlanLimits, TRIAL_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
 import { canUseYouTubeSync } from "@/lib/plan-gating";
-import { resolveChannel } from "@/trigger/utils/youtube-channel";
+import {
+  fetchChannelVideos,
+  resolveChannel,
+} from "@/trigger/utils/youtube-channel";
+import { hasYouTubeCaptions } from "@/trigger/utils/youtube";
 import { upsertChurchSyncSchedule } from "@/lib/youtube-sync/trigger-schedules";
 import { normalizeUrl } from "@/lib/firecrawl";
+
+/**
+ * Real-time slug availability check for onboarding step 1. Runs unauthenticated
+ * because the user hasn't finished onboarding yet. Returns `available: true` only
+ * if the slug passes the shared format rules AND is not already taken — the caller
+ * can show "taken" and "invalid format" with the same inline UI.
+ */
+export async function checkSlugAvailable(
+  slug: string
+): Promise<{ available: boolean; reason?: "invalid" | "taken" }> {
+  const parsed = churchInfoSchema.shape.slug.safeParse(slug);
+  if (!parsed.success) {
+    return { available: false, reason: "invalid" };
+  }
+  const existing = await db.query.churches.findFirst({
+    where: eq(churches.slug, parsed.data),
+    columns: { id: true },
+  });
+  return existing ? { available: false, reason: "taken" } : { available: true };
+}
+
+/**
+ * Fast preflight during onboarding step 3. Validates the channel exists and
+ * checks whether the three most recent videos have captions available.
+ *
+ * We sample only a handful of videos so the check resolves in ~5–15s and
+ * never blocks the onboarding flow. The full-channel scan runs in the
+ * background after Stripe checkout and emails the owner a complete report.
+ */
+export async function quickScanChannelCaptions(
+  channelUrl: string
+): Promise<
+  | {
+      success: true;
+      channelTitle: string;
+      sampleSize: number;
+      withCaptions: number;
+      withoutCaptions: number;
+    }
+  | { success: false; error: string }
+> {
+  if (!channelUrl.trim()) {
+    return { success: false, error: "Channel URL is required" };
+  }
+
+  let resolved;
+  try {
+    resolved = await resolveChannel(channelUrl);
+  } catch (err) {
+    return {
+      success: false,
+      error:
+        err instanceof Error
+          ? `Could not find YouTube channel: ${err.message}`
+          : "Could not find YouTube channel",
+    };
+  }
+
+  let videos;
+  try {
+    videos = await fetchChannelVideos(resolved.channelId, 10);
+  } catch {
+    // Channel listed fine but video fetch failed — treat as transient.
+    return {
+      success: false,
+      error: "YouTube is being slow right now. Try again in a moment.",
+    };
+  }
+
+  const sample = videos.slice(0, 3);
+  if (sample.length === 0) {
+    return {
+      success: true,
+      channelTitle: resolved.title,
+      sampleSize: 0,
+      withCaptions: 0,
+      withoutCaptions: 0,
+    };
+  }
+
+  let withCaptions = 0;
+  let withoutCaptions = 0;
+
+  // Serial probes keep the onboarding wait under ~10s for 3 videos and
+  // avoid burning a parallel burst of InnerTube requests from the Vercel
+  // server IP before background IP-diverse workers take over.
+  for (const v of sample) {
+    try {
+      const available = await hasYouTubeCaptions(v.videoId);
+      if (available) withCaptions++;
+      else withoutCaptions++;
+    } catch {
+      // Inconclusive probe — don't fail the whole onboarding over one
+      // flaky video; treat it as "with captions" so we err on the side of
+      // letting the admin continue, and the background scan corrects the
+      // record.
+      withCaptions++;
+    }
+  }
+
+  return {
+    success: true,
+    channelTitle: resolved.title,
+    sampleSize: sample.length,
+    withCaptions,
+    withoutCaptions,
+  };
+}
 
 export async function getExistingChurch() {
   const session = await getServerSession(authOptions);
@@ -161,16 +273,34 @@ export async function createChurch(input: {
 
   // Validate the YouTube channel before we touch the database so the user
   // gets a clean "channel not found" message and can go back to fix it.
+  // Supadata occasionally returns non-JSON (Cloudflare HTML) for transient
+  // upstream issues; withRetry handles most of those, but if we still can't
+  // reach the API we distinguish "channel not found" from "upstream down"
+  // so the admin doesn't think their URL is bad.
   let resolvedChannel: Awaited<ReturnType<typeof resolveChannel>> | null = null;
   if (wantsYouTubeSync) {
     try {
       resolvedChannel = await resolveChannel(input.youtubeChannelUrl!);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isSupadataInternalError =
+        err &&
+        typeof err === "object" &&
+        "error" in err &&
+        (err as { error?: unknown }).error === "internal-error";
+      const isTransient =
+        isSupadataInternalError ||
+        /unexpected error response|invalid response format|failed to parse response|fetch failed|ECONNRESET|ETIMEDOUT|50[0234]/i.test(
+          message
+        );
+      if (isTransient) {
+        return {
+          error:
+            "YouTube lookup is temporarily unavailable. Please try again in a moment, or skip this step and connect YouTube later from Settings.",
+        };
+      }
       return {
-        error:
-          err instanceof Error
-            ? `Could not find YouTube channel: ${err.message}`
-            : "Could not find YouTube channel",
+        error: `Could not find YouTube channel: ${message}`,
       };
     }
   }

@@ -32,6 +32,7 @@ export const documentStatusEnum = pgEnum("document_status", [
   "processing",
   "indexed",
   "failed",
+  "skipped_no_captions",
 ]);
 
 export const documents = pgTable(
@@ -56,6 +57,9 @@ export const documents = pgTable(
   // manual uploads and channel auto-sync to make per-church dedup cheap via
   // the partial unique index below.
   youtubeVideoId: text("youtube_video_id"),
+  // Last observed caption availability for YouTube docs. Null = never
+  // checked; true/false = result of the most recent caption probe.
+  hasCaptions: boolean("has_captions"),
   blobPath: text("blob_path"),
   content: text("content"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>(),

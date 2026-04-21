@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sun, Moon, Lock } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,20 +50,14 @@ const LOGO_HEIGHT_OPTIONS = [
   { value: "56", label: "56px — Extra Large" },
 ] as const;
 
-// Default doctrinally.ai branding
+// Default doctrinally.ai branding — single theme. The chat always renders
+// in these (or the church's override) regardless of the viewer's OS
+// light/dark preference.
 const DEFAULTS = {
-  light: {
-    primaryColor: "#4A2C2A",
-    accentColor: "#9A7B4F",
-    backgroundColor: "#F7F4F0",
-    textColor: "#2C1810",
-  },
-  dark: {
-    primaryColor: "#D4A574",
-    accentColor: "#9A7B4F",
-    backgroundColor: "#1A1412",
-    textColor: "#E8E0D8",
-  },
+  primaryColor: "#4A2C2A",
+  accentColor: "#9A7B4F",
+  backgroundColor: "#F7F4F0",
+  textColor: "#2C1810",
 };
 
 interface BrandingFormProps {
@@ -74,11 +68,6 @@ interface BrandingFormProps {
     accentColor: string | null;
     backgroundColor: string | null;
     textColor: string | null;
-    darkPrimaryColor: string | null;
-    darkAccentColor: string | null;
-    darkBackgroundColor: string | null;
-    darkTextColor: string | null;
-    darkLogoUrl: string | null;
     welcomeMessage: string | null;
     logoHeight: string | null;
     fontFamily: string | null;
@@ -88,35 +77,19 @@ interface BrandingFormProps {
 
 export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
   const router = useRouter();
-  const [previewDark, setPreviewDark] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Light mode colors
   const [primaryColor, setPrimaryColor] = useState(
-    church.primaryColor || DEFAULTS.light.primaryColor
+    church.primaryColor || DEFAULTS.primaryColor
   );
   const [accentColor, setAccentColor] = useState(
-    church.accentColor || DEFAULTS.light.accentColor
+    church.accentColor || DEFAULTS.accentColor
   );
   const [bgColor, setBgColor] = useState(
-    church.backgroundColor || DEFAULTS.light.backgroundColor
+    church.backgroundColor || DEFAULTS.backgroundColor
   );
   const [txtColor, setTxtColor] = useState(
-    church.textColor || DEFAULTS.light.textColor
-  );
-
-  // Dark mode colors
-  const [darkPrimary, setDarkPrimary] = useState(
-    church.darkPrimaryColor || DEFAULTS.dark.primaryColor
-  );
-  const [darkAccent, setDarkAccent] = useState(
-    church.darkAccentColor || DEFAULTS.dark.accentColor
-  );
-  const [darkBg, setDarkBg] = useState(
-    church.darkBackgroundColor || DEFAULTS.dark.backgroundColor
-  );
-  const [darkTxt, setDarkTxt] = useState(
-    church.darkTextColor || DEFAULTS.dark.textColor
+    church.textColor || DEFAULTS.textColor
   );
 
   // Typography & layout
@@ -140,19 +113,12 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
     document.head.appendChild(link);
   }, [fontFamily]);
 
-  const previewColors = previewDark
-    ? {
-        primaryColor: darkPrimary,
-        accentColor: darkAccent,
-        backgroundColor: darkBg,
-        textColor: darkTxt,
-      }
-    : {
-        primaryColor,
-        accentColor,
-        backgroundColor: bgColor,
-        textColor: txtColor,
-      };
+  const previewColors = {
+    primaryColor,
+    accentColor,
+    backgroundColor: bgColor,
+    textColor: txtColor,
+  };
 
   async function handleSave() {
     setSaving(true);
@@ -162,10 +128,6 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
         accentColor,
         backgroundColor: bgColor,
         textColor: txtColor,
-        darkPrimaryColor: darkPrimary,
-        darkAccentColor: darkAccent,
-        darkBackgroundColor: darkBg,
-        darkTextColor: darkTxt,
         logoHeight,
         fontFamily,
       });
@@ -311,9 +273,8 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-center gap-2 space-y-0">
-            <Sun className="h-4 w-4" />
-            <CardTitle className="text-lg">Light Mode</CardTitle>
+          <CardHeader>
+            <CardTitle className="text-lg">Colors</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -345,41 +306,6 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center gap-2 space-y-0">
-            <Moon className="h-4 w-4" />
-            <CardTitle className="text-lg">Dark Mode</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ColorField
-                label="Primary"
-                value={darkPrimary}
-                onChange={setDarkPrimary}
-                disabled={!isEnterprise}
-              />
-              <ColorField
-                label="Accent"
-                value={darkAccent}
-                onChange={setDarkAccent}
-                disabled={!isEnterprise}
-              />
-              <ColorField
-                label="Background"
-                value={darkBg}
-                onChange={setDarkBg}
-                disabled={!isEnterprise}
-              />
-              <ColorField
-                label="Text"
-                value={darkTxt}
-                onChange={setDarkTxt}
-                disabled={!isEnterprise}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {isEnterprise && (
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={saving}>
@@ -392,37 +318,10 @@ export function BrandingForm({ church, isEnterprise }: BrandingFormProps) {
 
       {/* Live preview */}
       <div className="shrink-0 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Preview</p>
-          <div className="flex rounded-lg border p-0.5">
-            <button
-              onClick={() => setPreviewDark(false)}
-              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
-                !previewDark
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Sun className="inline h-3 w-3 mr-1" />
-              Light
-            </button>
-            <button
-              onClick={() => setPreviewDark(true)}
-              className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
-                previewDark
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Moon className="inline h-3 w-3 mr-1" />
-              Dark
-            </button>
-          </div>
-        </div>
+        <p className="text-sm font-medium">Preview</p>
         <ChatPreview
           churchName={church.name}
-          logoUrl={previewDark ? church.darkLogoUrl || church.logoUrl : church.logoUrl}
-          darkMode={previewDark}
+          logoUrl={church.logoUrl}
           logoHeight={parseInt(logoHeight, 10)}
           fontFamily={selectedFont.css}
           {...previewColors}

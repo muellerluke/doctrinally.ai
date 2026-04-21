@@ -43,15 +43,19 @@ export default function TermsPage() {
         <h3>Plans</h3>
         <p>
           The Service is offered under two subscription tiers: Standard
-          ($49/month) and Enterprise ($99/month). Each plan includes specified
-          limits for document uploads and messages per month.
+          ($49/month) and Enterprise ($99/month). Document uploads are
+          unlimited on both plans. Each plan includes a specified monthly
+          limit for member messages.
         </p>
 
         <h3>Overage</h3>
         <p>
-          Usage beyond included limits is billed at $0.25 per additional
-          document upload and $0.25 per additional message. Overages are
-          calculated at the end of each billing period.
+          Message usage beyond the included monthly limit is billed at $0.10
+          per additional message on the Standard plan and $0.05 per additional
+          message on the Enterprise plan. Overages are only charged when the
+          church has explicitly opted in and are capped at the limit the
+          church configures. Overages are calculated at the end of each
+          billing period.
         </p>
 
         <h3>Payment</h3>

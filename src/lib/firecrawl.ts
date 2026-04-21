@@ -52,19 +52,91 @@ export interface BrandingResult {
  * Use Firecrawl's native `branding` scrape format to pull the church's
  * logo and brand colors from the homepage. Returns nulls (never throws)
  * on extraction failure so callers can fall back to defaults.
+ *
+ * Also pulls the raw HTML so we can fall back to common logo signals
+ * (`<meta property="og:image">`, `<link rel="apple-touch-icon">`, the
+ * favicon, `<img>` whose class/alt contains "logo") when Firecrawl's
+ * branding profile can't find one. Many small church sites don't expose
+ * a machine-readable logo but do set one of those tags.
  */
 export async function scrapeBranding(domain: string): Promise<BrandingResult> {
   const url = normalizeUrl(domain);
   try {
     const doc = await getClient().scrape(url, {
-      formats: ["branding"],
+      formats: ["branding", "html"],
       onlyMainContent: false,
     });
-    return mapBrandingProfile(doc.branding);
+    const result = mapBrandingProfile(doc.branding);
+    if (!result.logoUrl && doc.html) {
+      result.logoUrl = findFallbackLogo(doc.html, url);
+    }
+    return result;
   } catch (err) {
     console.error("[firecrawl] scrapeBranding failed", err);
     return emptyBranding();
   }
+}
+
+/**
+ * Walk the homepage HTML for common logo signals in priority order.
+ * Returns the first usable absolute URL, or null if none found. Never
+ * throws — parsing errors just fall through to the next candidate.
+ */
+function findFallbackLogo(html: string, pageUrl: string): string | null {
+  const base = new URL(pageUrl);
+  const absolutize = (raw: string | undefined | null): string | null => {
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      return new URL(trimmed, base).toString();
+    } catch {
+      return null;
+    }
+  };
+
+  // 1. og:image — highest signal, hand-picked by the site owner.
+  const ogImage = html.match(
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
+  )?.[1]
+    ?? html.match(
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
+    )?.[1];
+  const ogUrl = absolutize(ogImage);
+  if (ogUrl) return ogUrl;
+
+  // 2. apple-touch-icon — standardized, usually a clean square logo.
+  const apple = html.match(
+    /<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]+href=["']([^"']+)["']/i
+  )?.[1]
+    ?? html.match(
+      /<link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*apple-touch-icon[^"']*["']/i
+    )?.[1];
+  const appleUrl = absolutize(apple);
+  if (appleUrl) return appleUrl;
+
+  // 3. <img> whose class/id/alt/data-* suggests "logo". Match the nearest
+  //    src attribute in the same tag.
+  const imgMatch = html.match(
+    /<img[^>]*(?:class|id|alt|data-testid)=["'][^"']*logo[^"']*["'][^>]*>/i
+  )?.[0];
+  if (imgMatch) {
+    const src = imgMatch.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+    const imgUrl = absolutize(src);
+    if (imgUrl) return imgUrl;
+  }
+
+  // 4. rel="icon" — last resort, often tiny favicon.
+  const icon = html.match(
+    /<link[^>]+rel=["'](?:shortcut )?icon["'][^>]+href=["']([^"']+)["']/i
+  )?.[1]
+    ?? html.match(
+      /<link[^>]+href=["']([^"']+)["'][^>]+rel=["'](?:shortcut )?icon["']/i
+    )?.[1];
+  const iconUrl = absolutize(icon);
+  if (iconUrl) return iconUrl;
+
+  return null;
 }
 
 function emptyBranding(): BrandingResult {

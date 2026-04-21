@@ -10,12 +10,14 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { updateOverageSettings } from "@/lib/actions/billing";
+import { OVERAGE_RATES, type PlanType } from "@/lib/plans";
 
 interface OverageControlProps {
   churchId: string;
   enabled: boolean;
   cap: number;
   questionLimit: number;
+  plan: PlanType;
 }
 
 export function OverageControl({
@@ -23,6 +25,7 @@ export function OverageControl({
   enabled: initialEnabled,
   cap: initialCap,
   questionLimit,
+  plan,
 }: OverageControlProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -30,7 +33,8 @@ export function OverageControl({
   const [cap, setCap] = useState(initialCap || 100);
   const hasChanges = enabled !== initialEnabled || (enabled && cap !== initialCap);
 
-  const maxCost = (cap * 0.25).toFixed(2);
+  const perMessage = OVERAGE_RATES[plan].question;
+  const maxCost = (cap * perMessage).toFixed(2);
 
   async function handleSave() {
     startTransition(async () => {
@@ -72,7 +76,8 @@ export function OverageControl({
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
               <p className="text-xs text-muted-foreground">
                 Extra messages beyond your {questionLimit.toLocaleString()} monthly
-                limit will be billed at $0.25 each, up to the cap you set below.
+                limit will be billed at ${perMessage.toFixed(2)} each, up to the
+                cap you set below.
               </p>
             </div>
 

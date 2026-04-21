@@ -49,6 +49,7 @@ export const DOCUMENT_STATUSES = [
   "processing",
   "indexed",
   "failed",
+  "skipped_no_captions",
 ] as const;
 
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];

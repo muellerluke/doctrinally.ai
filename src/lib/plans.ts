@@ -56,10 +56,15 @@ export function getPlanLimits(plan: PlanType) {
   };
 }
 
-export function getOverageRates() {
-  return {
-    question: 0.25,
-  };
+// Per-plan overage pricing for additional messages beyond the included limit.
+// Uploads are unlimited, so no upload overage is billed.
+export const OVERAGE_RATES: Record<PlanType, { question: number }> = {
+  standard: { question: 0.1 },
+  enterprise: { question: 0.05 },
+};
+
+export function getOverageRates(plan: PlanType) {
+  return OVERAGE_RATES[plan];
 }
 
 /**

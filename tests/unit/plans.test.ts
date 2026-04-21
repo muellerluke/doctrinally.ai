@@ -49,8 +49,11 @@ describe("plans", () => {
   });
 
   describe("getOverageRates()", () => {
-    it("is $0.25 per question", () => {
-      expect(getOverageRates()).toEqual({ question: 0.25 });
+    it("is $0.10 per question on Standard", () => {
+      expect(getOverageRates("standard")).toEqual({ question: 0.1 });
+    });
+    it("is $0.05 per question on Enterprise", () => {
+      expect(getOverageRates("enterprise")).toEqual({ question: 0.05 });
     });
   });
 });

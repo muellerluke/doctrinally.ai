@@ -7,7 +7,11 @@ import {
   youtubeSyncPlaylists,
 } from "@/db/schema";
 import { requireMembership } from "@/lib/auth-guards";
-import { canUseCustomBranding, canUseYouTubeSync } from "@/lib/plan-gating";
+import {
+  canUseCustomBranding,
+  canUseEmbedWidget,
+  canUseYouTubeSync,
+} from "@/lib/plan-gating";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneralForm } from "@/components/settings/general-form";
@@ -17,6 +21,7 @@ import { QrCodeCard } from "@/components/settings/qr-code-card";
 import { AiFallbackForm } from "@/components/settings/ai-fallback-form";
 import { WebsiteCrawlingForm } from "@/components/settings/website-crawling-form";
 import { YouTubeSyncForm } from "@/components/settings/youtube-sync-form";
+import { EmbedWidgetForm } from "@/components/settings/embed-widget-form";
 
 export default async function SettingsPage() {
   const { membership, church } = await requireMembership();
@@ -27,6 +32,7 @@ export default async function SettingsPage() {
 
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
   const canYouTubeSync = sub ? canUseYouTubeSync(sub.plan) : false;
+  const canEmbed = sub ? canUseEmbedWidget(sub.plan) : false;
   const isOwner = membership.role === "owner";
 
   const sync = await db.query.youtubeChannelSyncs.findFirst({
@@ -78,6 +84,7 @@ export default async function SettingsPage() {
           <TabsTrigger value="website">Website</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="youtube">YouTube Sync</TabsTrigger>
+          <TabsTrigger value="embed">Embed Widget</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="mt-6 space-y-6">
@@ -102,11 +109,6 @@ export default async function SettingsPage() {
               accentColor: church.accentColor,
               backgroundColor: church.backgroundColor,
               textColor: church.textColor,
-              darkPrimaryColor: church.darkPrimaryColor,
-              darkAccentColor: church.darkAccentColor,
-              darkBackgroundColor: church.darkBackgroundColor,
-              darkTextColor: church.darkTextColor,
-              darkLogoUrl: church.darkLogoUrl,
               welcomeMessage: church.welcomeMessage,
               logoHeight: church.logoHeight,
               fontFamily: church.fontFamily,
@@ -169,6 +171,7 @@ export default async function SettingsPage() {
                     lastSyncEndedAt: sync.lastSyncEndedAt,
                     lastSyncError: sync.lastSyncError,
                     lastSyncStats: sync.lastSyncStats,
+                    lastCaptionScan: sync.lastCaptionScan,
                   }
                 : null
             }
@@ -177,6 +180,18 @@ export default async function SettingsPage() {
               playlistId: p.playlistId,
               playlistTitle: p.playlistTitle,
             }))}
+          />
+        </TabsContent>
+
+        <TabsContent value="embed" className="mt-6">
+          <EmbedWidgetForm
+            isEnterprise={canEmbed}
+            initial={{
+              embedPublicKey: church.embedPublicKey,
+              embedEnabled: church.embedEnabled,
+              websiteDomain: church.websiteDomain,
+            }}
+            appUrl={process.env.NEXT_PUBLIC_APP_URL || ""}
           />
         </TabsContent>
       </Tabs>

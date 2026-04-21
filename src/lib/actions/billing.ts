@@ -183,14 +183,13 @@ export async function getSubscriptionWithUsage(churchId: string) {
     ),
   });
 
-  const rates = getOverageRates();
+  const plan = sub.plan as PlanType;
+  const planDetails = PLANS[plan];
+  const rates = getOverageRates(plan);
   const questionOverage = Math.max(
     0,
     (usage?.questions ?? 0) - sub.questionLimit
   );
-
-  const plan = sub.plan as PlanType;
-  const planDetails = PLANS[plan];
 
   return {
     plan: sub.plan,

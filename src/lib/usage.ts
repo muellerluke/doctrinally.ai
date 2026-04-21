@@ -66,7 +66,7 @@ export async function getOverageReport(churchId: string) {
 
   if (!usage || !sub) return null;
 
-  const rates = getOverageRates();
+  const rates = getOverageRates(sub.plan as PlanType);
   const questionOverage = Math.max(0, usage.questions - sub.questionLimit);
 
   return {

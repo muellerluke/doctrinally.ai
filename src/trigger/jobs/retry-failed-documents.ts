@@ -29,6 +29,10 @@ const MAX_RETRIES = 3;
  * Split by cutoff because "queued" should trigger almost immediately in
  * prod (Trigger.dev normally picks up a task within seconds) while
  * "processing" legitimately runs for up to an hour on large videos.
+ *
+ * Deliberately excludes `skipped_no_captions` — those rows are waiting on
+ * the church to turn captions on, not stuck in a bug. The weekly
+ * `sync-youtube-channel` job rechecks them through scan-channel-captions.
  */
 const QUEUED_CUTOFF_MS = 15 * 60 * 1000;      // 15 min — queued but never picked up
 const PROCESSING_CUTOFF_MS = 60 * 60 * 1000;  // 1 hour — running job presumed dead
