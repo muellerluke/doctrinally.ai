@@ -1,4 +1,4 @@
-import { Innertube } from "youtubei.js";
+import { Supadata, SupadataError } from "@supadata/js";
 import type { WhisperSegment } from "./whisper";
 
 export class CaptionsUnavailableError extends Error {
@@ -6,6 +6,14 @@ export class CaptionsUnavailableError extends Error {
     super(message);
     this.name = "CaptionsUnavailableError";
   }
+}
+
+function getSupadataClient(): Supadata {
+  const apiKey = process.env.SUPADATA_API_KEY;
+  if (!apiKey) {
+    throw new Error("SUPADATA_API_KEY is not set — cannot fetch captions");
+  }
+  return new Supadata({ apiKey });
 }
 
 /**
@@ -55,60 +63,86 @@ export async function withRetry<T>(
   throw lastError;
 }
 
+function isTranscriptUnavailable(err: unknown): boolean {
+  if (err instanceof SupadataError) {
+    return err.error === "transcript-unavailable" || err.error === "not-found";
+  }
+  // Defensive: SDK error instances don't always survive bundler boundaries,
+  // so also match the error code field directly.
+  if (err && typeof err === "object" && "error" in err) {
+    const code = (err as { error?: unknown }).error;
+    return code === "transcript-unavailable" || code === "not-found";
+  }
+  return false;
+}
+
 /**
- * Pull captions from YouTube's InnerTube API via youtubei.js. Used during
- * the actual processing pass to fetch transcript segments. Throws
- * `CaptionsUnavailableError` if the video has no caption tracks or an
- * empty transcript.
+ * Fetch the native (existing) caption track for a YouTube video via
+ * Supadata's `/v1/transcript?mode=native` endpoint. We intentionally use
+ * `mode=native` — not `auto` — so Supadata never silently falls back to
+ * its AI-generated path, which is billed per-minute and would quietly
+ * blow up credit usage. Churches can enable captions on their own videos
+ * if they want transcripts.
+ *
+ * Throws `CaptionsUnavailableError` when the video has no native caption
+ * track (including auto-generated ASR). All other errors propagate so
+ * callers can retry on transient failures.
  */
 export async function fetchYouTubeCaptions(
   videoId: string
 ): Promise<WhisperSegment[]> {
-  let transcript;
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const supadata = getSupadataClient();
+
+  let result;
   try {
-    transcript = await withRetry(
-      async () => {
-        const yt = await Innertube.create({
-          lang: "en",
-          retrieve_player: false,
-        });
-        const info = await yt.getInfo(videoId);
-        return info.getTranscript();
-      },
-      { label: "YouTube InnerTube" }
+    result = await withRetry(
+      () => supadata.transcript({ url, mode: "native" }),
+      { label: "Supadata transcript (native)" }
     );
   } catch (err) {
+    if (isTranscriptUnavailable(err)) {
+      throw new CaptionsUnavailableError(
+        err instanceof Error ? err.message : "No native transcript available"
+      );
+    }
+    throw err;
+  }
+
+  // `mode=native` shouldn't ever return a processing job — native caption
+  // fetches need no generation — but the SDK union includes `JobId`.
+  // Treat the unexpected case as unavailable so we never enter a poll loop
+  // that could accidentally charge for AI generation.
+  if ("jobId" in result) {
     throw new CaptionsUnavailableError(
-      err instanceof Error ? err.message : "Failed to fetch captions"
+      `Supadata returned a job for mode=native (jobId=${result.jobId}) — treating as unavailable`
     );
   }
 
-  const rawSegments =
-    transcript?.transcript?.content?.body?.initial_segments ?? [];
-
-  if (rawSegments.length === 0) {
+  const content = result.content;
+  if (!Array.isArray(content) || content.length === 0) {
     throw new CaptionsUnavailableError(
-      "No caption segments returned for this video"
+      "Native transcript was empty for this video"
     );
   }
 
   const segments: WhisperSegment[] = [];
-  for (const s of rawSegments) {
-    // Skip non-text segments (e.g., SectionHeaderRenderer).
-    const text = s.snippet?.text;
-    const startMs = Number(s.start_ms);
-    const endMs = Number(s.end_ms);
-    if (!text || Number.isNaN(startMs) || Number.isNaN(endMs)) continue;
+  for (const chunk of content) {
+    const offsetMs = Number(chunk.offset);
+    const durationMs = Number(chunk.duration);
+    if (!chunk.text || Number.isNaN(offsetMs) || Number.isNaN(durationMs)) {
+      continue;
+    }
     segments.push({
-      text,
-      start: startMs / 1000,
-      end: endMs / 1000,
+      text: chunk.text,
+      start: offsetMs / 1000,
+      end: (offsetMs + durationMs) / 1000,
     });
   }
 
   if (segments.length === 0) {
     throw new CaptionsUnavailableError(
-      "Caption segments were present but contained no text"
+      "Native transcript chunks contained no usable text"
     );
   }
 
@@ -116,48 +150,17 @@ export async function fetchYouTubeCaptions(
 }
 
 /**
- * Cheap caption-availability probe. Returns true if the video has at least
- * one caption track exposed by InnerTube (including YouTube's auto-generated
- * ASR track, since `fetchYouTubeCaptions` happily consumes those too).
+ * Caption-availability probe. Resolves `true` when the video has a native
+ * caption track Supadata can read (including YouTube auto-generated ASR),
+ * `false` when it has none. Network/transport errors propagate so callers
+ * can retry.
  *
- * Falls through to attempting a full transcript fetch if the player response
- * doesn't expose a usable `caption_tracks` array — some shorts / live
- * archives don't populate the metadata object the same way as regular
- * uploads, but still have a transcript available.
- *
- * Throws on network/transport errors so callers can retry. A clean "video
- * has no captions" outcome resolves to `false`.
+ * Note: this intentionally downloads the transcript under the hood, because
+ * Supadata's cheaper metadata endpoints (`/youtube/video.transcriptLanguages`)
+ * return empty arrays for ASR-only tracks even when the transcript endpoint
+ * can successfully fetch them. The full fetch is the only reliable probe.
  */
 export async function hasYouTubeCaptions(videoId: string): Promise<boolean> {
-  const inspect = await withRetry(
-    async () => {
-      const yt = await Innertube.create({
-        lang: "en",
-        retrieve_player: false,
-      });
-      const info = await yt.getInfo(videoId);
-      // The youtubei.js typings don't surface `captions.caption_tracks`
-      // consistently across shape-shifting player responses — read through
-      // a loose cast rather than disabling type-checking on the whole file.
-      const captions = (info as unknown as {
-        captions?: { caption_tracks?: unknown[] };
-      }).captions;
-      const tracks = captions?.caption_tracks;
-      return {
-        hasTrackMetadata: Array.isArray(tracks),
-        trackCount: Array.isArray(tracks) ? tracks.length : 0,
-      };
-    },
-    { label: "YouTube caption probe" }
-  );
-
-  if (inspect.hasTrackMetadata) {
-    return inspect.trackCount > 0;
-  }
-
-  // No caption metadata exposed — fall back to attempting a transcript
-  // fetch and bucketing CaptionsUnavailableError as "no captions". Any
-  // other error propagates so the caller can retry.
   try {
     await fetchYouTubeCaptions(videoId);
     return true;

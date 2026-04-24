@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const fetchChannelVideos = vi.fn();
 const resolveChannel = vi.fn();
 const resolvePlaylist = vi.fn();
+const trigger = vi.fn().mockResolvedValue(undefined);
 const batchTrigger = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/trigger/utils/youtube-channel", async () => {
@@ -23,8 +24,8 @@ vi.mock("@/trigger/utils/youtube-channel", async () => {
 vi.mock("@trigger.dev/sdk/v3", () => ({
   task: (opts: { run: unknown }) => opts.run,
   tasks: {
+    trigger,
     batchTrigger,
-    trigger: vi.fn(),
   },
 }));
 
@@ -59,6 +60,7 @@ beforeEach(() => {
   fetchChannelVideos.mockReset();
   resolveChannel.mockReset();
   resolvePlaylist.mockReset();
+  trigger.mockClear();
   batchTrigger.mockClear();
 });
 
@@ -118,15 +120,16 @@ describe("syncYouTubeChannelBody", () => {
     expect(byId["bbbbbbbbbbb"].folderId).toBe(shortsFolder.id);
     expect(byId["ccccccccccc"].folderId).toBe(liveFolder.id);
 
-    // Every doc queued for processing.
-    expect(batchTrigger).toHaveBeenCalledWith(
-      "process-youtube",
-      expect.arrayContaining([
-        expect.objectContaining({
-          payload: expect.objectContaining({ documentId: byId["aaaaaaaaaaa"].id }),
-        }),
-      ])
-    );
+    // Every inserted doc is handed to scan-channel-captions, which runs
+    // process-youtube for each and sends the coverage email when done.
+    expect(trigger).toHaveBeenCalledWith("scan-channel-captions", {
+      syncId: sync.id,
+      documentIds: expect.arrayContaining([
+        byId["aaaaaaaaaaa"].id,
+        byId["bbbbbbbbbbb"].id,
+        byId["ccccccccccc"].id,
+      ]),
+    });
 
     // Sync row reflects completion.
     const final = await db.query.youtubeChannelSyncs.findFirst({

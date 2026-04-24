@@ -263,9 +263,13 @@ export async function updateYouTubeSyncSchedule(input: {
 
 /**
  * Manual "Rescan captions" action for the settings page. Scopes to the
- * current church's YouTube sync and re-checks any docs currently queued
- * or previously skipped for missing captions. Indexed rows already have
- * captions (by definition) and are counted without re-probing.
+ * current church's YouTube sync and reprocesses any docs currently queued
+ * or previously skipped for missing captions. Indexed rows are excluded —
+ * they already have captions (by definition) and reprocessing them would
+ * burn Supadata credits for no benefit. Each rescanned video costs one
+ * credit (the `process-youtube` transcript fetch), which is why this is
+ * gated behind an explicit admin action instead of running on the weekly
+ * schedule.
  */
 export async function rescanChannelCaptions() {
   const gated = await requireEnterpriseContext();

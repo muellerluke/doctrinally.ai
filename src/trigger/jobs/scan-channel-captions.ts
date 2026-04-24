@@ -21,16 +21,20 @@ type ScanPayload = {
 const BATCH_LIMIT = 500;
 
 /**
- * Fan out caption checks for a list of YouTube documents, then aggregate
- * the results into a church-wide coverage snapshot. Called by:
- *   - `sync-youtube-channel` after discovering new videos + rechecking
- *     previously-skipped ones
+ * Orchestrates transcript processing for a batch of YouTube documents and
+ * then reports caption coverage to the church owner. Invoked by:
+ *   - `sync-youtube-channel` after discovering new videos
  *   - `rescanChannelCaptions` server action (manual "Rescan now" button)
  *
- * When the scan completes, writes `last_caption_scan` on the sync row,
- * sends a notification email if any videos are missing captions, and
- * enqueues `process-youtube` for every row that is both `queued` and
- * known to have captions.
+ * Runs `process-youtube` for each doc (single Supadata fetch — either
+ * indexes or marks `skipped_no_captions`), waits for all to finish, then
+ * computes church-wide coverage, writes `last_caption_scan` on the sync
+ * row, and notifies owners if any videos were missing captions.
+ *
+ * This was previously a two-stage flow (`check-video-captions` probe then
+ * `process-youtube`) which cost 2 Supadata credits per video. Collapsing
+ * to a single `process-youtube` call halves credit usage because the
+ * transcript fetch itself is the only reliable caption-availability probe.
  */
 export async function scanChannelCaptionsBody(payload: ScanPayload) {
   const { syncId, documentIds } = payload;
@@ -46,7 +50,7 @@ export async function scanChannelCaptionsBody(payload: ScanPayload) {
     for (let i = 0; i < documentIds.length; i += BATCH_LIMIT) {
       const chunk = documentIds.slice(i, i + BATCH_LIMIT);
       await tasks.batchTriggerAndWait(
-        "check-video-captions",
+        "process-youtube",
         chunk.map((id) => ({ payload: { documentId: id } }))
       );
     }
@@ -177,38 +181,12 @@ export async function scanChannelCaptionsBody(payload: ScanPayload) {
     }
   }
 
-  // Enqueue processing for every doc we now know has captions and that
-  // hasn't already been processed. Scoped to this church only — cross-
-  // church leaks impossible because of the churchId filter.
-  const processable = await db
-    .select({ id: documents.id })
-    .from(documents)
-    .where(
-      and(
-        eq(documents.churchId, sync.churchId),
-        eq(documents.type, "youtube"),
-        eq(documents.status, "queued"),
-        eq(documents.hasCaptions, true)
-      )
-    );
-
-  if (processable.length > 0) {
-    const TRIGGER_BATCH = 100;
-    for (let i = 0; i < processable.length; i += TRIGGER_BATCH) {
-      const slice = processable.slice(i, i + TRIGGER_BATCH);
-      await tasks.batchTrigger(
-        "process-youtube",
-        slice.map((row) => ({ payload: { documentId: row.id } }))
-      );
-    }
-  }
-
   return {
     success: true,
     total,
     withCaptions,
     withoutCaptions,
-    processable: processable.length,
+    processed: documentIds.length,
     notified,
   };
 }
@@ -217,8 +195,9 @@ export const scanChannelCaptions = task({
   id: "scan-channel-captions",
   machine: "small-1x",
   retry: { maxAttempts: 1 },
-  // Allow a long window — a 200-video channel at concurrencyLimit=3 and
-  // ~2s/check plus retries can take well over 5 minutes.
+  // Large enough to cover batchTriggerAndWait on hundreds of process-youtube
+  // runs; v3 checkpoints waiting tasks so the machine isn't pinned the
+  // whole time.
   maxDuration: 1800,
   run: scanChannelCaptionsBody,
 });

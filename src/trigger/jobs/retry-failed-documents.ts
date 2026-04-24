@@ -31,8 +31,9 @@ const MAX_RETRIES = 3;
  * "processing" legitimately runs for up to an hour on large videos.
  *
  * Deliberately excludes `skipped_no_captions` — those rows are waiting on
- * the church to turn captions on, not stuck in a bug. The weekly
- * `sync-youtube-channel` job rechecks them through scan-channel-captions.
+ * the church to turn captions on, not stuck in a bug. Each probe costs one
+ * Supadata credit, so admins reclaim skipped videos explicitly via the
+ * "Rescan captions" button rather than burning credits on a timer.
  */
 const QUEUED_CUTOFF_MS = 15 * 60 * 1000;      // 15 min — queued but never picked up
 const PROCESSING_CUTOFF_MS = 60 * 60 * 1000;  // 1 hour — running job presumed dead

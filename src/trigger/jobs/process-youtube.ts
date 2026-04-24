@@ -32,9 +32,10 @@ export async function processYouTubeBody(payload: { documentId: string }) {
       throw new Error(`Could not extract video ID from: ${doc.sourceUrl}`);
 
     // Captions-only pipeline: if the video lacks native captions we mark the
-    // row as `skipped_no_captions` and return cleanly. The scheduled sync
-    // re-checks these rows on the next run so videos that get captions
-    // enabled later flow back into processing automatically.
+    // row as `skipped_no_captions` and return cleanly. Admins reclaim these
+    // rows via the "Rescan captions" button after turning captions on in
+    // YouTube Studio — the scheduled sync doesn't re-probe them, because
+    // each probe costs a Supadata credit.
     let segments;
     try {
       segments = await fetchYouTubeCaptions(videoId);
