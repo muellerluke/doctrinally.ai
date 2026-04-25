@@ -192,26 +192,19 @@ Write ONE short, warm opening line (max 2 sentences, under 200 characters) that:
 No lists. No markdown. No preamble. Just the opening line.`;
 
     const modelName = process.env.AI_MODEL || DEFAULT_MODEL;
-    logger.info("[embed/outreach] calling AI", {
-      model: modelName,
-      hasKey: Boolean(process.env.INCEPTION_API_KEY),
-      keyLen: process.env.INCEPTION_API_KEY?.length ?? 0,
-      baseURL: process.env.INCEPTION_BASE_URL || "https://api.inceptionlabs.ai/v1",
-      promptLen: aiPrompt.length,
-    });
-    const { text } = await generateText({
+    const { text, finishReason } = await generateText({
       model: inception.chat(modelName),
       system: `You write short, warm openings for a church's website chat widget. One short message, no more than two sentences.`,
-      prompt: aiPrompt,
-      maxOutputTokens: 140,
-      temperature: 0.8,
+      messages: [{ role: "user", content: aiPrompt }],
+      maxOutputTokens: 300,
+      temperature: 0.7,
     });
-    const cleaned = text.trim().replace(/^["']|["']$/g, "").slice(0, 400);
+    const cleaned = (text ?? "").trim().replace(/^["']|["']$/g, "").slice(0, 400);
     if (!cleaned) {
-      return new NextResponse("ai_unavailable", {
-        status: 503,
-        headers: cors,
-      });
+      return new NextResponse(
+        `ai_unavailable: empty text (finishReason=${finishReason}, textLen=${text?.length ?? 0})`,
+        { status: 503, headers: cors },
+      );
     }
     opener = cleaned;
   } catch (err) {
