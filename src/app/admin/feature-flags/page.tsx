@@ -26,6 +26,12 @@ export const metadata = {
   title: "Feature flags — Doctrinally.AI super-admin",
 };
 
+// Force per-request rendering. The page reads from `church_feature_flags`,
+// which is a session-gated super-admin view — there's no value in static
+// prerendering, and at build time the table may not exist yet (migrations
+// land in DB before code reaches the runtime that queries it).
+export const dynamic = "force-dynamic";
+
 /**
  * Super-admin feature-flag rollout matrix.
  *

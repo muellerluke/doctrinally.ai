@@ -77,105 +77,29 @@ async function postChat(
   );
 }
 
-describe("POST /api/chat — eager RAG + history trimming", () => {
+describe("POST /api/chat — agentic RAG + history trimming", () => {
   beforeEach(async () => {
     await resetTestDbData();
     vi.clearAllMocks();
     hybridSearchMock.mockReset();
   });
 
-  it("calls hybridSearch with the last user message text", async () => {
-    const { church } = await makeOwnerWithChurch({
-      plan: "standard",
-      status: "active",
-    });
-    hybridSearchMock.mockResolvedValue([]);
-
-    const res = await postChat(church.id, [
-      { role: "user", content: "What does our church teach about grace?" },
-    ]);
-
-    // Consume the stream so the handler's ReadableStream runs to completion.
-    await res.text();
-
-    expect(hybridSearchMock).toHaveBeenCalledTimes(1);
-    const [calledChurchId, calledQuery, calledK] =
-      hybridSearchMock.mock.calls[0];
-    expect(calledChurchId).toBe(church.id);
-    expect(calledQuery).toBe("What does our church teach about grace?");
-    expect(calledK).toBe(6);
-  });
-
-  it("prepends a deterministic <retrieved_context> block to the last user message", async () => {
-    const { church } = await makeOwnerWithChurch({
-      plan: "standard",
-      status: "active",
-    });
-
-    // Return chunks in non-sorted order to verify the route sorts by chunkId.
-    hybridSearchMock.mockResolvedValue([
-      makeChunk({ chunkId: "ccc", content: "charlie-content" }),
-      makeChunk({ chunkId: "aaa", content: "alpha-content" }),
-      makeChunk({ chunkId: "bbb", content: "bravo-content" }),
-    ]);
-
-    const res = await postChat(church.id, [
-      { role: "user", content: "tell me about grace" },
-    ]);
-    await res.text();
-
-    expect(streamTextSpy).toHaveBeenCalledTimes(1);
-    const callArgs = streamTextSpy.mock.calls[0][0] as {
-      messages: { role: string; content: string }[];
-    };
-    const lastMessage = callArgs.messages.at(-1)!;
-    expect(lastMessage.role).toBe("user");
-
-    // RAG prefix first, original user text at the end
-    expect(lastMessage.content).toMatch(/^<retrieved_context>/);
-    expect(lastMessage.content.endsWith("tell me about grace")).toBe(true);
-
-    // Chunks ordered alpha → bravo → charlie (by chunkId)
-    const alphaIdx = lastMessage.content.indexOf("alpha-content");
-    const bravoIdx = lastMessage.content.indexOf("bravo-content");
-    const charlieIdx = lastMessage.content.indexOf("charlie-content");
-    expect(alphaIdx).toBeGreaterThan(-1);
-    expect(alphaIdx).toBeLessThan(bravoIdx);
-    expect(bravoIdx).toBeLessThan(charlieIdx);
-  });
-
-  it("filters out low-relevance chunks below the per-scale thresholds", async () => {
-    const { church } = await makeOwnerWithChurch({
-      plan: "standard",
-      status: "active",
-    });
-
-    hybridSearchMock.mockResolvedValue([
-      makeChunk({
-        chunkId: "good",
-        content: "relevant",
-        semanticSimilarity: 0.8,
-      }),
-      makeChunk({
-        chunkId: "bad",
-        content: "noise",
-        semanticSimilarity: 0.1, // below 0.3 floor
-        keywordRank: 0.005, // below 0.01 floor
-      }),
-    ]);
-
-    const res = await postChat(church.id, [
-      { role: "user", content: "query" },
-    ]);
-    await res.text();
-
-    const callArgs = streamTextSpy.mock.calls[0][0] as {
-      messages: { content: string }[];
-    };
-    const lastContent = callArgs.messages.at(-1)!.content;
-    expect(lastContent).toContain("relevant");
-    expect(lastContent).not.toContain("noise");
-  });
+  // Three retired tests — they covered an EAGER RAG flow where the
+  // route called `hybridSearch` directly at the top of the handler
+  // and prepended a `<retrieved_context>…</retrieved_context>` block
+  // to the last user message. That entire flow was replaced with
+  // agentic search via a `search` tool the model decides to invoke.
+  // The hybridSearch call now happens inside the tool's `execute()`,
+  // which means it doesn't fire when `streamText` is mocked to a
+  // stub. Re-testing the agentic path properly requires a different
+  // harness (one that exercises the tool calls) — left as future
+  // work.
+  //
+  // Retained tests below still cover meaningful behavior on the
+  // current route: empty-RAG short-circuit and history trimming.
+  it.skip("[obsolete] calls hybridSearch with the last user message text", async () => {});
+  it.skip("[obsolete] prepends a deterministic <retrieved_context> block", async () => {});
+  it.skip("[obsolete] filters out low-relevance chunks below thresholds", async () => {});
 
   it("emits no RAG block when every chunk is below thresholds", async () => {
     const { church } = await makeOwnerWithChurch({

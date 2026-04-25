@@ -26,7 +26,13 @@ const fakeSegments = [
 ];
 
 describe("processYouTubeBody", () => {
-  it("chunks transcript, marks indexed, returns transcriptSource = captions", async () => {
+  it("chunks transcript and marks indexed when captions are available", async () => {
+    // Note: a previous version of `processYouTubeBody` returned a
+    // `transcriptSource` discriminator alongside the chunk count.
+    // That field was removed during a refactor — the source is now
+    // recorded on the document row itself rather than echoed back
+    // to the trigger task. We assert success + chunks rather than
+    // the (now-absent) field.
     fetchYouTubeCaptions.mockResolvedValueOnce(fakeSegments);
 
     const church = await makeChurch();
@@ -39,9 +45,9 @@ describe("processYouTubeBody", () => {
     const result = await processYouTubeBody({ documentId: doc.id });
     expect(result).toMatchObject({
       success: true,
-      transcriptSource: "captions",
       chunkCount: expect.any(Number),
     });
+    expect(fetchYouTubeCaptions).toHaveBeenCalledWith("dQw4w9WgXcQ");
 
     const db = getTestDb();
     const chunks = await db.query.chunks.findMany({
@@ -55,21 +61,12 @@ describe("processYouTubeBody", () => {
     );
   });
 
-  it("falls back to Supadata when captions fail", async () => {
-    fetchYouTubeCaptions.mockRejectedValueOnce(new Error("Captions unavailable"));
-    fetchSupadataTranscript.mockResolvedValueOnce(fakeSegments);
-
-    const church = await makeChurch();
-    const doc = await makeDocument(church.id, {
-      type: "youtube",
-      status: "queued",
-      sourceUrl: "https://youtu.be/dQw4w9WgXcQ",
-    });
-
-    const result = await processYouTubeBody({ documentId: doc.id });
-    expect(result).toMatchObject({ transcriptSource: "supadata" });
-    expect(fetchSupadataTranscript).toHaveBeenCalled();
-  });
+  // The Supadata AI-transcript fallback was deliberately removed from
+  // `processYouTubeBody` (see the source file's comment on `maxDuration`).
+  // The pipeline is captions-only now; videos without native captions
+  // are marked `skipped_no_captions` rather than transcribed via
+  // Supadata. This test would assert behavior that no longer exists.
+  it.skip("[obsolete] falls back to Supadata when captions fail", async () => {});
 
   it("regression: accepts youtube.com/live/<id> URLs", async () => {
     fetchYouTubeCaptions.mockResolvedValueOnce(fakeSegments);

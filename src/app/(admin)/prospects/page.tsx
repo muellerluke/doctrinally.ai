@@ -20,6 +20,11 @@ export const metadata = {
   title: "Prospects — Doctrinally.AI",
 };
 
+// Per-request only — depends on session + per-church data, and queries
+// the `prospects` table which may not exist at build time on a fresh
+// deploy where migrations run after the build.
+export const dynamic = "force-dynamic";
+
 /**
  * Prospect list view. A lead is captured any time a website visitor
  * fills out the name/email form in the embedded chat widget. Gated on

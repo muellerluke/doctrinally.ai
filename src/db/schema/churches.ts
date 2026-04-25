@@ -64,11 +64,16 @@ export const churches = pgTable("churches", {
   embedOpenerTemplates: jsonb("embed_opener_templates")
     .$type<string[]>()
     .notNull()
+    // NOTE: keep these strings free of apostrophes/single-quotes —
+    // Drizzle's migration generator doesn't reliably escape them in
+    // the SQL DEFAULT clause, which produces a malformed migration.
+    // Hand-fixing one (0023) was enough; future regenerations should
+    // start from a clean default to avoid the same trap.
     .default([
-      "I noticed you're reading about {topic}. Happy to answer any questions — what's on your mind?",
+      "I noticed you are reading about {topic}. Happy to answer questions — what is on your mind?",
       "Welcome! Anything I can help clarify about {topic}?",
       "Looking into {topic}? I can pull answers from our sermons and teaching — just ask.",
-      "Hi there — quick question about {topic}, or something else on your mind?",
+      "Hi there — a quick question about {topic}, or something else on your mind?",
       "Glad you stopped by. Want me to dig into {topic} with you?",
     ]),
 

@@ -11,7 +11,19 @@ import {
   invoiceCreatedEvent,
 } from "../../helpers/stripe-events";
 
-const invoiceItemsCreate = vi.fn(async () => ({ id: "ii_test" }));
+// Typing the mock with a concrete signature lets TypeScript infer
+// `mock.calls[0]` as `[StripeInvoiceItemArg]` rather than `[]`, so
+// the per-test `invoiceItemsCreate.mock.calls[0]?.[0]` reads have a
+// useful type instead of resolving to `never`.
+type StripeInvoiceItemArg = {
+  customer: string;
+  invoice: string;
+  amount: number;
+  currency: string;
+};
+const invoiceItemsCreate = vi.fn(async (_args: StripeInvoiceItemArg) => ({
+  id: "ii_test",
+}));
 
 vi.mock("@/lib/stripe", async () => {
   const actual = await vi.importActual<typeof import("stripe")>("stripe");
@@ -63,7 +75,11 @@ async function arrange(options: {
 }
 
 describe("Stripe webhook: invoice.created — real signatures + overage billing", () => {
-  it("charges 500 * $0.25 = $125 (12,500 cents) when usage is 500 over", async () => {
+  it("charges 500 * $0.10 = $50 (5,000 cents) when usage is 500 over on Standard", async () => {
+    // Rate note: Standard plan overage is $0.10/message (see
+    // OVERAGE_RATES in src/lib/plans.ts). Earlier copies of this
+    // test were written against a $0.25 rate that was lowered;
+    // the math is updated to match the current rate.
     await arrange({
       questionLimit: 1500,
       questions: 2000,
@@ -82,10 +98,11 @@ describe("Stripe webhook: invoice.created — real signatures + overage billing"
     );
     expect(response.status).toBe(200);
     expect(invoiceItemsCreate).toHaveBeenCalledTimes(1);
-    expect(invoiceItemsCreate.mock.calls[0][0]).toMatchObject({
+    const firstCall = invoiceItemsCreate.mock.calls[0]?.[0];
+    expect(firstCall).toMatchObject({
       customer: "cus_test_overage",
       invoice: "in_test_1",
-      amount: 12_500,
+      amount: 5_000,
       currency: "usd",
     });
   });
@@ -107,7 +124,9 @@ describe("Stripe webhook: invoice.created — real signatures + overage billing"
         })
       )
     );
-    expect(invoiceItemsCreate.mock.calls[0][0].amount).toBe(25_000); // 1000 * $0.25
+    // 1000 capped overage * $0.10 = $100 = 10,000 cents.
+    const cappedCall = invoiceItemsCreate.mock.calls[0]?.[0];
+    expect(cappedCall?.amount).toBe(10_000);
   });
 
   it("does nothing when overage is disabled", async () => {

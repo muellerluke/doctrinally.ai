@@ -28,6 +28,11 @@ export const metadata = {
   title: "Prospect — Doctrinally.AI",
 };
 
+// Per-request only — same rationale as /prospects/page.tsx. The dynamic
+// `[id]` segment makes this implicitly dynamic in most cases, but
+// declaring it explicitly is safer than relying on inference.
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
