@@ -98,8 +98,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
     sending: false,
     outreachSent: false,
     awaitingOutreach: false,
-    turnstileSiteKey: null,
-    turnstileToken: null,
     prospectCaptured: false,
     // Tracks whether at least one full assistant reply to a user
     // message has completed this page visit. Drives the "show email
@@ -137,7 +135,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // background. If no cache, fetch config before rendering.
   if (cachedConfig) {
     state.config = cachedConfig;
-    state.turnstileSiteKey = cachedConfig.turnstileSiteKey || null;
     renderWidget();
     handshake();
     // Background refresh — keeps cache warm, updates visible colors
@@ -145,7 +142,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
     fetchConfig(function(fresh){
       if (fresh) {
         state.config = fresh;
-        state.turnstileSiteKey = fresh.turnstileSiteKey || null;
         saveCachedConfig(fresh);
       }
     });
@@ -153,7 +149,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
     fetchConfig(function(config){
       if (!config) return;
       state.config = config;
-      state.turnstileSiteKey = config.turnstileSiteKey || null;
       saveCachedConfig(config);
       renderWidget();
       handshake();
@@ -273,7 +268,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
       '<div class="dai-prospect-intro">Want ' + escapeHtml(state.config ? state.config.churchName : "us") + ' to follow up?<br>Leave your name and email.</div>' +
       '<input class="dai-prospect-name" type="text" placeholder="Your name" autocomplete="name" maxlength="120">' +
       '<input class="dai-prospect-email" type="email" placeholder="you@example.com" autocomplete="email" maxlength="254">' +
-      '<div class="dai-turnstile"></div>' +
       '<div class="dai-prospect-actions">' +
         '<button type="button" class="dai-prospect-skip">Not now</button>' +
         '<button type="button" class="dai-prospect-submit" disabled>Share my info</button>' +
@@ -392,29 +386,11 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // the server holds a conversation summary and will inject it into
   // the LLM's prompt on the next turn. The UI starts empty every
   // page load (cleaner, faster, no stale context confusing visitors).
-  //
-  // Turnstile only fires when we don't have a valid token yet (fresh
-  // session). Returning visitors with a stored token skip the
-  // challenge — the HMAC signature is its own proof of past
-  // verification.
   function handshake(){
-    if (state.token) {
-      // Existing session — rehydrate without a Turnstile challenge.
-      sendHandshake(null);
-      return;
-    }
-    // Fresh session — earn a Turnstile token first, then create.
-    earnTurnstileToken(function(turnstileToken){
-      sendHandshake(turnstileToken);
-    });
-  }
-
-  function sendHandshake(turnstileToken){
     var payload = {
       token: state.token,
       pageUrl: location.href,
-      pageTitle: document.title,
-      turnstileToken: turnstileToken
+      pageTitle: document.title
     };
     fetch(APP_URL + "/api/embed/session?k=" + encodeURIComponent(KEY), {
       method: "POST",
@@ -438,54 +414,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
         saveCachedConfig(data.config);
       }
     }).catch(function(){ /* silent */ });
-  }
-
-  // ──────────────────────────────────────────────────────────────
-  // Turnstile (invisible challenge for session creation)
-  // ──────────────────────────────────────────────────────────────
-  // Real browsers solve a "Managed" Turnstile widget invisibly in
-  // most cases (~500 ms). Scripted clients can't render the
-  // challenge — they fail to produce a token, and the server
-  // rejects the session-create call. The challenge widget is
-  // mounted to a 0×0 hidden container so visitors never see it.
-  //
-  // If no site key is configured (dev or unfconfigured), we skip
-  // and the server fails open in dev / fails closed in prod.
-  function earnTurnstileToken(done){
-    if (!state.turnstileSiteKey) {
-      done("dev-skip");
-      return;
-    }
-    function render(){
-      if (!window.turnstile) {
-        done(null);
-        return;
-      }
-      var mount = document.createElement("div");
-      mount.style.cssText = "position: fixed; left: -10000px; top: -10000px; width: 1px; height: 1px; overflow: hidden;";
-      document.body.appendChild(mount);
-      try {
-        window.turnstile.render(mount, {
-          sitekey: state.turnstileSiteKey,
-          size: "invisible",
-          callback: function(token){
-            done(token);
-          },
-          "error-callback": function(){ done(null); },
-          "expired-callback": function(){ done(null); }
-        });
-      } catch (_) {
-        done(null);
-      }
-    }
-    if (window.turnstile) { render(); return; }
-    var s = document.createElement("script");
-    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    s.async = true;
-    s.defer = true;
-    s.onload = render;
-    s.onerror = function(){ done(null); };
-    document.head.appendChild(s);
   }
 
   // ──────────────────────────────────────────────────────────────
@@ -878,7 +806,9 @@ const LOADER_TEMPLATE = String.raw`(function(){
     state.emailPrompted = true;
     try { localStorage.setItem(EMAIL_PROMPT_KEY, "1"); } catch (_) {}
     scrollToBottom();
-    loadTurnstile();
+    // Enable submit as soon as name + email validate. No captcha to
+    // wait on now that Turnstile has been removed.
+    maybeEnableProspect();
   }
 
   function hideProspectForm(){
@@ -895,57 +825,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
     var email = ui.prospectForm.querySelector(".dai-prospect-email").value.trim();
     var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
     var submit = ui.prospectForm.querySelector(".dai-prospect-submit");
-    submit.disabled = !(name.length >= 2 && emailOk && state.turnstileToken);
-  }
-
-  function loadTurnstile(){
-    if (!state.turnstileSiteKey) {
-      // No site key configured — skip captcha UI and accept the form
-      // without one. Server will fail-open in dev and fail-closed in
-      // prod; this matches the plan.
-      state.turnstileToken = "dev-skip";
-      maybeEnableProspect();
-      return;
-    }
-    if (window.turnstile) {
-      renderTurnstile();
-      return;
-    }
-    var s = document.createElement("script");
-    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    s.async = true;
-    s.defer = true;
-    s.onload = renderTurnstile;
-    document.head.appendChild(s);
-  }
-
-  function renderTurnstile(){
-    if (!window.turnstile) return;
-    // Turnstile renders into a container we provide. Because our form
-    // lives in a shadow root, we append a parallel container OUTSIDE
-    // the shadow root — Turnstile reads globals and writes to its
-    // own element, and we just copy the token out.
-    var mount = ui.prospectForm.querySelector(".dai-turnstile");
-    mount.innerHTML = "";
-    // Turnstile sometimes mis-styles inside shadow DOM; mount a proxy
-    // div in the main document and absolutely-position a wrapper over
-    // it. For simplicity here we render directly inside the shadow
-    // root (Turnstile generally works) and move on.
-    try {
-      window.turnstile.render(mount, {
-        sitekey: state.turnstileSiteKey,
-        theme: "light",
-        size: "flexible",
-        callback: function(token){
-          state.turnstileToken = token;
-          maybeEnableProspect();
-        },
-        "error-callback": function(){ state.turnstileToken = null; maybeEnableProspect(); },
-        "expired-callback": function(){ state.turnstileToken = null; maybeEnableProspect(); }
-      });
-    } catch (err) {
-      console.warn("[doctrinally] turnstile render failed", err);
-    }
+    submit.disabled = !(name.length >= 2 && emailOk);
   }
 
   function submitProspect(){
@@ -967,7 +847,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
       body: JSON.stringify({
         name: name,
         email: email,
-        turnstileToken: state.turnstileToken,
         pageUrl: location.href
       })
     }).then(function(res){
@@ -1033,8 +912,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-prospect-skip { all: initial; cursor: pointer; padding: 6px 10px; font-size: 12px; color: #666; }",
       ".dai-prospect-submit { all: initial; cursor: pointer; background: " + primary + "; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }",
       ".dai-prospect-submit:disabled { opacity: 0.4; cursor: default; }",
-      ".dai-prospect-error { font-size: 12px; color: #dc2626; }",
-      ".dai-turnstile { min-height: 0; }"
+      ".dai-prospect-error { font-size: 12px; color: #dc2626; }"
     ].join(" ");
   }
 

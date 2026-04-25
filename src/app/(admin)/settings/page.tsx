@@ -173,8 +173,6 @@ export default async function SettingsPage() {
               embedEnabled: church.embedEnabled,
               websiteDomain: church.websiteDomain,
               proactiveOutreachEnabled: church.embedProactiveOutreachEnabled,
-              aiOpenerEnabled: church.embedAiOpenerEnabled,
-              openerTemplates: church.embedOpenerTemplates ?? [],
             }}
             allowedOrigins={allowedOrigins}
             appUrl={appUrl}

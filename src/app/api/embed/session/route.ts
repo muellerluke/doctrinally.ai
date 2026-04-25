@@ -28,7 +28,6 @@ import {
   MAX_SESSIONS_PER_IP_PER_DAY,
   verifyAndUpdateSessionIp,
 } from "@/lib/embed/ip";
-import { verifyTurnstile } from "@/lib/embed/turnstile";
 import { logger } from "@/lib/logger";
 import { incrementVisitorCount } from "@/lib/usage";
 
@@ -111,7 +110,6 @@ export async function POST(request: Request) {
     token?: string;
     pageUrl?: string;
     pageTitle?: string;
-    turnstileToken?: string;
   };
 
   const ua = request.headers.get("user-agent") ?? "";
@@ -181,7 +179,6 @@ export async function POST(request: Request) {
                 churchName: config.churchName,
                 primaryColor: config.primaryColor,
                 accentColor: config.accentColor,
-                turnstileSiteKey: process.env.CF_TURNSTILE_SITE_KEY ?? null,
               },
             },
             { headers: cors }
@@ -193,37 +190,11 @@ export async function POST(request: Request) {
     }
   }
 
-  // Turnstile gate on fresh session creation. The existing-token
-  // (rehydrate) path already proved itself by holding a valid HMAC
-  // signature; only minting a NEW session needs the captcha. Real
-  // browsers solve Turnstile invisibly in ~500 ms; scripted clients
-  // (curl, Python) can't render the challenge at all — closes the
-  // forgeable-Origin-header bypass for casual abuse.
-  const turnstile = await verifyTurnstile({
-    token: body.turnstileToken,
-    remoteIp: ip || null,
-  });
-  if (!turnstile.ok) {
-    logger.warn("[embed/session] turnstile failed", {
-      reason: turnstile.reason,
-    });
-    return new NextResponse(
-      JSON.stringify({
-        error: "captcha_failed",
-        message:
-          "Couldn't verify the visitor. Please reload the page and try again.",
-      }),
-      {
-        status: 400,
-        headers: { ...cors, "Content-Type": "application/json" },
-      }
-    );
-  }
-
   // Daily session-creation cap per IP. 25 sessions per IP per UTC
   // day handles shared computers (library, coffee shop, corporate
-  // wifi, household wifi) while making prospect-spam expensive —
-  // each session also costs a Turnstile challenge.
+  // wifi, household wifi) while making prospect-spam expensive — a
+  // bad actor needs 40+ IPs to mint 1000 sessions, on top of the
+  // origin allowlist + Sec-Fetch + HMAC-bound-origin gates.
   const dailyCap = await incrementAndCheckDailySessionLimit({ ipHash });
   if (!dailyCap.ok) {
     logger.warn("[embed/session] daily IP cap exceeded", {
@@ -311,7 +282,6 @@ export async function POST(request: Request) {
         churchName: config.churchName,
         primaryColor: config.primaryColor,
         accentColor: config.accentColor,
-        turnstileSiteKey: process.env.CF_TURNSTILE_SITE_KEY ?? null,
       },
     },
     { headers: cors }

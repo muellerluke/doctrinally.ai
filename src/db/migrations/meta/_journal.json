@@ -197,6 +197,13 @@
       "when": 1777127678976,
       "tag": "0027_broken_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1777138956778,
+      "tag": "0028_curly_fantastic_four",
+      "breakpoints": true
     }
   ]
 }

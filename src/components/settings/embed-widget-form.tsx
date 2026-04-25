@@ -25,8 +25,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   generateEmbedPublicKey,
   setEmbedEnabled,
@@ -40,8 +38,6 @@ interface Props {
     embedEnabled: boolean;
     websiteDomain: string | null;
     proactiveOutreachEnabled: boolean;
-    aiOpenerEnabled: boolean;
-    openerTemplates: string[];
   };
   allowedOrigins: string[];
   appUrl: string;
@@ -61,10 +57,6 @@ export function EmbedWidgetForm({
   const [toggling, setToggling] = useState(false);
 
   const [proactive, setProactive] = useState(initial.proactiveOutreachEnabled);
-  const [aiOpener, setAiOpener] = useState(initial.aiOpenerEnabled);
-  const [templatesText, setTemplatesText] = useState(
-    initial.openerTemplates.join("\n")
-  );
   const [savingOutreach, setSavingOutreach] = useState(false);
 
   if (!isEnterprise) {
@@ -166,8 +158,6 @@ export function EmbedWidgetForm({
 
   async function handleSaveOutreach(patch: {
     proactiveOutreachEnabled?: boolean;
-    aiOpenerEnabled?: boolean;
-    openerTemplates?: string[];
   }) {
     setSavingOutreach(true);
     try {
@@ -184,19 +174,6 @@ export function EmbedWidgetForm({
     } finally {
       setSavingOutreach(false);
     }
-  }
-
-  async function handleSaveTemplates() {
-    const parsed = templatesText
-      .split(/\n+/)
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (parsed.length === 0) {
-      toast.error("At least one opener template is required");
-      return;
-    }
-    const ok = await handleSaveOutreach({ openerTemplates: parsed });
-    if (ok) toast.success("Opener templates saved");
   }
 
   return (
@@ -397,9 +374,10 @@ export function EmbedWidgetForm({
                 </CardTitle>
                 <CardDescription>
                   After a visitor scrolls and pauses to read, the widget
-                  reaches out first with a page-aware question. Once per
-                  session — then it waits for a reply. The point is to
-                  catch prospects before they bounce.
+                  reaches out first with an AI-written, page-aware question.
+                  Once per session — then it waits for a reply. The point is
+                  to catch prospects before they bounce. Openers are free —
+                  they don&rsquo;t count against your monthly message limit.
                 </CardDescription>
               </div>
             </div>
@@ -430,63 +408,6 @@ export function EmbedWidgetForm({
               />
             </div>
 
-            <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
-              <div>
-                <div className="text-sm font-medium">
-                  AI-personalized openers
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Uses Mercury 2 to write a tailored opener for each
-                  visitor. Falls back to a template in ~1.5 s if the model
-                  is slow. Counts against your monthly message limit.
-                </div>
-              </div>
-              <Switch
-                checked={aiOpener}
-                onCheckedChange={async (v) => {
-                  setAiOpener(v);
-                  const ok = await handleSaveOutreach({
-                    aiOpenerEnabled: v,
-                  });
-                  if (ok)
-                    toast.success(
-                      v ? "AI openers on" : "AI openers off — using templates"
-                    );
-                }}
-                disabled={savingOutreach || !proactive}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="opener-templates">
-                Opener templates (one per line)
-              </Label>
-              <Textarea
-                id="opener-templates"
-                rows={6}
-                value={templatesText}
-                onChange={(e) => setTemplatesText(e.target.value)}
-                placeholder={`I noticed you're reading about {topic}. Happy to help — what's on your mind?`}
-                disabled={savingOutreach}
-                className="font-mono text-xs"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use <code>{"{topic}"}</code> anywhere you&rsquo;d like the
-                visitor&rsquo;s current reading topic inserted. Keep each
-                line under 400 characters. At least one line is required.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleSaveTemplates}
-                disabled={savingOutreach}
-              >
-                {savingOutreach && (
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                )}
-                Save templates
-              </Button>
-            </div>
           </CardContent>
         </Card>
       )}

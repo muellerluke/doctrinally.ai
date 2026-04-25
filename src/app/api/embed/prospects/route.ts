@@ -15,7 +15,6 @@ import {
 } from "@/lib/embed/origin";
 import { verifyToken } from "@/lib/embed/session-token";
 import { consumeToken } from "@/lib/embed/rate-limit";
-import { verifyTurnstile } from "@/lib/embed/turnstile";
 import { isEmbeddedChatAvailable } from "@/lib/plan-gating";
 import {
   getRequestIp,
@@ -28,8 +27,6 @@ import { logger } from "@/lib/logger";
  * Capture name + email from the widget's inline form. Gated by:
  *   - valid session token (matching origin)
  *   - 1/session rate limit (plus a broader anti-spam bucket)
- *   - Cloudflare Turnstile verification (widget lazy-loads the
- *     challenge only when the form opens)
  *   - basic email regex
  *
  * Merge-on-return: if a prospect already exists with the same
@@ -90,7 +87,6 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     name?: string;
     email?: string;
-    turnstileToken?: string;
     pageUrl?: string;
   } | null;
   if (!body) {
@@ -113,27 +109,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const ip = (
-    request.headers.get("x-forwarded-for")?.split(",")[0] ??
-    request.headers.get("x-real-ip") ??
-    ""
-  ).trim();
-
-  const turnstile = await verifyTurnstile({
-    token: body.turnstileToken,
-    remoteIp: ip || null,
-  });
-  if (!turnstile.ok) {
-    return NextResponse.json(
-      {
-        error: "captcha_failed",
-        message:
-          "Couldn't verify the captcha. Please reload the page and try again.",
-      },
-      { status: 400, headers: cors }
-    );
-  }
-
   const session = await db.query.embedWidgetSessions.findFirst({
     where: eq(embedWidgetSessions.sessionTokenHash, verified.value.tokenHash),
   });
@@ -147,7 +122,8 @@ export async function POST(request: Request) {
   // Session-IP binding (same gate as /chat). Especially important
   // here because the prospect form is the highest-value mutation in
   // the widget — a stolen token used to spam fake leads has to
-  // clear this on top of Turnstile + per-session prospect bucket.
+  // clear this on top of the per-session prospect bucket and the
+  // origin/IP gates.
   const ipHash = hashIp(getRequestIp(request));
   const ipCheck = await verifyAndUpdateSessionIp({
     sessionId: session.id,

@@ -57,17 +57,7 @@ export async function GET(
     return new NextResponse(null, { status: 404, headers: cors });
   }
 
-  return NextResponse.json(
-    {
-      ...config,
-      // Site key is public (ships in the page anyway). Returning it
-      // here keeps the loader stateless — it only needs to know the
-      // embed key up front, and we deliver Turnstile config as part
-      // of the config payload.
-      turnstileSiteKey: process.env.CF_TURNSTILE_SITE_KEY ?? null,
-    },
-    { status: 200, headers: cors }
-  );
+  return NextResponse.json(config, { status: 200, headers: cors });
 }
 
 export async function OPTIONS(

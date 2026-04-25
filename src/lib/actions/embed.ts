@@ -113,8 +113,6 @@ export async function generateEmbedPublicKey() {
 
 export async function updateEmbedOutreachSettings(input: {
   proactiveOutreachEnabled?: boolean;
-  aiOpenerEnabled?: boolean;
-  openerTemplates?: string[];
 }) {
   const gated = await requireEnterpriseContext();
   if ("error" in gated) return { error: gated.error };
@@ -123,22 +121,6 @@ export async function updateEmbedOutreachSettings(input: {
   const update: Record<string, unknown> = { updatedAt: new Date() };
   if (typeof input.proactiveOutreachEnabled === "boolean") {
     update.embedProactiveOutreachEnabled = input.proactiveOutreachEnabled;
-  }
-  if (typeof input.aiOpenerEnabled === "boolean") {
-    update.embedAiOpenerEnabled = input.aiOpenerEnabled;
-  }
-  if (Array.isArray(input.openerTemplates)) {
-    const cleaned = input.openerTemplates
-      .map((t) => (typeof t === "string" ? t.trim() : ""))
-      .filter((t) => t.length > 0 && t.length <= 400)
-      .slice(0, 20);
-    // Reject an empty list — a widget with no templates would send
-    // literal "{topic}" strings to visitors. Better to keep the old
-    // list than accept nothing.
-    if (cleaned.length === 0) {
-      return { error: "At least one opener template is required" };
-    }
-    update.embedOpenerTemplates = cleaned;
   }
 
   await db
