@@ -12,6 +12,7 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import { formatCents } from "@/lib/sermons/token-budget";
 import {
@@ -60,6 +61,7 @@ interface AdminSidebarProps {
   sermonBudgetCents?: number;
   sermonSpentCents?: number;
   hasSermonWriter?: boolean;
+  hasEmbedWidget?: boolean;
 }
 
 export function AdminSidebar({
@@ -77,18 +79,30 @@ export function AdminSidebar({
   sermonBudgetCents = 0,
   sermonSpentCents = 0,
   hasSermonWriter: hasSermonWriterProp = false,
+  hasEmbedWidget = false,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const isOwner = membershipRole === "owner";
   const canAuthorSermons =
     hasSermonWriterProp && (membershipRole === "owner" || membershipRole === "admin");
+  // Prospects are currently only fed by the embedded widget which is
+  // Enterprise-only. Mirror the nav-gating pattern used for Sermons:
+  // hide the link entirely on Standard so there's nothing confusingly
+  // empty to click into. If we later add a manual-add-prospect flow
+  // we can reopen this to all plans.
+  const canSeeProspects =
+    hasEmbedWidget &&
+    (membershipRole === "owner" || membershipRole === "admin");
 
-  const mainNav = canAuthorSermons
-    ? [
-        ...baseMainNav,
-        { label: "Sermons", href: "/sermons", icon: Sparkles },
-      ]
-    : baseMainNav;
+  const mainNav = [
+    ...baseMainNav,
+    ...(canAuthorSermons
+      ? [{ label: "Sermons", href: "/sermons", icon: Sparkles } as const]
+      : []),
+    ...(canSeeProspects
+      ? [{ label: "Prospects", href: "/prospects", icon: UserPlus } as const]
+      : []),
+  ];
 
   const managementNav = [
     { label: "User Management", href: "/users", icon: UserCog },

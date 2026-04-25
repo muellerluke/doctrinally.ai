@@ -11,6 +11,10 @@ import {
   CheckCircle2,
   Send,
   Rss,
+  MousePointerClick,
+  UserPlus,
+  Moon,
+  ShieldCheck,
 } from "lucide-react";
 
 // ─── Hero ──────────────────────────────────────────────────────────
@@ -153,6 +157,108 @@ export const testimonials: Testimonial[] = [
   },
 ];
 
+// ─── Three-product framing (shared library, three surfaces) ────────
+
+export interface ProductCard {
+  icon: LucideIcon;
+  kicker: string;
+  title: string;
+  description: string;
+  href: string;
+  accent?: "primary" | "gold";
+}
+
+export const threeProducts: ProductCard[] = [
+  {
+    icon: MessageSquare,
+    kicker: "For members",
+    title: "Member AI",
+    description:
+      "Your congregation's private AI. Lives on your doctrinally.ai subdomain or your own custom domain, trained on everything your church has taught.",
+    href: "/features#member-ai",
+    accent: "primary",
+  },
+  {
+    icon: MousePointerClick,
+    kicker: "For visitors",
+    title: "Embedded AI",
+    description:
+      "A chat widget that lives on your own website. Reaches out to visitors as they read, answers questions in your church's voice, and captures prospects — while you sleep.",
+    href: "/features/embedded-chat",
+    accent: "gold",
+  },
+  {
+    icon: PenLine,
+    kicker: "For pastors",
+    title: "Sermon AI",
+    description:
+      "An assistant that drafts sermons alongside you, grounded in your own past teaching. Publish, and the other two AIs can cite it the same day.",
+    href: "/features#sermon-ai",
+    accent: "primary",
+  },
+];
+
+// ─── Member AI feature bullets (for /features page symmetry) ──────
+
+export const memberAiFeatures: SermonAiFeature[] = [
+  {
+    icon: BookOpen,
+    title: "Trained on your teaching",
+    description:
+      "Answers come from your own sermons, devotions, and documents — not a generic model guessing at theology.",
+  },
+  {
+    icon: Video,
+    title: "Citations that play",
+    description:
+      "Sermons embed inline, videos jump to the moment, PDFs link to the page. Members always see the source.",
+  },
+  {
+    icon: Globe,
+    title: "QR code, no login",
+    description:
+      "Drop the QR code on Sunday's bulletin. Members scan and ask — without needing an account.",
+  },
+];
+
+// ─── Embedded AI feature bullets ──────────────────────────────────
+
+export const embeddedChatFeatures: SermonAiFeature[] = [
+  {
+    icon: Moon,
+    title: "Never miss a visitor",
+    description:
+      "Your website doesn't sleep — now your AI doesn't either. It waits, watches, and engages when a visitor stops to read.",
+  },
+  {
+    icon: MousePointerClick,
+    title: "Reaches out first",
+    description:
+      "After a visitor pauses on a page, the widget opens with a question tied to what they're reading. One chance, no pestering.",
+  },
+  {
+    icon: UserPlus,
+    title: "Captures prospects",
+    description:
+      "When the conversation warms up, the widget asks for a name and email — and the lead lands in your Prospects dashboard.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Cryptographically yours",
+    description:
+      "Origin-locked to your domain. Other sites can't embed your widget, and spam is rate-limited at the edge and in Postgres.",
+  },
+];
+
+export const embeddedChatTestimonial = {
+  quote:
+    "We were losing visitors the moment they hit our website. Now the widget catches them mid-scroll, answers their actual question, and drops their email in our inbox. It's paid for itself every month.",
+  name: "Sarah Whitfield",
+  role: "Communications Director",
+  church: "Grace Community Church",
+  initial: "S",
+};
+
 // ─── Sermon AI (Enterprise feature) ────────────────────────────────
 
 export interface SermonAiFeature {
@@ -225,6 +331,7 @@ export const standardFeatures = [
 
 export const enterpriseFeatures = [
   "Everything in Standard, plus:",
+  "Embedded AI — chat widget on your website that captures prospects while you sleep",
   "Auto-sync your entire YouTube channel — sermons, shorts, live replays, and playlists ingested every week",
   "Sermon AI — draft sermons with an assistant trained on your church",
   "Use your own custom domain",

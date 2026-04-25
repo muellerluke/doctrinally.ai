@@ -1,4 +1,11 @@
-import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const churches = pgTable("churches", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -37,6 +44,33 @@ export const churches = pgTable("churches", {
   // lookup key. Rotatable by regenerating from settings.
   embedPublicKey: text("embed_public_key").unique(),
   embedEnabled: boolean("embed_enabled").notNull().default(false),
+
+  // Proactive outreach — widget reaches out after the visitor pauses
+  // while reading, asks a page-aware opener, and gives the church a
+  // shot at capturing the lead. When `embedAiOpenerEnabled` is false
+  // (default) the opener is picked from the templates below; when true
+  // `mercury-2` generates a personalized line (falling back to a
+  // template if the model doesn't answer within ~1.5s).
+  embedProactiveOutreachEnabled: boolean("embed_proactive_outreach_enabled")
+    .notNull()
+    .default(true),
+  embedAiOpenerEnabled: boolean("embed_ai_opener_enabled")
+    .notNull()
+    .default(false),
+  // Small set of opener templates seeded at signup. `{topic}` is
+  // substituted with a short phrase extracted from the page headings
+  // the visitor was looking at. Stored as JSON so admins can edit the
+  // list without a schema change.
+  embedOpenerTemplates: jsonb("embed_opener_templates")
+    .$type<string[]>()
+    .notNull()
+    .default([
+      "I noticed you're reading about {topic}. Happy to answer any questions — what's on your mind?",
+      "Welcome! Anything I can help clarify about {topic}?",
+      "Looking into {topic}? I can pull answers from our sermons and teaching — just ask.",
+      "Hi there — quick question about {topic}, or something else on your mind?",
+      "Glad you stopped by. Want me to dig into {topic} with you?",
+    ]),
 
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),

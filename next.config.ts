@@ -18,23 +18,12 @@ const nextConfig: NextConfig = {
     ],
   },
   skipTrailingSlashRedirect: true,
-  async headers() {
-    return [
-      {
-        // Embed iframe must be framable by any church's own site. The
-        // primary enforcement layer is the per-church embed key (only
-        // Enterprise churches with an active subscription can hold one),
-        // so strict `frame-ancestors` whitelisting is a secondary
-        // hardening step that will land once we have edge-friendly
-        // per-key origin resolution wired up.
-        source: "/embed/:path*",
-        headers: [
-          { key: "Content-Security-Policy", value: "frame-ancestors *" },
-          { key: "X-Frame-Options", value: "ALLOWALL" },
-        ],
-      },
-    ];
-  },
+  // Note: the old `/embed/:path*` CSP (`frame-ancestors *` +
+  // `X-Frame-Options: ALLOWALL`) was removed when the embedded widget
+  // was converted from an iframe page into a Shadow-DOM script
+  // (/embed.js). The loader JS is fetched cross-origin via a standard
+  // <script src> — no frame-ancestors CSP applies. API routes under
+  // /api/embed/* handle their own CORS origin-echo.
 };
 
 export default withSentryConfig(nextConfig, {

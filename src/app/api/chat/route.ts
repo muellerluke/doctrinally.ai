@@ -16,6 +16,10 @@ import {
   estimateTokens,
   trimHistoryToBudget,
 } from "@/lib/chat/tokens";
+import {
+  MAX_USER_MESSAGE_CHARS,
+  validateUserMessageLength,
+} from "@/lib/chat/limits";
 
 const TOTAL_TOKEN_BUDGET = 100_000;
 const OUTPUT_RESERVE = 4_000;
@@ -342,6 +346,26 @@ export async function POST(request: Request) {
 
   if (!lastUserMessage) {
     return new Response("No user message found", { status: 400 });
+  }
+
+  // 1000-char input cap — shared with the embedded widget (see
+  // `src/lib/chat/limits.ts`). Admin/sermon chats use their own routes
+  // and intentionally skip this gate. Admin-test chats on this route
+  // do NOT skip — 1000 chars is more than enough to validate the
+  // member-facing UX.
+  const lenError = validateUserMessageLength(lastUserMessage.content);
+  if (lenError) {
+    return new Response(
+      JSON.stringify({
+        error: "message_too_long",
+        message: lenError,
+        limit: MAX_USER_MESSAGE_CHARS,
+      }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 
   const userQuery = lastUserMessage.content;

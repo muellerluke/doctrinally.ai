@@ -12,6 +12,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { getActiveMembershipForUser } from "@/lib/active-church";
 import { canUseEmbedWidget } from "@/lib/plan-gating";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 /**
  * Generate a collision-resistant public embed key. This is NOT a secret —
@@ -46,6 +47,16 @@ async function requireEnterpriseContext() {
   if (!canUseEmbedWidget(sub.plan)) {
     return {
       error: "The embeddable chat widget requires the Enterprise plan" as const,
+    };
+  }
+  // Feature-flag gate — even Enterprise churches can have the widget
+  // rolled back via the super-admin Feature Flags page. Mirrors the
+  // public-config gate so admin-side writes can't quietly configure a
+  // widget that won't load for visitors.
+  if (!(await isFeatureEnabled(ctx.membership.churchId, "embedded_chat"))) {
+    return {
+      error:
+        "The embeddable chat widget isn't rolled out to your church yet. Contact support." as const,
     };
   }
 
@@ -98,6 +109,44 @@ export async function generateEmbedPublicKey() {
     }
   }
   return { error: "Failed to generate embed key" };
+}
+
+export async function updateEmbedOutreachSettings(input: {
+  proactiveOutreachEnabled?: boolean;
+  aiOpenerEnabled?: boolean;
+  openerTemplates?: string[];
+}) {
+  const gated = await requireEnterpriseContext();
+  if ("error" in gated) return { error: gated.error };
+  const { ctx } = gated;
+
+  const update: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof input.proactiveOutreachEnabled === "boolean") {
+    update.embedProactiveOutreachEnabled = input.proactiveOutreachEnabled;
+  }
+  if (typeof input.aiOpenerEnabled === "boolean") {
+    update.embedAiOpenerEnabled = input.aiOpenerEnabled;
+  }
+  if (Array.isArray(input.openerTemplates)) {
+    const cleaned = input.openerTemplates
+      .map((t) => (typeof t === "string" ? t.trim() : ""))
+      .filter((t) => t.length > 0 && t.length <= 400)
+      .slice(0, 20);
+    // Reject an empty list — a widget with no templates would send
+    // literal "{topic}" strings to visitors. Better to keep the old
+    // list than accept nothing.
+    if (cleaned.length === 0) {
+      return { error: "At least one opener template is required" };
+    }
+    update.embedOpenerTemplates = cleaned;
+  }
+
+  await db
+    .update(churches)
+    .set(update)
+    .where(eq(churches.id, ctx.membership.churchId));
+
+  return { success: true };
 }
 
 export async function setEmbedEnabled(enabled: boolean) {
@@ -173,6 +222,12 @@ export async function resolvePublicEmbedConfig(key: string): Promise<
   if (!church.plan || !canUseEmbedWidget(church.plan)) return null;
   if (!["active", "trialing", "past_due"].includes(church.subStatus ?? ""))
     return null;
+  // Feature-flag gate — lets the super-admin turn the widget off for
+  // a specific church without touching their plan or the admin-side
+  // embedEnabled toggle. Returning null here cascades into a silent
+  // 404 at the config endpoint so nothing visible changes on the
+  // church's public site beyond the widget disappearing.
+  if (!(await isFeatureEnabled(church.id, "embedded_chat"))) return null;
 
   return {
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "",

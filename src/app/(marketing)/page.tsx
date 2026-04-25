@@ -8,6 +8,7 @@ import { SermonPreview } from "@/components/marketing/sermon-preview";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { CTASection } from "@/components/marketing/cta-section";
 import { BookDemoButton } from "@/components/marketing/book-demo-button";
+import { ThreeProductsSection } from "@/components/marketing/three-products-section";
 import {
   ArrowRight,
   Check,
@@ -157,6 +158,15 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ─── THREE PRODUCTS FRAMING ───────────────────────────
+          Introduces the three AIs that share one content library.
+          Sits between the hero and the Sermon AI deep-dive so
+          visitors see the full product suite before any single
+          product gets the spotlight. Embedded AI (gold accent) gets
+          the visual weight because it's the newest + the highest-
+          leverage surface for visitor → prospect capture. */}
+      <ThreeProductsSection />
 
       {/* ─── SERMON AI (pastor-side story) ──────────────────────
           Lives between the member-chat hero and the problem framing

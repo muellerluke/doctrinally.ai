@@ -38,9 +38,6 @@ export function MarketingFooter() {
             <a href="mailto:hello@doctrinally.ai" className="transition-colors hover:text-foreground">
               hello@doctrinally.ai
             </a>
-            <a href="tel:+12622242807" className="transition-colors hover:text-foreground">
-              (262) 224-2807
-            </a>
           </div>
           <p>
             &copy; {new Date().getFullYear()} Doctrinally.AI

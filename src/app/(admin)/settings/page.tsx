@@ -7,7 +7,11 @@ import {
   youtubeSyncPlaylists,
 } from "@/db/schema";
 import { requireMembership } from "@/lib/auth-guards";
-import { canUseCustomBranding, canUseYouTubeSync } from "@/lib/plan-gating";
+import {
+  canUseCustomBranding,
+  canUseYouTubeSync,
+  isEmbeddedChatAvailable,
+} from "@/lib/plan-gating";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GeneralForm } from "@/components/settings/general-form";
@@ -17,6 +21,8 @@ import { QrCodeCard } from "@/components/settings/qr-code-card";
 import { AiFallbackForm } from "@/components/settings/ai-fallback-form";
 import { WebsiteCrawlingForm } from "@/components/settings/website-crawling-form";
 import { YouTubeSyncForm } from "@/components/settings/youtube-sync-form";
+import { EmbedWidgetForm } from "@/components/settings/embed-widget-form";
+import { resolveEmbedAllowedOrigins } from "@/lib/actions/embed";
 
 export default async function SettingsPage() {
   const { membership, church } = await requireMembership();
@@ -27,6 +33,12 @@ export default async function SettingsPage() {
 
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
   const canYouTubeSync = sub ? canUseYouTubeSync(sub.plan) : false;
+  // Combined plan + flag gate. Returning false hides the Website Chat
+  // tab content behind the upgrade CTA even on Enterprise if the flag
+  // is off — keeps admin-side settings in sync with what visitors see.
+  const canEmbed = sub
+    ? await isEmbeddedChatAvailable(church.id, sub.plan)
+    : false;
   const isOwner = membership.role === "owner";
 
   const sync = await db.query.youtubeChannelSyncs.findFirst({
@@ -39,6 +51,15 @@ export default async function SettingsPage() {
     : [];
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000";
   const protocol = appDomain.includes("localhost") ? "http" : "https";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${appDomain}`;
+
+  // Resolve the widget's allowed origins so the settings card can
+  // show admins exactly where their script will load. Same source as
+  // the runtime /api/embed/* origin check — no divergence.
+  const allowedOrigins = church.embedPublicKey
+    ? (await resolveEmbedAllowedOrigins(church.embedPublicKey)) ?? []
+    : [];
 
   // Build the chat URL: custom domain for Enterprise, subdomain otherwise
   const chatUrl =
@@ -76,7 +97,8 @@ export default async function SettingsPage() {
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="domain">Domain</TabsTrigger>
           <TabsTrigger value="website">Website</TabsTrigger>
-          <TabsTrigger value="ai">AI</TabsTrigger>
+          <TabsTrigger value="member-ai">Member AI</TabsTrigger>
+          <TabsTrigger value="embedded-ai">Website Chat</TabsTrigger>
           <TabsTrigger value="youtube">YouTube Sync</TabsTrigger>
         </TabsList>
 
@@ -137,9 +159,25 @@ export default async function SettingsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="ai" className="mt-6">
+        <TabsContent value="member-ai" className="mt-6 space-y-6">
           <AiFallbackForm
             currentInstruction={church.aiFallbackInstruction}
+          />
+        </TabsContent>
+
+        <TabsContent value="embedded-ai" className="mt-6">
+          <EmbedWidgetForm
+            isEnterprise={canEmbed}
+            initial={{
+              embedPublicKey: church.embedPublicKey,
+              embedEnabled: church.embedEnabled,
+              websiteDomain: church.websiteDomain,
+              proactiveOutreachEnabled: church.embedProactiveOutreachEnabled,
+              aiOpenerEnabled: church.embedAiOpenerEnabled,
+              openerTemplates: church.embedOpenerTemplates ?? [],
+            }}
+            allowedOrigins={allowedOrigins}
+            appUrl={appUrl}
           />
         </TabsContent>
 

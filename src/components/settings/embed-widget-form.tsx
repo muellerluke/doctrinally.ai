@@ -10,6 +10,8 @@ import {
   Lock,
   RefreshCw,
   ShieldAlert,
+  Sparkles,
+  Globe,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -23,9 +25,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   generateEmbedPublicKey,
   setEmbedEnabled,
+  updateEmbedOutreachSettings,
 } from "@/lib/actions/embed";
 
 interface Props {
@@ -34,17 +39,33 @@ interface Props {
     embedPublicKey: string | null;
     embedEnabled: boolean;
     websiteDomain: string | null;
+    proactiveOutreachEnabled: boolean;
+    aiOpenerEnabled: boolean;
+    openerTemplates: string[];
   };
+  allowedOrigins: string[];
   appUrl: string;
 }
 
-export function EmbedWidgetForm({ isEnterprise, initial, appUrl }: Props) {
+export function EmbedWidgetForm({
+  isEnterprise,
+  initial,
+  allowedOrigins,
+  appUrl,
+}: Props) {
   const router = useRouter();
   const [embedPublicKey, setEmbedPublicKey] = useState(initial.embedPublicKey);
   const [embedEnabled, setEmbedEnabledState] = useState(initial.embedEnabled);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toggling, setToggling] = useState(false);
+
+  const [proactive, setProactive] = useState(initial.proactiveOutreachEnabled);
+  const [aiOpener, setAiOpener] = useState(initial.aiOpenerEnabled);
+  const [templatesText, setTemplatesText] = useState(
+    initial.openerTemplates.join("\n")
+  );
+  const [savingOutreach, setSavingOutreach] = useState(false);
 
   if (!isEnterprise) {
     return (
@@ -141,6 +162,41 @@ export function EmbedWidgetForm({ isEnterprise, initial, appUrl }: Props) {
     } catch {
       toast.error("Couldn't copy to clipboard");
     }
+  }
+
+  async function handleSaveOutreach(patch: {
+    proactiveOutreachEnabled?: boolean;
+    aiOpenerEnabled?: boolean;
+    openerTemplates?: string[];
+  }) {
+    setSavingOutreach(true);
+    try {
+      const result = await updateEmbedOutreachSettings(patch);
+      if (result.error) {
+        toast.error(result.error);
+        return false;
+      }
+      router.refresh();
+      return true;
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+      return false;
+    } finally {
+      setSavingOutreach(false);
+    }
+  }
+
+  async function handleSaveTemplates() {
+    const parsed = templatesText
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (parsed.length === 0) {
+      toast.error("At least one opener template is required");
+      return;
+    }
+    const ok = await handleSaveOutreach({ openerTemplates: parsed });
+    if (ok) toast.success("Opener templates saved");
   }
 
   return (
@@ -287,17 +343,151 @@ export function EmbedWidgetForm({ isEnterprise, initial, appUrl }: Props) {
         </CardContent>
       </Card>
 
-      {initial.websiteDomain && embedPublicKey && (
+      {embedPublicKey && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Preview it yourself</CardTitle>
-            <CardDescription>
-              Drop the script into any HTML file and open it to see the
-              launcher appear. We recommend testing on{" "}
-              <span className="font-medium">{initial.websiteDomain}</span>{" "}
-              first before pushing to all pages.
-            </CardDescription>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Allowed domains</CardTitle>
+                <CardDescription>
+                  The widget only loads on these origins. Any other site
+                  that pastes your script will get a silent 404 — protecting
+                  your key from being reused on sites you don&rsquo;t
+                  control. Add domains under Settings &rarr; Website.
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
+          <CardContent>
+            {allowedOrigins.length === 0 ? (
+              <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                No website domain set yet. Add one in the Website tab so
+                the widget knows where it&rsquo;s allowed to render.
+              </p>
+            ) : (
+              <ul className="space-y-1.5 text-sm">
+                {allowedOrigins.map((o) => (
+                  <li
+                    key={o}
+                    className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 font-mono text-xs"
+                  >
+                    <Check className="h-3 w-3 text-emerald-500" />
+                    {o}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {embedPublicKey && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10">
+                <Sparkles className="h-5 w-5 text-gold" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-lg">
+                  Proactive outreach
+                </CardTitle>
+                <CardDescription>
+                  After a visitor scrolls and pauses to read, the widget
+                  reaches out first with a page-aware question. Once per
+                  session — then it waits for a reply. The point is to
+                  catch prospects before they bounce.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
+              <div>
+                <div className="text-sm font-medium">
+                  Reach out first when a visitor pauses
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Triggers once per session after ~3 s of reading stillness.
+                </div>
+              </div>
+              <Switch
+                checked={proactive}
+                onCheckedChange={async (v) => {
+                  setProactive(v);
+                  const ok = await handleSaveOutreach({
+                    proactiveOutreachEnabled: v,
+                  });
+                  if (ok)
+                    toast.success(
+                      v ? "Proactive outreach on" : "Proactive outreach paused"
+                    );
+                }}
+                disabled={savingOutreach}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
+              <div>
+                <div className="text-sm font-medium">
+                  AI-personalized openers
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Uses Mercury 2 to write a tailored opener for each
+                  visitor. Falls back to a template in ~1.5 s if the model
+                  is slow. Counts against your monthly message limit.
+                </div>
+              </div>
+              <Switch
+                checked={aiOpener}
+                onCheckedChange={async (v) => {
+                  setAiOpener(v);
+                  const ok = await handleSaveOutreach({
+                    aiOpenerEnabled: v,
+                  });
+                  if (ok)
+                    toast.success(
+                      v ? "AI openers on" : "AI openers off — using templates"
+                    );
+                }}
+                disabled={savingOutreach || !proactive}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="opener-templates">
+                Opener templates (one per line)
+              </Label>
+              <Textarea
+                id="opener-templates"
+                rows={6}
+                value={templatesText}
+                onChange={(e) => setTemplatesText(e.target.value)}
+                placeholder={`I noticed you're reading about {topic}. Happy to help — what's on your mind?`}
+                disabled={savingOutreach}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use <code>{"{topic}"}</code> anywhere you&rsquo;d like the
+                visitor&rsquo;s current reading topic inserted. Keep each
+                line under 400 characters. At least one line is required.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveTemplates}
+                disabled={savingOutreach}
+              >
+                {savingOutreach && (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                )}
+                Save templates
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       )}
     </div>

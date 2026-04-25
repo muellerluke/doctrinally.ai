@@ -12,6 +12,7 @@ import { db } from "@/db";
 import { subscriptions, usageRecords } from "@/db/schema";
 import { getActiveMembershipForUser } from "@/lib/active-church";
 import { hasSermonWriter } from "@/lib/plans";
+import { isEmbeddedChatAvailable } from "@/lib/plan-gating";
 
 export default async function AdminLayout({
   children,
@@ -61,6 +62,14 @@ export default async function AdminLayout({
       })
     : null;
 
+  // Resolves plan-gating AND the `embedded_chat` feature flag. The
+  // Prospects nav and other widget-related UI only appear when both
+  // are satisfied; super-admin can turn the widget off for a specific
+  // church without changing their plan.
+  const hasEmbedWidget = sub
+    ? await isEmbeddedChatAvailable(membership.churchId, sub.plan)
+    : false;
+
   return (
     <UploadProvider>
     <SidebarProvider>
@@ -81,6 +90,7 @@ export default async function AdminLayout({
         hasSermonWriter={hasSermonWriter(sub?.plan)}
         sermonBudgetCents={sub?.sermonBudgetCents ?? 0}
         sermonSpentCents={usage?.sermonTokensCents ?? 0}
+        hasEmbedWidget={hasEmbedWidget}
       />
       <SidebarInset className="h-svh overflow-hidden">
         <AdminHeader userName={session.user.name} />

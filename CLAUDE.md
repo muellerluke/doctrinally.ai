@@ -462,6 +462,101 @@ To do:
 - Add final QA coverage for the primary user journeys
 - Prepare deployment, monitoring, backups, and launch checklists
 
+## Developer Patterns
+
+Infrastructure patterns that future changes need to respect. If a pattern here applies to the work you're doing, reuse it — don't re-derive the same decision.
+
+### Feature flags
+
+Per-church rollout overrides, backed by a TS registry and a `church_feature_flags` table that stores only overrides (not defaults).
+
+**When to reach for a flag**
+- Rolling a new feature to a specific church before general availability (dogfooding a friendly pastor).
+- Killing a feature for a misbehaving church without a deploy.
+- Splitting experiments (A vs. B) without touching plan tiers.
+
+**When NOT to reach for a flag**
+- Paid-tier gating — that's plan-gating (`src/lib/plan-gating.ts`). Flags and plans are independent gates that compose: use `isEmbeddedChatAvailable(churchId, plan)` as the reference pattern for "combined" checks. A Standard-plan church with a flag on still can't see an Enterprise-only feature.
+- Per-user preferences — that's a user/membership column, not a flag.
+
+**Where things live**
+- Registry: `src/lib/feature-flags/flags.ts` — the `FEATURE_FLAGS` constant. Single source of truth for keys, labels, descriptions, defaults, and categories.
+- Runtime: `src/lib/feature-flags/index.ts` — `isFeatureEnabled(churchId, flag)`, `getChurchFlags(churchId)`, `setChurchFlag(...)`. 30 s in-memory cache per church, invalidated on write.
+- Write action: `src/lib/actions/feature-flags.ts` — super-admin-only `toggleChurchFeatureFlag(...)`.
+- Schema: `src/db/schema/feature-flags.ts` — `church_feature_flags` with composite PK `(church_id, flag_key)` and an index on `flag_key` for rollout queries.
+- Super-admin UI: `/admin/feature-flags` — church × flag matrix. New columns appear automatically when you register a new flag — no UI wiring required.
+
+**Adding a new flag**
+1. Add one entry to `FEATURE_FLAGS` in `src/lib/feature-flags/flags.ts` with a stable key, description, default, and category.
+2. At each call site, `await isFeatureEnabled(churchId, "your_flag_key")`. On hot paths, prefer `getChurchFlags(churchId)` once and read multiple flags from the map.
+3. If the flag combines with a plan gate, add a `is<Thing>Available(churchId, plan)` helper in `src/lib/plan-gating.ts` following the `isEmbeddedChatAvailable` pattern — keeps call-sites terse and the "both must be true" invariant in one place.
+4. No migration, no new UI code. The matrix picks it up automatically.
+
+**Key rules**
+- Flag keys are stable forever. Renaming a key orphans every override row — prefer adding a new key and deprecating the old one.
+- Never read flags inside tight loops; read once per request and pass the boolean down.
+- Feature flags are per-church. If you need per-user, extend the schema deliberately (add `user_id` to a new table — don't shoehorn it here).
+
+### Embedded chat widget (Website Chat / Embedded AI)
+
+Third product in the suite alongside Member AI and Sermon AI. Pure script (no iframe) that churches paste into their own site as one `<script>` tag. Reaches out to visitors after a scroll-pause with a page-aware opener, captures name/email as prospects.
+
+**Architecture at a glance**
+- Loader: `src/app/embed.js/route.ts` — ~700-line vanilla-JS IIFE served from `/embed.js`. Attaches a Shadow DOM (open mode) to the host page and renders launcher + chat + prospect form inside. No host-page CSS crosses the boundary; no host JS can tamper with widget state (beyond normal shadow-root inspection).
+- Config endpoint: `src/app/api/embed/config/[key]/route.ts` — public resolver for the church's visual + Turnstile config. Silently 404s when the widget should not render (plan wrong, subscription inactive, **feature flag off**, admin toggle off).
+- Streaming chat: `src/app/api/embed/chat/route.ts` — same wire protocol as member chat (`\u200B\u200B` chunk delimiter + `__CHAT_ID__` / `__CITATIONS__` sentinels). Uses `mercury-2`, member-scoped RAG (`hybridSearch(..., "member")`), visitor-tuned system prompt.
+- Session: `src/app/api/embed/session/route.ts` — HMAC-signed session tokens (`EMBED_SIGNING_SECRET`), stored in visitor `localStorage`. Per-church `embed_widget_sessions` row reuses the existing `chats`/`messages` tables.
+- Outreach: `src/app/api/embed/outreach/route.ts` — two-tier opener. Tier 1 (default): keyword-match a template from `churches.embed_opener_templates`, substitute `{topic}`. Tier 2 (opt-in): Mercury 2 generates a line, falls back to template at 1.5 s timeout. Throttle: 50/hr, 500/day per church.
+- Prospect capture: `src/app/api/embed/prospects/route.ts` — Cloudflare Turnstile siteverify (`CF_TURNSTILE_SECRET`), merge-on-return unique `(church_id, email)`, appends sessions to `metadata.sessionHistory[]`.
+
+**Security stack (all four API routes)**
+1. Origin allowlist — resolved from `resolveEmbedAllowedOrigins(key)` in `src/lib/actions/embed.ts`. CORS echoes the matched origin only + `Vary: Origin`. 5-min in-memory cache.
+2. **Sec-Fetch headers** — `checkSecFetchHeaders` rejects requests where `Sec-Fetch-Site/Mode/Dest` are present and clearly wrong (raises the floor against curl/Python; honest-to-god headless browsers still pass).
+3. **Turnstile on session creation** — fresh sessions (no token in body) require a Turnstile token; rehydrate path skips. Real browsers solve invisibly in ~500ms; scripted clients can't render the challenge. The `/api/embed/prospects` form path also enforces Turnstile separately.
+4. HMAC session token — `src/lib/embed/session-token.ts`, sent in `X-Doctrinally-Session` header (not a cookie). 30-day TTL. **Graceful rotation**: `EMBED_SIGNING_SECRET_PREVIOUS` accepted alongside the current secret during rotation windows, so a routine secret change doesn't invalidate every live session.
+5. Rate limit — `src/lib/embed/rate-limit.ts`. Three layers:
+   - In-memory token bucket (fast path, per-lambda-instance, best-effort).
+   - **Per-session per-hour** authoritative cap (`embed_rate_counters`, 200/hr).
+   - **Per-church per-hour** chat cap (`embed_church_chat_counters`, 200/hr) — the "anomaly v1" defense against many-sessions-coordinating budget DoS. Stretches a 1500-msg Standard budget from 30 minutes-to-deplete to ~7 hours, giving manual response time.
+6. **IP system** — `src/lib/embed/ip.ts`. Two layers:
+   a. **Session-IP binding** (`verifyAndUpdateSessionIp`): each session can be used from at most `MAX_IPS_PER_SESSION` (3) distinct IPs across its lifetime. Backed by the dedicated `embed_session_ips` table (composite PK `(session_id, ip_hash)`) so each refresh is a single-row write rather than rewriting the entire metadata JSONB. Tolerates wifi↔cellular roaming; 4th distinct IP returns 401 and the widget mints a fresh session on next page load.
+   b. **Daily session-creation cap per IP** (`incrementAndCheckDailySessionLimit`): a single IP can mint at most `MAX_SESSIONS_PER_IP_PER_DAY` (25) fresh sessions per UTC day. Tolerates shared computers (library, coffee shop, corporate networks). Backed by `embed_ip_session_counters` (composite PK `(ip_hash, day_bucket)`).
+   - Both layers store only `sha256(normalizedIp)` — never the raw address. `normalizeIp` strips IPv4-mapped IPv6 prefixes (dual-stack devices don't burn two slots) AND truncates IPv6 to its **/48 prefix** so attackers can't rotate freely through the /64 (16 quintillion addresses) every device gets for free.
+7. Behavioral gate — minimum 2-second session age before first chat, interaction flag required.
+8. Turnstile on the prospect form (lazy-loaded, separate from session-create challenge).
+
+**Gate stack (the "is this visible?" question)**
+Use `isEmbeddedChatAvailable(churchId, plan)` in `src/lib/plan-gating.ts`. Combines:
+- `canUseEmbedWidget(plan)` — plan-gate (Enterprise only today)
+- `isFeatureEnabled(churchId, "embedded_chat")` — feature flag
+
+Both must be true. Pattern to follow for any future product that needs "plan + flag" gating.
+
+**Admin surfaces**
+- Settings → "Website Chat" tab: `src/components/settings/embed-widget-form.tsx` — key management, domain allowlist preview, outreach settings (proactive toggle, AI-opener toggle, editable templates).
+- Top-level "Prospects" nav (hidden when flag off): `src/app/(admin)/prospects/page.tsx` + `[id]/page.tsx` for transcripts.
+- Member AI (existing AI fallback behavior) is its own settings tab — they're sibling products, not nested.
+
+**Message budget**
+Widget messages + outreach AI openers + member chat all draw from the same monthly pool on `subscriptions.question_limit`. There is no separate widget budget — if we ever need one, add a column, don't split rate limiters.
+
+**Character limit**
+1000-char cap on member and widget chat, enforced client + server. Shared constant: `MAX_USER_MESSAGE_CHARS` in `src/lib/chat/limits.ts`. Admin/sermon chats intentionally skip this gate.
+
+**Model**
+Mercury 2 (`mercury-2`, Inception Labs). Default in both `src/app/api/chat/route.ts` and `src/app/api/embed/chat/route.ts`. Override with `AI_MODEL` env var.
+
+### Adding a new product to the three-product suite
+
+The app frames three AIs sharing one content library: Member AI (chat on subdomain/custom domain), Embedded AI (Website Chat widget), Sermon AI (admin sermon writer).
+
+If you're introducing a fourth, follow the Embedded AI pattern:
+1. Register a feature flag (`your_product` key, default off).
+2. Add a plan-gate helper to `src/lib/plan-gating.ts` (`canUseYourProduct(plan)`) plus a combined helper (`isYourProductAvailable(churchId, plan)`).
+3. Surface it in marketing as a fourth card in `ThreeProductsSection` (rename + widen the grid) and a `memberAiFeatures`-style array in `src/content/marketing/data.ts`.
+4. Add a Settings tab for per-church config if needed.
+5. Add a new top-level admin nav item only if the product has an ongoing workstream (like "Prospects" for the widget) — don't add nav items for config alone.
+
 ## Aesthetic Notes
 
 You tend to converge toward generic, "on distribution" outputs. In frontend design, this creates what users call the "AI slop" aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight. Focus on:

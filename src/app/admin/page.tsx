@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import {
   Church,
   Users,
@@ -8,6 +9,8 @@ import {
   AlertTriangle,
   Crown,
   Sparkles,
+  Flag,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -68,6 +71,25 @@ export default async function SuperAdminPage({
           </Suspense>
         }
       />
+
+      <Link
+        href="/admin/feature-flags"
+        className="group flex items-center justify-between rounded-lg border bg-background p-4 transition-colors hover:border-primary/40 hover:bg-primary/[0.02]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Flag className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">Feature flags</div>
+            <div className="text-xs text-muted-foreground">
+              Per-church rollout overrides — flip features on for
+              individual churches without a deploy.
+            </div>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList>
