@@ -638,19 +638,34 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // The widget reaches out first only ONCE per session (server
   // enforces via outreach_sent_at).
   //
-  //   Path A (entry page): any scroll + idle ≥ 750 ms.
+  //   Path A (entry / cold page): any scroll + idle ≥ 750 ms.
   //     A reader who's scrolled even slightly and then stopped is
   //     reading. That's enough.
   //
-  //   Path B (second page or later): fire immediately on load.
-  //     Any in-site navigation is itself a strong engagement
-  //     signal — no further dwell or scroll required.
+  //   Path B (in-site navigation): fire immediately on load.
+  //     If document.referrer is a different page on this same
+  //     origin, the visitor just clicked through from another page
+  //     on the church's site — that click IS the engagement signal,
+  //     no scroll required.
+  //
+  // Note: a localStorage page-view counter is NOT used here because
+  // it persists across visits/sessions and would fire on a "cold"
+  // entry-page just because the visitor was here days ago.
+  function isInSiteNavigation(){
+    try {
+      if (!document.referrer) return false;
+      var ref = new URL(document.referrer);
+      return ref.origin === location.origin && ref.pathname !== location.pathname;
+    } catch (_) { return false; }
+  }
+
   function setupEngagementTracking(){
     if (PREVIEW_MODE) return;
 
     var lastScrollAt = Date.now();
     var everScrolled = false;
     var triggered = false;
+    var inSiteNav = isInSiteNavigation();
 
     window.addEventListener("scroll", function(){
       lastScrollAt = Date.now();
@@ -661,8 +676,8 @@ const LOADER_TEMPLATE = String.raw`(function(){
       if (triggered || state.outreachSent) return;
       if (!state.token) return;
 
-      // Path B — fire immediately on second-page-or-later loads.
-      if (state.pageViews >= 2) {
+      // Path B — visitor came from another page on this site.
+      if (inSiteNav) {
         triggered = true;
         fireOutreach();
         return;
@@ -873,7 +888,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-msg { display: flex; }",
       ".dai-msg-user { justify-content: flex-end; }",
       ".dai-msg-assistant { justify-content: flex-start; }",
-      ".dai-bubble { max-width: 88%; padding: 14px 18px; border-radius: 16px; font-size: 15px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }",
+      ".dai-bubble { max-width: 92%; padding: 16px 20px; border-radius: 18px; font-size: 16px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }",
       ".dai-msg-user .dai-bubble { background: " + primary + "; color: #fff; }",
       ".dai-streaming .dai-bubble::after { content: '▊'; opacity: 0.6; margin-left: 2px; animation: dai-blink 1s steps(2) infinite; }",
       "@keyframes dai-blink { 50% { opacity: 0; } }",
@@ -887,7 +902,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-submit svg { width: 16px; height: 16px; }",
       ".dai-counter { padding: 0 16px 8px 16px; font-size: 11px; color: #888; text-align: right; background: #fff; }",
       ".dai-counter-over { color: #dc2626; font-weight: 600; }",
-      ".dai-toast { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " max-width: min(360px, calc(100vw - 40px)); background: #fff; color: #111; padding: 12px 14px; border-radius: 12px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); font-size: 13px; line-height: 1.4; cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; }",
+      ".dai-toast { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " max-width: min(400px, calc(100vw - 40px)); background: #fff; color: #111; padding: 16px 20px; border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); font-size: 15px; line-height: 1.55; cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; }",
       ".dai-toast-show { opacity: 1; transform: translateY(0); pointer-events: auto; }",
       ".dai-prospect { padding: 12px 16px; background: #f7f4ef; border-top: 1px solid #e8e1d6; display: flex; flex-direction: column; gap: 8px; }",
       ".dai-prospect-intro { font-size: 13px; color: #333; line-height: 1.4; }",
