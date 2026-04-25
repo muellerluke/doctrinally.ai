@@ -828,7 +828,8 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // ──────────────────────────────────────────────────────────────
   function widgetCss(primary, isLeft){
     return [
-      ":host, * { all: initial; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }",
+      ":host { all: initial; }",
+      ":host, * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }",
       ".dai-root { position: fixed; bottom: 20px; z-index: 2147483000; " + (isLeft ? "left: 20px;" : "right: 20px;") + " }",
       ".dai-launcher { all: initial; box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; background: " + primary + "; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 24px rgba(0,0,0,0.22); border: 0; position: relative; transition: transform 150ms ease; }",
       ".dai-launcher:hover { transform: scale(1.05); }",
