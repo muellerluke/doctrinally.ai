@@ -48,7 +48,6 @@ import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
-const AI_TIMEOUT_MS = 1500;
 const DEFAULT_MODEL = "mercury-2";
 
 const inception = createOpenAI({
@@ -176,9 +175,7 @@ export async function POST(request: Request) {
     return new NextResponse("over_budget", { status: 503, headers: cors });
   }
 
-  // AI path with a hard 1.5 s timeout. On timeout/error/empty → skip.
-  const aiController = new AbortController();
-  const timeoutId = setTimeout(() => aiController.abort(), AI_TIMEOUT_MS);
+  // AI path. On error/empty → skip outreach for this visitor.
   let opener: string;
   try {
     const aiPrompt = `You are the AI on ${church.name}'s website. A visitor just paused after reading the following content:
@@ -200,9 +197,7 @@ No lists. No markdown. No preamble. Just the opening line.`;
       prompt: aiPrompt,
       maxOutputTokens: 140,
       temperature: 0.8,
-      abortSignal: aiController.signal,
     });
-    clearTimeout(timeoutId);
     const cleaned = text.trim().replace(/^["']|["']$/g, "").slice(0, 400);
     if (!cleaned) {
       return new NextResponse("ai_unavailable", {
@@ -212,7 +207,6 @@ No lists. No markdown. No preamble. Just the opening line.`;
     }
     opener = cleaned;
   } catch (err) {
-    clearTimeout(timeoutId);
     logger.warn("[embed/outreach] AI opener skipped", {
       error: err instanceof Error ? err.message : String(err),
     });
