@@ -175,42 +175,53 @@ export async function POST(request: Request) {
     return new NextResponse("over_budget", { status: 503, headers: cors });
   }
 
-  // AI path. On error/empty → skip outreach for this visitor.
-  let opener: string;
+  // Two-tier prompt: an "identity" system message that sets the
+  // agent's role on this church's website (mirrors the member-chat
+  // preamble), then a "context" system message giving the visitor's
+  // current state. Keeping context out of the user turn lets the
+  // model treat the user turn as a pure task instruction.
+  const identitySystem = `You are the AI assistant embedded on ${church.name}'s website. The person you're greeting is a WEBSITE VISITOR — they may be curious about the church, investigating whether it's a good fit, or looking for something specific. You exist to help them find answers, connect them with someone from the church when useful, and make them feel welcomed. You are often their first impression of ${church.name}, so be warm and never pushy.`;
+
+  const contextSystem = `Right now, the visitor has paused while reading this content on the page:
+
+"""
+${visibleText || "(no visible content captured — they're early in their visit)"}
+"""
+
+They haven't asked you anything yet — they just stopped scrolling. Your job is to write the very first message they'll see from you: a short, warm opener that acknowledges what they're looking at and invites them to ask a question, get help finding something, or be connected with someone at the church.`;
+
+  const userTask = `Write the opener now. Requirements:
+- ONE message only, max 2 sentences, under 200 characters total.
+- Reference something specific from what they're reading when possible.
+- End with an open invitation (a question or a "let me know" — not a guess at their intent).
+- No lists, no markdown, no preamble, no quotation marks. Just the line itself.`;
+
+  // Static fallback used when the model errors or returns empty.
+  // Per product requirement, the visitor should ALWAYS see an opener.
+  const fallbackOpener = `Hi — welcome to ${church.name}. Anything I can help you find or any question I can answer?`;
+
+  let opener: string = fallbackOpener;
   try {
-    const aiPrompt = `You are the AI on ${church.name}'s website. A visitor just paused after reading the following content:
-
-"""
-${visibleText || "(no visible text captured)"}
-"""
-
-Write ONE short, warm opening line (max 2 sentences, under 200 characters) that:
-- Acknowledges something specific from what they were reading
-- Offers to help with a question
-- Does NOT guess what they want — ask an open question
-
-No lists. No markdown. No preamble. Just the opening line.`;
-
     const { text } = await generateText({
       model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
-      system: `You write short, warm openings for a church's website chat widget. One short message, no more than two sentences.`,
-      messages: [{ role: "user", content: aiPrompt }],
+      messages: [
+        { role: "system", content: identitySystem },
+        { role: "system", content: contextSystem },
+        { role: "user", content: userTask },
+      ],
       maxOutputTokens: 300,
       temperature: 0.7,
     });
     const cleaned = (text ?? "").trim().replace(/^["']|["']$/g, "").slice(0, 400);
-    if (!cleaned) {
-      return new NextResponse("ai_unavailable", {
-        status: 503,
-        headers: cors,
-      });
+    if (cleaned) {
+      opener = cleaned;
+    } else {
+      logger.warn("[embed/outreach] empty AI response — using fallback");
     }
-    opener = cleaned;
   } catch (err) {
-    logger.warn("[embed/outreach] AI opener skipped", {
+    logger.warn("[embed/outreach] AI errored — using fallback", {
       error: err instanceof Error ? err.message : String(err),
     });
-    return new NextResponse("ai_unavailable", { status: 503, headers: cors });
   }
 
   // Persist as the first assistant message of the conversation so

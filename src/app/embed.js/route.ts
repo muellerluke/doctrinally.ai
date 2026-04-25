@@ -433,13 +433,16 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // Input + send
   // ──────────────────────────────────────────────────────────────
   function onInput(){
-    var len = ui.textarea.value.length;
-    ui.counter.textContent = len + "/" + MAX_MSG_CHARS;
-    ui.counter.classList.toggle("dai-counter-over", len >= MAX_MSG_CHARS);
-    ui.submit.disabled = state.sending || len === 0 || len > MAX_MSG_CHARS;
-    // Auto-grow textarea up to ~5 lines.
-    ui.textarea.style.height = "auto";
-    ui.textarea.style.height = Math.min(ui.textarea.scrollHeight, 140) + "px";
+    var textarea = el("textarea", ".dai-input");
+    var counter = el("counter", ".dai-counter");
+    var submit = el("submit", ".dai-submit");
+    if (!textarea || !counter || !submit) return;
+    var len = textarea.value.length;
+    counter.textContent = len + "/" + MAX_MSG_CHARS;
+    counter.classList.toggle("dai-counter-over", len >= MAX_MSG_CHARS);
+    submit.disabled = state.sending || len === 0 || len > MAX_MSG_CHARS;
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight, 140) + "px";
   }
 
   // Only this-visit messages are sent over the wire. The server
@@ -450,13 +453,16 @@ const LOADER_TEMPLATE = String.raw`(function(){
   var thisVisitMessages = [];
 
   function sendMessage(){
-    var content = ui.textarea.value.trim();
+    var textarea = el("textarea", ".dai-input");
+    var submit = el("submit", ".dai-submit");
+    if (!textarea || !submit) return;
+    var content = textarea.value.trim();
     if (!content || state.sending || content.length > MAX_MSG_CHARS) return;
     if (!state.token) return; // handshake hasn't landed yet
 
     state.sending = true;
-    ui.submit.disabled = true;
-    ui.textarea.value = "";
+    submit.disabled = true;
+    textarea.value = "";
     onInput();
 
     renderMessage("user", content, null);
@@ -773,20 +779,20 @@ const LOADER_TEMPLATE = String.raw`(function(){
     if (PREVIEW_MODE) return;
     if (state.prospectCaptured) return;
     if (state.emailPrompted) return; // don't re-prompt across visits
-    if (!ui.prospectForm) return;
-    if (ui.prospectForm.style.display !== "none") return;
-    ui.prospectForm.style.display = "block";
+    var prospectForm = el("prospectForm", ".dai-prospect");
+    if (!prospectForm) return;
+    if (prospectForm.style.display !== "none") return;
+    prospectForm.style.display = "block";
     state.emailPrompted = true;
     try { localStorage.setItem(EMAIL_PROMPT_KEY, "1"); } catch (_) {}
     scrollToBottom();
-    // Enable submit as soon as name + email validate. No captcha to
-    // wait on now that Turnstile has been removed.
     maybeEnableProspect();
   }
 
   function hideProspectForm(){
-    if (!ui.prospectForm) return;
-    ui.prospectForm.style.display = "none";
+    var prospectForm = el("prospectForm", ".dai-prospect");
+    if (!prospectForm) return;
+    prospectForm.style.display = "none";
     // Treat "hidden" as "don't re-prompt this visitor" — whether
     // they captured, dismissed, or the tool preempted the form.
     state.emailPrompted = true;
@@ -794,19 +800,23 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   function maybeEnableProspect(){
-    var name = ui.prospectForm.querySelector(".dai-prospect-name").value.trim();
-    var email = ui.prospectForm.querySelector(".dai-prospect-email").value.trim();
+    var prospectForm = el("prospectForm", ".dai-prospect");
+    if (!prospectForm) return;
+    var name = prospectForm.querySelector(".dai-prospect-name").value.trim();
+    var email = prospectForm.querySelector(".dai-prospect-email").value.trim();
     var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-    var submit = ui.prospectForm.querySelector(".dai-prospect-submit");
+    var submit = prospectForm.querySelector(".dai-prospect-submit");
     submit.disabled = !(name.length >= 2 && emailOk);
   }
 
   function submitProspect(){
-    var name = ui.prospectForm.querySelector(".dai-prospect-name").value.trim();
-    var email = ui.prospectForm.querySelector(".dai-prospect-email").value.trim();
-    var errorEl = ui.prospectForm.querySelector(".dai-prospect-error");
+    var prospectForm = el("prospectForm", ".dai-prospect");
+    if (!prospectForm) return;
+    var name = prospectForm.querySelector(".dai-prospect-name").value.trim();
+    var email = prospectForm.querySelector(".dai-prospect-email").value.trim();
+    var errorEl = prospectForm.querySelector(".dai-prospect-error");
     errorEl.textContent = "";
-    var submit = ui.prospectForm.querySelector(".dai-prospect-submit");
+    var submit = prospectForm.querySelector(".dai-prospect-submit");
     submit.disabled = true;
 
     fetch(APP_URL + "/api/embed/prospects?k=" + encodeURIComponent(KEY), {
@@ -833,7 +843,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
         return;
       }
       state.prospectCaptured = true;
-      ui.prospectForm.style.display = "none";
+      prospectForm.style.display = "none";
       renderMessage("assistant", "Thanks! Someone from " + ((state.config && state.config.churchName) || "the church") + " will reach out soon.", null);
     }).catch(function(){
       errorEl.textContent = "Network error — please try again.";
