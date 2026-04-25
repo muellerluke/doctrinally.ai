@@ -362,19 +362,20 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // Panel open/close
   // ──────────────────────────────────────────────────────────────
   function togglePanel(open){
+    if (!ui.panel || !ui.launcher) return;
     state.open = open;
     ui.panel.setAttribute("aria-hidden", open ? "false" : "true");
     ui.panel.classList.toggle("dai-open", open);
     ui.launcher.setAttribute("aria-expanded", open ? "true" : "false");
-    ui.launcher.innerHTML = open ? closeIcon() : chatIcon();
-    // Re-append unread dot since innerHTML above stripped it.
-    var dot = document.createElement("span");
-    dot.className = "dai-unread";
-    dot.style.display = open ? "none" : ui.unread.style.display;
-    ui.launcher.appendChild(dot);
-    ui.unread = dot;
+    // Swap only the SVG so the unread dot child stays put. innerHTML
+    // replacement would wipe it and force a recreate-and-reattach
+    // dance that has historically been a source of "undefined.X" bugs.
+    var existingSvg = ui.launcher.querySelector("svg");
+    if (existingSvg) existingSvg.remove();
+    ui.launcher.insertAdjacentHTML("afterbegin", open ? closeIcon() : chatIcon());
+    if (open && ui.unread) ui.unread.style.display = "none";
     if (open) {
-      ui.textarea.focus();
+      if (ui.textarea) ui.textarea.focus();
       scrollToBottom();
     }
   }
@@ -611,95 +612,49 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   // ──────────────────────────────────────────────────────────────
-  // Proactive outreach — three trigger paths
+  // Proactive outreach — two trigger paths
   // ──────────────────────────────────────────────────────────────
   // The widget reaches out first only ONCE per session (server
-  // enforces via outreach_sent_at). The decision about WHEN is
-  // split across three paths so entry-page and deep-navigation
-  // visitors both get the right moment:
+  // enforces via outreach_sent_at).
   //
-  //   Path A (entry page, scrolling): pageViews === 1 + scrolled
-  //     ≥ 20% + stopped for ≥ 3 s + any user interaction.
-  //     Catches visitors who land on the homepage/a post and
-  //     start reading. Matches "classic" reading-pause signal.
+  //   Path A (entry page): any scroll + idle ≥ 750 ms.
+  //     A reader who's scrolled even slightly and then stopped is
+  //     reading. That's enough.
   //
-  //   Path B (subsequent page, scrolling): pageViews ≥ 2 + scrolled
-  //     ≥ 20% + stopped for ≥ 3 s.
-  //     Same as Path A but for visitors who clicked into the
-  //     church's site and started reading a second page. They've
-  //     already shown intent just by navigating, so we don't
-  //     require mouse/key interaction beyond the click that got
-  //     them there.
-  //
-  //   Path C (subsequent page, NOT scrolling): pageViews ≥ 2 +
-  //     ≥ 6 s on page + scroll progress < 10% (still looking at
-  //     above-the-fold content).
-  //     The "About Us" case: visitor navigates to a second page
-  //     and sits reading the top of it. No scroll needed — their
-  //     stillness IS the reading signal.
+  //   Path B (second page or later): fire immediately on load.
+  //     Any in-site navigation is itself a strong engagement
+  //     signal — no further dwell or scroll required.
   function setupEngagementTracking(){
     if (PREVIEW_MODE) return;
 
-    var startedAt = Date.now();
     var lastScrollAt = Date.now();
     var everScrolled = false;
-    var maxScrollPct = 0;
-    var interacted = false;
     var triggered = false;
 
-    function markInteraction(){ interacted = true; }
     window.addEventListener("scroll", function(){
       lastScrollAt = Date.now();
       everScrolled = true;
-      markInteraction();
-      var pct = currentScrollPct();
-      if (pct > maxScrollPct) maxScrollPct = pct;
     }, { passive: true });
-    window.addEventListener("mousemove", markInteraction, { passive: true, once: false });
-    window.addEventListener("keydown", markInteraction, { passive: true });
-
-    function currentScrollPct(){
-      var docHeight = Math.max(
-        document.documentElement.scrollHeight,
-        document.body ? document.body.scrollHeight : 0
-      );
-      var winHeight = window.innerHeight || 0;
-      var scrolled = (window.scrollY || window.pageYOffset || 0) + winHeight;
-      return docHeight > 0 ? scrolled / docHeight : 0;
-    }
 
     var intervalId = setInterval(function(){
       if (triggered || state.outreachSent) return;
       if (!state.token) return;
 
-      var timeOnPage = Date.now() - startedAt;
+      // Path B — fire immediately on second-page-or-later loads.
+      if (state.pageViews >= 2) {
+        triggered = true;
+        fireOutreach();
+        return;
+      }
+
+      // Path A — entry page, any scroll + brief idle.
       var idleSinceScroll = Date.now() - lastScrollAt;
-      var pct = maxScrollPct;
-
-      // Path A — entry page, scrolled + paused
-      if (state.pageViews === 1) {
-        if (!interacted) return;
-        if (idleSinceScroll < 3000) return;
-        if (pct < 0.2) return;
+      if (everScrolled && idleSinceScroll >= 750) {
         triggered = true;
         fireOutreach();
         return;
       }
-
-      // pageViews >= 2 — Paths B and C
-      if (everScrolled && pct >= 0.2 && idleSinceScroll >= 3000) {
-        // Path B — second page, scrolled + paused
-        triggered = true;
-        fireOutreach();
-        return;
-      }
-      if (!everScrolled && timeOnPage >= 6000 && pct < 0.1) {
-        // Path C — second page, reading above the fold
-        triggered = true;
-        fireOutreach();
-        return;
-      }
-    }, 1000);
+    }, 250);
 
     // Stop polling after 10 min to avoid background work on long
     // dwells where the visitor clearly isn't engaging.
@@ -877,7 +832,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-root { position: fixed; bottom: 20px; z-index: 2147483000; " + (isLeft ? "left: 20px;" : "right: 20px;") + " }",
       ".dai-launcher { all: initial; box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; background: " + primary + "; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 24px rgba(0,0,0,0.22); border: 0; position: relative; transition: transform 150ms ease; }",
       ".dai-launcher:hover { transform: scale(1.05); }",
-      ".dai-launcher svg { width: 26px; height: 26px; }",
+      ".dai-launcher svg { width: 28px; height: 28px; display: block; color: #fff; }",
       ".dai-unread { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 999px; background: #ef4444; border: 2px solid #fff; }",
       ".dai-panel { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(400px, calc(100vw - 40px)); height: min(600px, calc(100vh - 120px)); background: #fff; border-radius: 16px; box-shadow: 0 20px 48px rgba(0,0,0,0.25); overflow: hidden; opacity: 0; transform: translateY(16px) scale(0.98); transform-origin: bottom " + (isLeft ? "left" : "right") + "; transition: opacity 180ms ease, transform 180ms ease; pointer-events: none; display: flex; flex-direction: column; }",
       ".dai-panel.dai-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }",
@@ -889,7 +844,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-msg { display: flex; }",
       ".dai-msg-user { justify-content: flex-end; }",
       ".dai-msg-assistant { justify-content: flex-start; }",
-      ".dai-bubble { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }",
+      ".dai-bubble { max-width: 88%; padding: 14px 18px; border-radius: 16px; font-size: 15px; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }",
       ".dai-msg-user .dai-bubble { background: " + primary + "; color: #fff; }",
       ".dai-streaming .dai-bubble::after { content: '▊'; opacity: 0.6; margin-left: 2px; animation: dai-blink 1s steps(2) infinite; }",
       "@keyframes dai-blink { 50% { opacity: 0; } }",
@@ -917,7 +872,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   function chatIcon(){
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fff" stroke="none" aria-hidden="true"><path d="M4 3h16a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8.83a2 2 0 0 0-1.42.59L4 22V5a2 2 0 0 1 2-2z"/></svg>';
   }
   function closeIcon(){
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';

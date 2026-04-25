@@ -191,9 +191,8 @@ Write ONE short, warm opening line (max 2 sentences, under 200 characters) that:
 
 No lists. No markdown. No preamble. Just the opening line.`;
 
-    const modelName = process.env.AI_MODEL || DEFAULT_MODEL;
-    const { text, finishReason } = await generateText({
-      model: inception.chat(modelName),
+    const { text } = await generateText({
+      model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
       system: `You write short, warm openings for a church's website chat widget. One short message, no more than two sentences.`,
       messages: [{ role: "user", content: aiPrompt }],
       maxOutputTokens: 300,
@@ -201,19 +200,17 @@ No lists. No markdown. No preamble. Just the opening line.`;
     });
     const cleaned = (text ?? "").trim().replace(/^["']|["']$/g, "").slice(0, 400);
     if (!cleaned) {
-      return new NextResponse(
-        `ai_unavailable: empty text (finishReason=${finishReason}, textLen=${text?.length ?? 0})`,
-        { status: 503, headers: cors },
-      );
+      return new NextResponse("ai_unavailable", {
+        status: 503,
+        headers: cors,
+      });
     }
     opener = cleaned;
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err);
-    logger.warn("[embed/outreach] AI opener skipped", { error: errMsg });
-    return new NextResponse(`ai_unavailable: ${errMsg}`, {
-      status: 503,
-      headers: cors,
+    logger.warn("[embed/outreach] AI opener skipped", {
+      error: err instanceof Error ? err.message : String(err),
     });
+    return new NextResponse("ai_unavailable", { status: 503, headers: cors });
   }
 
   // Persist as the first assistant message of the conversation so
