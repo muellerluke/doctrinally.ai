@@ -218,6 +218,17 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // ──────────────────────────────────────────────────────────────
 
   var ui = {}; // filled by renderWidget
+
+  // Resolve a UI element by class. Falls back to a fresh shadow-DOM
+  // query if ui[key] is missing — defensive against edge cases where
+  // the bulk ui assignment in renderWidget doesn't take or gets clobbered.
+  function el(key, selector){
+    if (ui[key]) return ui[key];
+    var host = document.getElementById("doctrinally-embed-host");
+    var shadow = host && host.shadowRoot;
+    return shadow ? shadow.querySelector(selector) : null;
+  }
+
   function renderWidget(){
     var primary = (state.config && state.config.primaryColor) || "#4A2C2A";
     var host = document.createElement("div");
@@ -362,20 +373,21 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // Panel open/close
   // ──────────────────────────────────────────────────────────────
   function togglePanel(open){
-    if (!ui.panel || !ui.launcher) return;
+    var panel = el("panel", ".dai-panel");
+    var launcher = el("launcher", ".dai-launcher");
+    if (!panel || !launcher) return;
     state.open = open;
-    ui.panel.setAttribute("aria-hidden", open ? "false" : "true");
-    ui.panel.classList.toggle("dai-open", open);
-    ui.launcher.setAttribute("aria-expanded", open ? "true" : "false");
-    // Swap only the SVG so the unread dot child stays put. innerHTML
-    // replacement would wipe it and force a recreate-and-reattach
-    // dance that has historically been a source of "undefined.X" bugs.
-    var existingSvg = ui.launcher.querySelector("svg");
+    panel.setAttribute("aria-hidden", open ? "false" : "true");
+    panel.classList.toggle("dai-open", open);
+    launcher.setAttribute("aria-expanded", open ? "true" : "false");
+    var existingSvg = launcher.querySelector("svg");
     if (existingSvg) existingSvg.remove();
-    ui.launcher.insertAdjacentHTML("afterbegin", open ? closeIcon() : chatIcon());
-    if (open && ui.unread) ui.unread.style.display = "none";
+    launcher.insertAdjacentHTML("afterbegin", open ? closeIcon() : chatIcon());
     if (open) {
-      if (ui.textarea) ui.textarea.focus();
+      var unread = el("unread", ".dai-unread");
+      if (unread) unread.style.display = "none";
+      var textarea = el("textarea", ".dai-input");
+      if (textarea) textarea.focus();
       scrollToBottom();
     }
   }
@@ -549,6 +561,8 @@ const LOADER_TEMPLATE = String.raw`(function(){
   // ──────────────────────────────────────────────────────────────
   function renderMessage(role, content, citations, opts){
     opts = opts || {};
+    var messages = el("messages", ".dai-messages");
+    if (!messages) return null;
     var wrap = document.createElement("div");
     wrap.className = "dai-msg dai-msg-" + role + (opts.streaming ? " dai-streaming" : "");
     var bubble = document.createElement("div");
@@ -558,7 +572,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
     if (citations && citations.length) {
       bubble.appendChild(renderCitations(citations));
     }
-    ui.messages.appendChild(wrap);
+    messages.appendChild(wrap);
     scrollToBottom();
     return wrap;
   }
@@ -604,7 +618,8 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   function scrollToBottom(){
-    if (ui.messages) ui.messages.scrollTop = ui.messages.scrollHeight;
+    var messages = el("messages", ".dai-messages");
+    if (messages) messages.scrollTop = messages.scrollHeight;
   }
 
   function stripDocumentTags(text){
@@ -695,7 +710,8 @@ const LOADER_TEMPLATE = String.raw`(function(){
       // shows only after the visitor sends a message and gets a
       // genuine reply.
       if (!state.open) {
-        ui.unread.style.display = "block";
+        var unread = el("unread", ".dai-unread");
+        if (unread) unread.style.display = "block";
         showToast(data.opener);
       }
     }).catch(function(){ state.awaitingOutreach = false; });
@@ -731,13 +747,15 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   function showToast(text){
-    ui.toast.textContent = text.length > 120 ? text.slice(0, 120) + "…" : text;
-    ui.toast.classList.add("dai-toast-show");
+    var toast = el("toast", ".dai-toast");
+    if (!toast) return;
+    toast.textContent = text.length > 120 ? text.slice(0, 120) + "…" : text;
+    toast.classList.add("dai-toast-show");
     setTimeout(function(){
-      ui.toast.classList.remove("dai-toast-show");
+      toast.classList.remove("dai-toast-show");
     }, 6000);
-    ui.toast.addEventListener("click", function once(){
-      ui.toast.removeEventListener("click", once);
+    toast.addEventListener("click", function once(){
+      toast.removeEventListener("click", once);
       togglePanel(true);
     });
   }
