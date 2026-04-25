@@ -191,8 +191,16 @@ Write ONE short, warm opening line (max 2 sentences, under 200 characters) that:
 
 No lists. No markdown. No preamble. Just the opening line.`;
 
+    const modelName = process.env.AI_MODEL || DEFAULT_MODEL;
+    logger.info("[embed/outreach] calling AI", {
+      model: modelName,
+      hasKey: Boolean(process.env.INCEPTION_API_KEY),
+      keyLen: process.env.INCEPTION_API_KEY?.length ?? 0,
+      baseURL: process.env.INCEPTION_BASE_URL || "https://api.inceptionlabs.ai/v1",
+      promptLen: aiPrompt.length,
+    });
     const { text } = await generateText({
-      model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
+      model: inception.chat(modelName),
       system: `You write short, warm openings for a church's website chat widget. One short message, no more than two sentences.`,
       prompt: aiPrompt,
       maxOutputTokens: 140,
@@ -207,10 +215,12 @@ No lists. No markdown. No preamble. Just the opening line.`;
     }
     opener = cleaned;
   } catch (err) {
-    logger.warn("[embed/outreach] AI opener skipped", {
-      error: err instanceof Error ? err.message : String(err),
+    const errMsg = err instanceof Error ? err.message : String(err);
+    logger.warn("[embed/outreach] AI opener skipped", { error: errMsg });
+    return new NextResponse(`ai_unavailable: ${errMsg}`, {
+      status: 503,
+      headers: cors,
     });
-    return new NextResponse("ai_unavailable", { status: 503, headers: cors });
   }
 
   // Persist as the first assistant message of the conversation so
