@@ -902,7 +902,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-submit svg { width: 16px; height: 16px; }",
       ".dai-counter { padding: 0 16px 8px 16px; font-size: 11px; color: #888; text-align: right; background: #fff; }",
       ".dai-counter-over { color: #dc2626; font-weight: 600; }",
-      ".dai-toast { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " max-width: min(400px, calc(100vw - 40px)); background: #fff; color: #111; padding: 16px 20px; border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); font-size: 15px; line-height: 1.55; cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; }",
+      ".dai-toast { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(360px, calc(100vw - 40px)); background: #fff; color: #111; padding: 16px 20px; border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); font-size: 15px; line-height: 1.55; cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; }",
       ".dai-toast-show { opacity: 1; transform: translateY(0); pointer-events: auto; }",
       ".dai-prospect { padding: 12px 16px; background: #f7f4ef; border-top: 1px solid #e8e1d6; display: flex; flex-direction: column; gap: 8px; }",
       ".dai-prospect-intro { font-size: 13px; color: #333; line-height: 1.4; }",
