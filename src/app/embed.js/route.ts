@@ -390,10 +390,18 @@ const LOADER_TEMPLATE = String.raw`(function(){
     if (open) {
       var unread = el("unread", ".dai-unread");
       if (unread) unread.style.display = "none";
-      // Hide the outreach toast — its purpose ends the moment the
+      // Kill the outreach toast — its purpose ends the moment the
       // visitor opens the panel and sees the same message inside.
+      // Use inline styles in addition to removing the class so this
+      // works even if the toast had been re-shown by a stale
+      // setTimeout from showToast.
       var toast = el("toast", ".dai-toast");
-      if (toast) toast.classList.remove("dai-toast-show");
+      if (toast) {
+        toast.classList.remove("dai-toast-show");
+        toast.style.opacity = "0";
+        toast.style.pointerEvents = "none";
+        toast.style.display = "none";
+      }
       var textarea = el("textarea", ".dai-input");
       if (textarea) textarea.focus();
       scrollToBottom();
@@ -577,7 +585,14 @@ const LOADER_TEMPLATE = String.raw`(function(){
     var bubble = document.createElement("div");
     bubble.className = "dai-bubble";
     if (role === "assistant") {
-      bubble.innerHTML = renderRich(content, citations);
+      // Streaming + no content yet → bouncing-dots thinking indicator,
+      // matching the member chat. Replaced by real content the moment
+      // updateStreamingText fires with text.
+      if (opts.streaming && !content) {
+        bubble.innerHTML = thinkingDotsHtml();
+      } else {
+        bubble.innerHTML = renderRich(content, citations);
+      }
       bubble._citations = citations || [];
     } else {
       bubble.textContent = content || "";
@@ -590,8 +605,21 @@ const LOADER_TEMPLATE = String.raw`(function(){
 
   function updateStreamingText(node, text){
     var bubble = node.querySelector(".dai-bubble");
-    if (bubble) bubble.innerHTML = renderRich(text, null);
+    if (!bubble) return;
+    // Empty intermediate frames keep the thinking dots in place — only
+    // swap to rendered content once we actually have something.
+    if (text) {
+      bubble.innerHTML = renderRich(text, null);
+    }
     scrollToBottom();
+  }
+
+  function thinkingDotsHtml(){
+    return '<span class="dai-thinking" aria-label="Thinking">' +
+      '<span class="dai-thinking-dot"></span>' +
+      '<span class="dai-thinking-dot"></span>' +
+      '<span class="dai-thinking-dot"></span>' +
+    '</span>';
   }
 
   function finishAssistantMessage(node, text, citations){
@@ -765,25 +793,19 @@ const LOADER_TEMPLATE = String.raw`(function(){
     card.innerHTML = buildCitationCardHtml(cite);
     root.appendChild(card);
 
-    // Position above the chip if there's room, otherwise below.
+    // Match member-chat CitationBadge positioning exactly:
+    // center on the chip, prefer above with 6px gap, fall back below
+    // if there's not enough room. Clamp horizontally with 8px viewport
+    // padding. Card is fixed at 320×~280, same as the React version.
     var rect = anchor.getBoundingClientRect();
-    var cardRect = card.getBoundingClientRect();
-    var spaceAbove = rect.top;
-    var top, left;
-    if (spaceAbove >= cardRect.height + 12) {
-      top = rect.top - cardRect.height - 8;
-    } else {
-      top = rect.bottom + 8;
-    }
-    left = Math.max(
-      8,
-      Math.min(
-        rect.left,
-        (window.innerWidth || document.documentElement.clientWidth) -
-          cardRect.width -
-          8
-      )
-    );
+    var cardWidth = 320;
+    var cardHeight = 280;
+    var padding = 8;
+    var viewportW = window.innerWidth || document.documentElement.clientWidth;
+    var left = rect.left + rect.width / 2 - cardWidth / 2;
+    left = Math.max(padding, Math.min(left, viewportW - cardWidth - padding));
+    var top = rect.top - cardHeight - 6;
+    if (top < padding) top = rect.bottom + 6;
     card.style.top = top + "px";
     card.style.left = left + "px";
 
@@ -826,73 +848,143 @@ const LOADER_TEMPLATE = String.raw`(function(){
     if (ev.key === "Escape") hideCitationCard();
   }
 
+  // Builds the popup card HTML — node-for-node parity with the
+  // React CitationCard component in src/components/chat/citation-card.tsx.
   function buildCitationCardHtml(cite){
-    var typeLabel = citationTypeLabel(cite.documentType);
-    var meta = "";
-    if (typeof cite.pageNumber === "number") meta = "Page " + cite.pageNumber;
-    else if (typeof cite.startTime === "number") meta = formatTimestamp(cite.startTime);
-    var headerRight = meta
-      ? '<span class="dai-cite-card-meta">' + escapeHtml(meta) + '</span>'
-      : "";
+    var typeIconKey = {
+      youtube: "video",
+      video: "video",
+      pdf: "filetext",
+      word: "filetext",
+      platejs: "bookopen",
+      website_page: "globe"
+    }[cite.documentType] || "filetext";
 
-    var body = "";
-    if (cite.documentType === "youtube") {
-      var ytId = extractYouTubeId(cite.sourceUrl || "");
-      if (ytId) {
-        var start = typeof cite.startTime === "number" ? Math.floor(cite.startTime) : 0;
-        var embedUrl = "https://www.youtube.com/embed/" + ytId + (start ? "?start=" + start : "");
-        body =
-          '<div class="dai-cite-card-iframe">' +
-          '<iframe src="' + escapeHtml(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>' +
-          '</div>';
-      }
+    var parts = [];
+
+    // Header: icon + truncated title + close button.
+    parts.push('<div class="dai-cite-card-header">');
+    parts.push('<span class="dai-cite-card-type-icon">' + svgIcon(typeIconKey) + '</span>');
+    parts.push('<span class="dai-cite-card-title">' + escapeHtml(cite.documentTitle || "") + '</span>');
+    parts.push('<button type="button" class="dai-cite-card-close" aria-label="Close">' + svgIcon("x") + '</button>');
+    parts.push('</div>');
+
+    // Body
+    parts.push('<div class="dai-cite-card-body">');
+
+    // YouTube → embedded iframe.
+    if (cite.documentType === "youtube" && cite.sourceUrl) {
+      var embedUrl = getYouTubeEmbedUrl(cite.sourceUrl, cite.startTime);
+      parts.push(
+        '<div class="dai-cite-card-iframe">' +
+          '<iframe src="' + escapeHtml(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="' + escapeHtml(cite.documentTitle || "") + '"></iframe>' +
+        '</div>'
+      );
     }
-    if (!body && cite.chunkContent) {
-      body = '<div class="dai-cite-card-content">' + escapeHtml(cite.chunkContent) + '</div>';
+
+    // Non-YouTube video → "Jump to {ts}" pill.
+    if (cite.documentType === "video" && cite.sourceUrl) {
+      var label = (typeof cite.startTime === "number")
+        ? "Jump to " + formatTimestamp(cite.startTime)
+        : "View video";
+      parts.push(
+        '<div class="dai-cite-card-videoref">' +
+          svgIcon("play") +
+          '<span>' + escapeHtml(label) + '</span>' +
+        '</div>'
+      );
     }
 
-    var sourceLink = cite.sourceUrl
-      ? '<a class="dai-cite-card-link" href="' + escapeHtml(cite.sourceUrl) + '" target="_blank" rel="noopener noreferrer">View source ↗</a>'
-      : "";
+    // Timestamp info (only for video/youtube with startTime).
+    if ((cite.documentType === "youtube" || cite.documentType === "video") && typeof cite.startTime === "number") {
+      var range = "Timestamp: " + formatTimestamp(cite.startTime);
+      if (typeof cite.endTime === "number") range += " – " + formatTimestamp(cite.endTime);
+      parts.push('<div class="dai-cite-card-meta">' + escapeHtml(range) + '</div>');
+    }
 
-    return [
-      '<div class="dai-cite-card-header">',
-        '<span class="dai-cite-card-type">' + escapeHtml(typeLabel) + '</span>',
-        headerRight,
-        '<button type="button" class="dai-cite-card-close" aria-label="Close">×</button>',
-      '</div>',
-      '<div class="dai-cite-card-title">' + escapeHtml(cite.documentTitle || "Source") + '</div>',
-      cite.heading ? '<div class="dai-cite-card-heading">' + escapeHtml(cite.heading) + '</div>' : '',
-      body,
-      sourceLink
-    ].join("");
+    // Page number for PDFs.
+    if (cite.pageNumber != null) {
+      parts.push('<div class="dai-cite-card-meta">Page ' + escapeHtml(String(cite.pageNumber)) + '</div>');
+    }
+
+    // Section heading for Platejs documents.
+    if (cite.heading) {
+      parts.push('<div class="dai-cite-card-meta dai-cite-card-meta-heading">Section: ' + escapeHtml(cite.heading) + '</div>');
+    }
+
+    // Chunk content preview (text-xs leading-relaxed muted line-clamp-4).
+    if (cite.chunkContent) {
+      parts.push('<p class="dai-cite-card-content">' + escapeHtml(cite.chunkContent) + '</p>');
+    }
+
+    // View source link.
+    if (cite.sourceUrl) {
+      parts.push(
+        '<a class="dai-cite-card-link" href="' + escapeHtml(cite.sourceUrl) + '" target="_blank" rel="noopener noreferrer">' +
+          'View source' +
+          svgIcon("externallink") +
+        '</a>'
+      );
+    }
+
+    parts.push('</div>');
+    return parts.join("");
   }
 
-  function citationTypeLabel(t){
-    switch (t) {
-      case "youtube": return "YouTube";
-      case "video": return "Video";
-      case "pdf": return "PDF";
-      case "word": return "Document";
-      case "platejs": return "Document";
-      case "website_page": return "Website";
-      default: return "Source";
+  // Mirrors getYouTubeEmbedUrl in citation-card.tsx (incl. autoplay=0).
+  function getYouTubeEmbedUrl(sourceUrl, startTime){
+    var patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?#]+)/,
+      /youtube\.com\/shorts\/([^&?#]+)/
+    ];
+    var videoId = "";
+    for (var i = 0; i < patterns.length; i++) {
+      var m = sourceUrl.match(patterns[i]);
+      if (m) { videoId = m[1]; break; }
     }
+    if (!videoId) return sourceUrl;
+    var start = (typeof startTime === "number" && startTime > 0) ? "&start=" + Math.floor(startTime) : "";
+    return "https://www.youtube.com/embed/" + videoId + "?autoplay=0" + start;
   }
 
-  function extractYouTubeId(url){
-    if (!url) return null;
-    var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]+)/);
-    return m ? m[1] : null;
-  }
-
+  // Member chat uses m:ss (no hours), matching exactly.
   function formatTimestamp(seconds){
     var total = Math.floor(seconds || 0);
-    var h = Math.floor(total / 3600);
-    var m = Math.floor((total % 3600) / 60);
+    var m = Math.floor(total / 60);
     var s = total % 60;
-    var pad = function(n){ return n < 10 ? "0" + n : "" + n; };
-    return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s);
+    return m + ":" + (s < 10 ? "0" + s : "" + s);
+  }
+
+  // Lucide-style stroked SVG icons (24×24 viewBox, stroke=currentColor)
+  // — matches the icons used by CitationCard.
+  function svgIcon(name){
+    var head = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+    var tail = '</svg>';
+    var body = "";
+    switch (name) {
+      case "filetext":
+        body = '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
+        break;
+      case "video":
+        body = '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>';
+        break;
+      case "bookopen":
+        body = '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>';
+        break;
+      case "globe":
+        body = '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>';
+        break;
+      case "x":
+        body = '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+        break;
+      case "externallink":
+        body = '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>';
+        break;
+      case "play":
+        body = '<polygon points="5 3 19 12 5 21 5 3"/>';
+        break;
+    }
+    return head + body + tail;
   }
 
   function scrollToBottom(){
@@ -1083,8 +1175,12 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-msg-assistant { justify-content: flex-start; }",
       ".dai-bubble { max-width: 92%; padding: 14px 18px; border-radius: 18px; font-size: 16px; line-height: 1.6; word-wrap: break-word; color: " + fg + "; background: " + card + "; box-shadow: 0 1px 2px rgba(0,0,0,0.04); border: 1px solid " + border + "; }",
       ".dai-msg-user .dai-bubble { background: " + primary + "; color: #fff; border-color: transparent; }",
-      ".dai-streaming .dai-bubble::after { content: '▊'; opacity: 0.6; margin-left: 2px; animation: dai-blink 1s steps(2) infinite; }",
-      "@keyframes dai-blink { 50% { opacity: 0; } }",
+      // Three-dot thinking indicator (matches member chat).
+      ".dai-thinking { display: inline-flex; align-items: center; gap: 5px; padding: 2px 0; }",
+      ".dai-thinking-dot { width: 7px; height: 7px; border-radius: 999px; background: " + muted + "; opacity: 0.4; animation: dai-thinking-bounce 1.2s ease-in-out infinite; }",
+      ".dai-thinking-dot:nth-child(2) { animation-delay: 0.15s; }",
+      ".dai-thinking-dot:nth-child(3) { animation-delay: 0.3s; }",
+      "@keyframes dai-thinking-bounce { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }",
       // Markdown elements within bubbles (assistant only — user msgs stay plain).
       ".dai-bubble p { margin: 0 0 10px 0; }",
       ".dai-bubble p:last-child { margin-bottom: 0; }",
@@ -1103,23 +1199,42 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-bubble h2 { font-size: 17px; }",
       ".dai-bubble h3 { font-size: 16px; }",
       ".dai-bubble hr { margin: 12px 0; border: 0; border-top: 1px solid " + border + "; }",
-      // Inline citation chip — mirrors member chat's CitationBadge.
-      ".dai-cite-chip { all: initial; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin: 0 2px; border-radius: 4px; background: color-mix(in srgb, " + primary + " 15%, transparent); color: " + primary + "; font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1; vertical-align: baseline; cursor: pointer; transition: background 120ms; }",
-      ".dai-cite-chip:hover { background: color-mix(in srgb, " + primary + " 28%, transparent); }",
-      // Citation card popup — floats above the chip, mirrors member chat's CitationCard.
-      ".dai-cite-card { position: fixed; z-index: 2147483001; width: min(340px, calc(100vw - 32px)); max-height: min(420px, 70vh); overflow-y: auto; background: " + card + "; border: 1px solid " + border + "; border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.20); padding: 14px 16px; color: " + fg + "; font-size: 14px; line-height: 1.5; }",
-      ".dai-cite-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }",
-      ".dai-cite-card-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: " + primary + "; }",
-      ".dai-cite-card-meta { font-size: 11px; color: " + muted + "; }",
-      ".dai-cite-card-close { all: initial; cursor: pointer; margin-left: auto; color: " + muted + "; padding: 2px 6px; font-size: 18px; line-height: 1; font-family: inherit; }",
+      // Inline citation chip — exactly mirrors member chat's
+      // CitationBadge: h-4 min-w-4 px-1 rounded text-[10px] font-semibold
+      // bg-primary/15 hover:bg-primary/25 text-primary mx-0.5.
+      ".dai-cite-chip { all: initial; display: inline-flex; align-items: center; justify-content: center; height: 16px; min-width: 16px; padding: 0 4px; margin: 0 2px; border-radius: 4px; background: color-mix(in srgb, " + primary + " 15%, transparent); color: " + primary + "; font-family: inherit; font-size: 10px; font-weight: 600; line-height: 1; vertical-align: baseline; cursor: pointer; transition: background-color 150ms; }",
+      ".dai-cite-chip:hover { background: color-mix(in srgb, " + primary + " 25%, transparent); }",
+      // Citation card popup — exactly mirrors member chat's CitationCard.
+      // w-80 (320px) overflow-hidden rounded-lg border bg-card shadow-lg.
+      ".dai-cite-card { position: fixed; z-index: 2147483001; width: 320px; max-width: calc(100vw - 16px); overflow: hidden; background: " + card + "; border: 1px solid " + border + "; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); color: " + fg + "; font-family: inherit; }",
+      // Header: flex items-center gap-2 border-b px-3 py-2.
+      ".dai-cite-card-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid " + border + "; }",
+      // Type icon h-3.5 w-3.5 shrink-0 text-muted-foreground.
+      ".dai-cite-card-type-icon { width: 14px; height: 14px; flex-shrink: 0; color: " + muted + "; }",
+      // Title flex-1 truncate text-xs font-medium.
+      ".dai-cite-card-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; line-height: 1.4; color: " + fg + "; }",
+      // Close X rounded p-0.5 text-muted-foreground hover:text-foreground.
+      ".dai-cite-card-close { all: initial; cursor: pointer; color: " + muted + "; padding: 2px; border-radius: 2px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }",
       ".dai-cite-card-close:hover { color: " + fg + "; }",
-      ".dai-cite-card-title { font-family: 'Playfair Display', ui-serif, Georgia, serif; font-size: 16px; font-weight: 600; line-height: 1.35; margin-bottom: 4px; }",
-      ".dai-cite-card-heading { font-size: 12px; color: " + muted + "; margin-bottom: 8px; font-style: italic; }",
-      ".dai-cite-card-content { font-size: 13px; line-height: 1.55; color: " + fg + "; background: " + bg + "; border-left: 2px solid " + primary + "55; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; max-height: 140px; overflow-y: auto; }",
-      ".dai-cite-card-iframe { position: relative; padding-bottom: 56.25%; height: 0; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #000; }",
-      ".dai-cite-card-iframe iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }",
-      ".dai-cite-card-link { display: inline-block; font-size: 13px; color: " + primary + "; text-decoration: underline; text-decoration-color: " + primary + "55; }",
-      ".dai-cite-card-link:hover { text-decoration-color: " + primary + "; }",
+      ".dai-cite-card-close svg { width: 12px; height: 12px; }",
+      // Body p-3.
+      ".dai-cite-card-body { padding: 12px; }",
+      // YouTube iframe — mb-2 aspect-video overflow-hidden rounded.
+      ".dai-cite-card-iframe { margin-bottom: 8px; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: #000; }",
+      ".dai-cite-card-iframe iframe { width: 100%; height: 100%; border: 0; display: block; }",
+      // Non-youtube video pill — mb-2 flex items-center gap-2 rounded bg-muted/50 px-3 py-2.
+      ".dai-cite-card-videoref { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 4px; background: color-mix(in srgb, " + muted + " 18%, transparent); }",
+      ".dai-cite-card-videoref svg { width: 16px; height: 16px; color: " + primary + "; flex-shrink: 0; }",
+      ".dai-cite-card-videoref span { font-size: 12px; color: " + fg + "; }",
+      // Footnotes (timestamp / page / heading) — text-[10px] text-muted-foreground; heading also font-medium.
+      ".dai-cite-card-meta { margin-bottom: 8px; font-size: 10px; color: " + muted + "; line-height: 1.4; }",
+      ".dai-cite-card-meta-heading { font-weight: 500; }",
+      // Chunk content — text-xs leading-relaxed text-muted-foreground line-clamp-4.
+      ".dai-cite-card-content { margin: 0; font-size: 12px; line-height: 1.625; color: " + muted + "; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }",
+      // View source — mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline.
+      ".dai-cite-card-link { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; color: " + primary + "; text-decoration: none; }",
+      ".dai-cite-card-link:hover { text-decoration: underline; }",
+      ".dai-cite-card-link svg { width: 10px; height: 10px; }",
       ".dai-composer { display: flex; gap: 8px; padding: 12px 14px 6px 14px; background: " + card + "; border-top: 1px solid " + border + "; }",
       ".dai-input { all: initial; flex: 1; background: " + card + "; border: 1px solid " + border + "; border-radius: 10px; padding: 10px 14px; font-family: 'Source Serif 4', ui-serif, Georgia, serif; font-size: 15px; line-height: 1.5; min-height: 38px; max-height: 140px; resize: none; color: " + fg + "; }",
       ".dai-input:focus { outline: 2px solid " + primary + "33; border-color: " + primary + "; }",
