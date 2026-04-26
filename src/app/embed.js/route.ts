@@ -509,21 +509,33 @@ const LOADER_TEMPLATE = String.raw`(function(){
         });
       })().then(function(){
         buffer = buffer || "";
-        // Sentinels always come at the tail, each on its own newline-
-        // prefixed marker. Extract in order: chatId → citations → prospect.
+        // Sentinels always come at the tail, each prefixed with a
+        // newline so the next sentinel marker is what bounds the prior
+        // payload. Extract in order: chatId → citations → prospect.
+        //
+        // Citations and prospect payloads use any-char-lazy + a
+        // lookahead at the next sentinel (or end-of-string) instead of
+        // a "lazy bracket until first close-bracket" form. The earlier
+        // approach broke whenever a chunk's content contained a
+        // markdown link like (hello)(mailto:…) — the close-bracket
+        // appearing inside the JSON string value would terminate the
+        // regex match early, the rest of the citations payload would
+        // stay in the buffer, and that tail would then leak into the
+        // visible response. The same risk applied to the prospect
+        // payload if a captured name happened to contain a brace.
         var chatIdMatch = /__CHAT_ID__([^\n]*)/.exec(buffer);
         if (chatIdMatch) {
           state.chatId = chatIdMatch[1].trim();
           buffer = buffer.replace(chatIdMatch[0], "");
         }
         var citations = null;
-        var citeMatch = /__CITATIONS__(\[.*?\])/.exec(buffer);
+        var citeMatch = /\n?__CITATIONS__([\s\S]*?)(?=\n__|$)/.exec(buffer);
         if (citeMatch) {
           try { citations = JSON.parse(citeMatch[1]); } catch (_) {}
           buffer = buffer.replace(citeMatch[0], "");
         }
         var prospectPayload = null;
-        var prospectMatch = /__PROSPECT__(\{.*?\})/.exec(buffer);
+        var prospectMatch = /\n?__PROSPECT__([\s\S]*?)(?=\n__|$)/.exec(buffer);
         if (prospectMatch) {
           try { prospectPayload = JSON.parse(prospectMatch[1]); } catch (_) {}
           buffer = buffer.replace(prospectMatch[0], "");

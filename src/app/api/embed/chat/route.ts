@@ -249,6 +249,9 @@ Rules:
 - 1-2 citations total for the response — the single most relevant source per point.
 - NEVER cite the same documentId more than once in a response. If you'd reference the same source again, just continue without a tag.
 
+NEVER echo raw tool output:
+The \`search\` tool returns JSON-formatted data for YOUR context only. Read it, paraphrase what's useful into natural English prose, and emit a \`<document>\` tag for each citation. Under no circumstances write JSON syntax in your response — no curly braces \`{ }\` as data delimiters, no field names like \`chunkContent\`, \`documentId\`, \`documentTitle\`, \`documentType\`, \`sourceUrl\`, \`heading\`, \`resultNumber\`, no \`":"\` key-value pairs, no fragments like \`","chunkContent":"\`. If you find yourself about to write any of those, stop and rephrase as plain English. The visitor must never see the raw search payload.
+
 Bible quotations:
 - You may quote scripture from memory. Always include book, chapter, verse.
 - Default to NIV unless the user specifies another translation.
@@ -258,6 +261,46 @@ Bible quotations:
 
 If the search tool returns noResults:
 Say you didn't find specific teaching on the topic, offer to connect them with the church, and — if it's a general Bible or theology question — you may share a short, humble answer that starts with "Speaking generally…" Never present general answers as if they came from the church.`;
+}
+
+/**
+ * Detect tool-result JSON bleeding into the visible response. Mercury
+ * 2 occasionally echoes a fragment of its `search` tool output when
+ * the result set is large or the prompt is long — the user-visible
+ * answer ends with something like `…","chunkContent":"…"` followed by
+ * the entire payload. Stop sequences catch most of these in the model,
+ * but the regex is defense-in-depth.
+ *
+ * The keys below are unique to `chunksToMetadata` / search-tool output
+ * and don't appear in natural prose with a colon directly after a
+ * closing quote. Returns -1 if the text is clean.
+ */
+function findToolOutputLeakIndex(text: string): number {
+  const m = /"(chunkContent|resultNumber|documentId|documentTitle|documentType|sourceUrl)"\s*:/.exec(
+    text
+  );
+  return m ? m.index : -1;
+}
+
+/**
+ * When truncating a leaked response, walk back to the last clean
+ * sentence/paragraph boundary so the visitor doesn't see a half-word
+ * dangling. Only honors the boundary if it preserves more than half
+ * the text — past that, the leak hit early enough that showing
+ * "[clean prefix]" is worse than showing nothing useful.
+ */
+function trimToCleanBoundary(text: string): string {
+  const boundary = Math.max(
+    text.lastIndexOf("\n\n"),
+    text.lastIndexOf("\n"),
+    text.lastIndexOf(". "),
+    text.lastIndexOf("? "),
+    text.lastIndexOf("! ")
+  );
+  if (boundary > text.length / 2) {
+    return text.slice(0, boundary).replace(/\s+$/, "");
+  }
+  return text.replace(/\s+$/, "");
 }
 
 function chunksToMetadata(chunks: RetrievedChunk[]): Citation[] {
@@ -899,7 +942,24 @@ export async function POST(request: Request) {
         },
     stopWhen: stepCountIs(6),
     maxOutputTokens: 900,
-    stopSequences: ["<b>", "</b>", "<br", "</br"],
+    // Stop sequences serve two purposes here. The HTML fragments
+    // (`<b>`, `</b>`, `<br`, `</br`) catch a markdown-bleed bug where
+    // the model would start emitting raw HTML tags instead of
+    // markdown. The JSON-key fragments catch the model leaking its
+    // tool-result JSON into the visible response — Mercury 2 sometimes
+    // echoes a `","chunkContent":"…` fragment when the search results
+    // crowd its context, and these stops halt generation before the
+    // payload bleeds through. The post-stream scrub below is the
+    // belt-and-suspenders backstop if any of these slip past.
+    stopSequences: [
+      "<b>",
+      "</b>",
+      "<br",
+      "</br",
+      '"chunkContent"',
+      '"resultNumber"',
+      '"documentId"',
+    ],
     temperature: 0.7,
   });
 
@@ -908,10 +968,59 @@ export async function POST(request: Request) {
     async start(controller) {
       try {
         let fullText = "";
+        let leakTruncated = false;
         for await (const chunk of result.textStream) {
           if (!chunk) continue;
-          fullText += chunk;
-          controller.enqueue(encoder.encode(CHUNK_BOUNDARY + chunk));
+          // Once a leak has been detected and the stream truncated,
+          // drop everything else the model emits — we already cut
+          // cleanly and don't want late tokens reopening the wound.
+          if (leakTruncated) continue;
+
+          const candidate = fullText + chunk;
+          const leakIdx = findToolOutputLeakIndex(candidate);
+          if (leakIdx === -1) {
+            fullText = candidate;
+            controller.enqueue(encoder.encode(CHUNK_BOUNDARY + chunk));
+            continue;
+          }
+
+          // Tool-result JSON started leaking. Enqueue only the clean
+          // prefix from this chunk, snap to a sentence boundary for
+          // the persisted copy, and stop streaming further tokens.
+          const safeText = trimToCleanBoundary(candidate.slice(0, leakIdx));
+          if (safeText.length > fullText.length) {
+            const cleanChunk = chunk.slice(0, safeText.length - fullText.length);
+            if (cleanChunk) {
+              controller.enqueue(encoder.encode(CHUNK_BOUNDARY + cleanChunk));
+            }
+          }
+          fullText = safeText;
+          leakTruncated = true;
+          logger.warn("[embed/chat] tool-output leak in stream — truncated", {
+            churchId: verified.value.churchId,
+            chatId,
+            sessionId: verified.value.sessionId,
+            leakIndex: leakIdx,
+            keptChars: fullText.length,
+          });
+        }
+
+        // Defensive backstop: if the per-chunk check somehow missed a
+        // leak (a stop sequence fired mid-key, two-chunk straddle,
+        // etc.), scrub fullText once more before the citation
+        // sentinels go on the wire and before we persist.
+        if (!leakTruncated) {
+          const leakIdxFinal = findToolOutputLeakIndex(fullText);
+          if (leakIdxFinal !== -1) {
+            fullText = trimToCleanBoundary(fullText.slice(0, leakIdxFinal));
+            logger.warn("[embed/chat] tool-output leak post-stream — truncated", {
+              churchId: verified.value.churchId,
+              chatId,
+              sessionId: verified.value.sessionId,
+              leakIndex: leakIdxFinal,
+              keptChars: fullText.length,
+            });
+          }
         }
 
         const steps = await result.steps;
