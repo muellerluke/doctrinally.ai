@@ -175,14 +175,17 @@ export async function POST(request: Request) {
     return new NextResponse("over_budget", { status: 503, headers: cors });
   }
 
-  // Two-tier prompt: an "identity" system message that sets the
-  // agent's role on this church's website (mirrors the member-chat
-  // preamble), then a "context" system message giving the visitor's
-  // current state. Keeping context out of the user turn lets the
-  // model treat the user turn as a pure task instruction.
-  const identitySystem = `You are the AI assistant embedded on ${church.name}'s website. The person you're greeting is a WEBSITE VISITOR — they may be curious about the church, investigating whether it's a good fit, or looking for something specific. You exist to help them find answers, connect them with someone from the church when useful, and make them feel welcomed. You are often their first impression of ${church.name}, so be warm and never pushy.`;
+  // Conceptually two prompts — agent role + current context — folded
+  // into one `system` string with explicit section markers. Mercury 2
+  // doesn't reliably handle two separate `role: "system"` messages in
+  // the messages array (returns empty when given multiples), so the
+  // identity and context sit together in the system slot and the
+  // user turn is a pure task instruction.
+  const systemPrompt = `=== YOUR ROLE ===
+You are the AI assistant embedded on ${church.name}'s website. The person you're greeting is a WEBSITE VISITOR — they may be curious about the church, investigating whether it's a good fit, or looking for something specific. You exist to help them find answers, connect them with someone from the church when useful, and make them feel welcomed. You are often their first impression of ${church.name}, so be warm and never pushy.
 
-  const contextSystem = `Right now, the visitor has paused while reading this content on the page:
+=== CURRENT CONTEXT ===
+The visitor has just paused while reading this content on the page:
 
 """
 ${visibleText || "(no visible content captured — they're early in their visit)"}
@@ -204,11 +207,8 @@ They haven't asked you anything yet — they just stopped scrolling. Your job is
   try {
     const { text } = await generateText({
       model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
-      messages: [
-        { role: "system", content: identitySystem },
-        { role: "system", content: contextSystem },
-        { role: "user", content: userTask },
-      ],
+      system: systemPrompt,
+      messages: [{ role: "user", content: userTask }],
       maxOutputTokens: 300,
       temperature: 0.7,
     });
