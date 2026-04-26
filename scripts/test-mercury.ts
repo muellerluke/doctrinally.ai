@@ -156,6 +156,126 @@ await run("raw fetch /chat/completions (non-streaming)", async () => {
   );
 });
 
+await run("raw fetch — reasoning_effort: 'low'", async () => {
+  const res = await fetch(`${baseURL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: USER },
+      ],
+      max_tokens: 200,
+      temperature: 0.5,
+      reasoning_effort: "low",
+    }),
+  });
+  console.log("  status       :", res.status, res.statusText);
+  const body = await res.json();
+  console.log("  text         :", JSON.stringify(body.choices?.[0]?.message?.content));
+  console.log("  usage        :", JSON.stringify(body.usage));
+});
+
+await run("raw fetch — reasoning: { effort: 'minimal' }", async () => {
+  const res = await fetch(`${baseURL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: USER },
+      ],
+      max_tokens: 200,
+      temperature: 0.5,
+      reasoning: { effort: "minimal" },
+    }),
+  });
+  console.log("  status       :", res.status, res.statusText);
+  const body = await res.json();
+  console.log("  text         :", JSON.stringify(body.choices?.[0]?.message?.content));
+  console.log("  usage        :", JSON.stringify(body.usage));
+});
+
+await run("raw fetch — max_reasoning_tokens: 0", async () => {
+  const res = await fetch(`${baseURL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: USER },
+      ],
+      max_tokens: 200,
+      temperature: 0.5,
+      max_reasoning_tokens: 0,
+    }),
+  });
+  console.log("  status       :", res.status, res.statusText);
+  const body = await res.json();
+  console.log("  text         :", JSON.stringify(body.choices?.[0]?.message?.content));
+  console.log("  usage        :", JSON.stringify(body.usage));
+});
+
+await run("raw fetch — reasoning_budget: 0", async () => {
+  const res = await fetch(`${baseURL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: USER },
+      ],
+      max_tokens: 200,
+      temperature: 0.5,
+      reasoning_budget: 0,
+    }),
+  });
+  console.log("  status       :", res.status, res.statusText);
+  const body = await res.json();
+  console.log("  text         :", JSON.stringify(body.choices?.[0]?.message?.content));
+  console.log("  usage        :", JSON.stringify(body.usage));
+});
+
+await run("raw fetch — disable_reasoning: true", async () => {
+  const res = await fetch(`${baseURL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: modelName,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: USER },
+      ],
+      max_tokens: 200,
+      temperature: 0.5,
+      disable_reasoning: true,
+    }),
+  });
+  console.log("  status       :", res.status, res.statusText);
+  const body = await res.json();
+  console.log("  text         :", JSON.stringify(body.choices?.[0]?.message?.content));
+  console.log("  usage        :", JSON.stringify(body.usage));
+});
+
 await run("raw fetch /chat/completions (stream: true)", async () => {
   const res = await fetch(`${baseURL}/chat/completions`, {
     method: "POST",

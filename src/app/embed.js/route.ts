@@ -350,6 +350,26 @@ const LOADER_TEMPLATE = String.raw`(function(){
       sendMessage();
     });
 
+    // Citation chip click delegation. One handler on the messages
+    // container catches clicks on any chip, looks up the citation
+    // payload from the bubble, and pops a card.
+    messages.addEventListener("click", function(ev){
+      var t = ev.target;
+      var chip = t && t.closest ? t.closest(".dai-cite-chip") : null;
+      if (!chip) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      var bubble = chip.closest(".dai-bubble");
+      if (!bubble || !bubble._citations) return;
+      var idx = parseInt(chip.getAttribute("data-cite-idx") || "0", 10);
+      var cite = null;
+      for (var i = 0; i < bubble._citations.length; i++) {
+        if (bubble._citations[i].index === idx) { cite = bubble._citations[i]; break; }
+      }
+      if (!cite) return;
+      showCitationCard(chip, cite);
+    });
+
     setupEngagementTracking();
   }
 
@@ -370,6 +390,10 @@ const LOADER_TEMPLATE = String.raw`(function(){
     if (open) {
       var unread = el("unread", ".dai-unread");
       if (unread) unread.style.display = "none";
+      // Hide the outreach toast — its purpose ends the moment the
+      // visitor opens the panel and sees the same message inside.
+      var toast = el("toast", ".dai-toast");
+      if (toast) toast.classList.remove("dai-toast-show");
       var textarea = el("textarea", ".dai-input");
       if (textarea) textarea.focus();
       scrollToBottom();
@@ -554,6 +578,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
     bubble.className = "dai-bubble";
     if (role === "assistant") {
       bubble.innerHTML = renderRich(content, citations);
+      bubble._citations = citations || [];
     } else {
       bubble.textContent = content || "";
     }
@@ -572,7 +597,10 @@ const LOADER_TEMPLATE = String.raw`(function(){
   function finishAssistantMessage(node, text, citations){
     node.classList.remove("dai-streaming");
     var bubble = node.querySelector(".dai-bubble");
-    if (bubble) bubble.innerHTML = renderRich(text, citations);
+    if (bubble) {
+      bubble.innerHTML = renderRich(text, citations);
+      bubble._citations = citations || [];
+    }
     scrollToBottom();
   }
 
@@ -600,16 +628,15 @@ const LOADER_TEMPLATE = String.raw`(function(){
     // no markdown chars.
     var html = parseMarkdown(tokenized);
 
-    // Swap sentinels for chip HTML.
+    // Swap sentinels for chip HTML. Chips are buttons that open a
+    // popup card on click (matching member chat); the bubble carries
+    // the full citations array on a JS property so the click handler
+    // can pull metadata by index.
     html = html.replace(/\u0000C(\d+)\u0000/g, function(_, slotIdx){
       var info = tokenSlots[parseInt(slotIdx, 10)];
       var cite = citeByDocId[info.docId];
       var title = cite && cite.documentTitle ? cite.documentTitle : "Source " + info.index;
-      var url = cite && cite.sourceUrl ? cite.sourceUrl : "";
-      if (url) {
-        return '<a class="dai-cite-chip" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" title="' + escapeHtml(title) + '">' + info.index + '</a>';
-      }
-      return '<span class="dai-cite-chip" title="' + escapeHtml(title) + '">' + info.index + '</span>';
+      return '<button type="button" class="dai-cite-chip" data-cite-idx="' + info.index + '" title="' + escapeHtml(title) + '">' + info.index + '</button>';
     });
 
     return html;
@@ -720,6 +747,152 @@ const LOADER_TEMPLATE = String.raw`(function(){
       var url = "https://www.biblegateway.com/passage/?search=" + encodeURIComponent(match) + "&version=NIV";
       return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + match + '</a>';
     });
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Citation card popup — mirrors member chat's CitationCard
+  // ──────────────────────────────────────────────────────────────
+  function showCitationCard(anchor, cite){
+    hideCitationCard();
+    var host = document.getElementById("doctrinally-embed-host");
+    var shadow = host && host.shadowRoot;
+    if (!shadow) return;
+    var root = shadow.querySelector(".dai-root");
+    if (!root) return;
+
+    var card = document.createElement("div");
+    card.className = "dai-cite-card";
+    card.innerHTML = buildCitationCardHtml(cite);
+    root.appendChild(card);
+
+    // Position above the chip if there's room, otherwise below.
+    var rect = anchor.getBoundingClientRect();
+    var cardRect = card.getBoundingClientRect();
+    var spaceAbove = rect.top;
+    var top, left;
+    if (spaceAbove >= cardRect.height + 12) {
+      top = rect.top - cardRect.height - 8;
+    } else {
+      top = rect.bottom + 8;
+    }
+    left = Math.max(
+      8,
+      Math.min(
+        rect.left,
+        (window.innerWidth || document.documentElement.clientWidth) -
+          cardRect.width -
+          8
+      )
+    );
+    card.style.top = top + "px";
+    card.style.left = left + "px";
+
+    var closeBtn = card.querySelector(".dai-cite-card-close");
+    if (closeBtn) closeBtn.addEventListener("click", hideCitationCard);
+    setTimeout(function(){
+      document.addEventListener("click", citationOutsideClick, true);
+      document.addEventListener("keydown", citationEscapeKey, true);
+    }, 0);
+  }
+
+  function hideCitationCard(){
+    var host = document.getElementById("doctrinally-embed-host");
+    var shadow = host && host.shadowRoot;
+    if (!shadow) return;
+    var card = shadow.querySelector(".dai-cite-card");
+    if (card) card.remove();
+    document.removeEventListener("click", citationOutsideClick, true);
+    document.removeEventListener("keydown", citationEscapeKey, true);
+  }
+
+  function citationOutsideClick(ev){
+    var host = document.getElementById("doctrinally-embed-host");
+    var shadow = host && host.shadowRoot;
+    if (!shadow) return;
+    var card = shadow.querySelector(".dai-cite-card");
+    if (!card) { hideCitationCard(); return; }
+    var path = ev.composedPath ? ev.composedPath() : [];
+    if (path.indexOf(card) !== -1) return;
+    // Clicks on a citation chip are handled by the chip handler;
+    // letting them through here would just reopen the same card.
+    for (var i = 0; i < path.length; i++) {
+      var n = path[i];
+      if (n && n.classList && n.classList.contains("dai-cite-chip")) return;
+    }
+    hideCitationCard();
+  }
+
+  function citationEscapeKey(ev){
+    if (ev.key === "Escape") hideCitationCard();
+  }
+
+  function buildCitationCardHtml(cite){
+    var typeLabel = citationTypeLabel(cite.documentType);
+    var meta = "";
+    if (typeof cite.pageNumber === "number") meta = "Page " + cite.pageNumber;
+    else if (typeof cite.startTime === "number") meta = formatTimestamp(cite.startTime);
+    var headerRight = meta
+      ? '<span class="dai-cite-card-meta">' + escapeHtml(meta) + '</span>'
+      : "";
+
+    var body = "";
+    if (cite.documentType === "youtube") {
+      var ytId = extractYouTubeId(cite.sourceUrl || "");
+      if (ytId) {
+        var start = typeof cite.startTime === "number" ? Math.floor(cite.startTime) : 0;
+        var embedUrl = "https://www.youtube.com/embed/" + ytId + (start ? "?start=" + start : "");
+        body =
+          '<div class="dai-cite-card-iframe">' +
+          '<iframe src="' + escapeHtml(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>' +
+          '</div>';
+      }
+    }
+    if (!body && cite.chunkContent) {
+      body = '<div class="dai-cite-card-content">' + escapeHtml(cite.chunkContent) + '</div>';
+    }
+
+    var sourceLink = cite.sourceUrl
+      ? '<a class="dai-cite-card-link" href="' + escapeHtml(cite.sourceUrl) + '" target="_blank" rel="noopener noreferrer">View source ↗</a>'
+      : "";
+
+    return [
+      '<div class="dai-cite-card-header">',
+        '<span class="dai-cite-card-type">' + escapeHtml(typeLabel) + '</span>',
+        headerRight,
+        '<button type="button" class="dai-cite-card-close" aria-label="Close">×</button>',
+      '</div>',
+      '<div class="dai-cite-card-title">' + escapeHtml(cite.documentTitle || "Source") + '</div>',
+      cite.heading ? '<div class="dai-cite-card-heading">' + escapeHtml(cite.heading) + '</div>' : '',
+      body,
+      sourceLink
+    ].join("");
+  }
+
+  function citationTypeLabel(t){
+    switch (t) {
+      case "youtube": return "YouTube";
+      case "video": return "Video";
+      case "pdf": return "PDF";
+      case "word": return "Document";
+      case "platejs": return "Document";
+      case "website_page": return "Website";
+      default: return "Source";
+    }
+  }
+
+  function extractYouTubeId(url){
+    if (!url) return null;
+    var m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]+)/);
+    return m ? m[1] : null;
+  }
+
+  function formatTimestamp(seconds){
+    var total = Math.floor(seconds || 0);
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    var pad = function(n){ return n < 10 ? "0" + n : "" + n; };
+    return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s);
   }
 
   function scrollToBottom(){
@@ -931,8 +1104,22 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-bubble h3 { font-size: 16px; }",
       ".dai-bubble hr { margin: 12px 0; border: 0; border-top: 1px solid " + border + "; }",
       // Inline citation chip — mirrors member chat's CitationBadge.
-      ".dai-cite-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin: 0 2px; border-radius: 4px; background: color-mix(in srgb, " + primary + " 15%, transparent); color: " + primary + "; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; vertical-align: baseline; cursor: pointer; transition: background 120ms; }",
-      ".dai-cite-chip:hover { background: color-mix(in srgb, " + primary + " 28%, transparent); text-decoration: none; }",
+      ".dai-cite-chip { all: initial; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin: 0 2px; border-radius: 4px; background: color-mix(in srgb, " + primary + " 15%, transparent); color: " + primary + "; font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1; vertical-align: baseline; cursor: pointer; transition: background 120ms; }",
+      ".dai-cite-chip:hover { background: color-mix(in srgb, " + primary + " 28%, transparent); }",
+      // Citation card popup — floats above the chip, mirrors member chat's CitationCard.
+      ".dai-cite-card { position: fixed; z-index: 2147483001; width: min(340px, calc(100vw - 32px)); max-height: min(420px, 70vh); overflow-y: auto; background: " + card + "; border: 1px solid " + border + "; border-radius: 14px; box-shadow: 0 16px 40px rgba(0,0,0,0.20); padding: 14px 16px; color: " + fg + "; font-size: 14px; line-height: 1.5; }",
+      ".dai-cite-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }",
+      ".dai-cite-card-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: " + primary + "; }",
+      ".dai-cite-card-meta { font-size: 11px; color: " + muted + "; }",
+      ".dai-cite-card-close { all: initial; cursor: pointer; margin-left: auto; color: " + muted + "; padding: 2px 6px; font-size: 18px; line-height: 1; font-family: inherit; }",
+      ".dai-cite-card-close:hover { color: " + fg + "; }",
+      ".dai-cite-card-title { font-family: 'Playfair Display', ui-serif, Georgia, serif; font-size: 16px; font-weight: 600; line-height: 1.35; margin-bottom: 4px; }",
+      ".dai-cite-card-heading { font-size: 12px; color: " + muted + "; margin-bottom: 8px; font-style: italic; }",
+      ".dai-cite-card-content { font-size: 13px; line-height: 1.55; color: " + fg + "; background: " + bg + "; border-left: 2px solid " + primary + "55; padding: 8px 10px; border-radius: 4px; margin-bottom: 10px; max-height: 140px; overflow-y: auto; }",
+      ".dai-cite-card-iframe { position: relative; padding-bottom: 56.25%; height: 0; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #000; }",
+      ".dai-cite-card-iframe iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }",
+      ".dai-cite-card-link { display: inline-block; font-size: 13px; color: " + primary + "; text-decoration: underline; text-decoration-color: " + primary + "55; }",
+      ".dai-cite-card-link:hover { text-decoration-color: " + primary + "; }",
       ".dai-composer { display: flex; gap: 8px; padding: 12px 14px 6px 14px; background: " + card + "; border-top: 1px solid " + border + "; }",
       ".dai-input { all: initial; flex: 1; background: " + card + "; border: 1px solid " + border + "; border-radius: 10px; padding: 10px 14px; font-family: 'Source Serif 4', ui-serif, Georgia, serif; font-size: 15px; line-height: 1.5; min-height: 38px; max-height: 140px; resize: none; color: " + fg + "; }",
       ".dai-input:focus { outline: 2px solid " + primary + "33; border-color: " + primary + "; }",

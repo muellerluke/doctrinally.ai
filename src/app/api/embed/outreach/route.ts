@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { streamText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 import { db } from "@/db";
 import {
   churches,
@@ -50,11 +48,8 @@ export const runtime = "nodejs";
 
 const DEFAULT_MODEL = "mercury-2";
 
-const inception = createOpenAI({
-  baseURL:
-    process.env.INCEPTION_BASE_URL || "https://api.inceptionlabs.ai/v1",
-  apiKey: process.env.INCEPTION_API_KEY,
-});
+const INCEPTION_BASE_URL =
+  process.env.INCEPTION_BASE_URL || "https://api.inceptionlabs.ai/v1";
 
 export async function OPTIONS(request: Request) {
   const key = readKey(request);
@@ -196,28 +191,53 @@ export async function POST(request: Request) {
       ? `The visitor is reading this passage on the site:\n\n${snippet}\n\nWrite an opening line that acknowledges something specific from what they're reading, then invites them to ask a question, get help finding something, or connect with someone at the church. Keep it warm and human — no "I'm an AI" disclaimers.`
       : `The visitor just landed on the site without much visible content yet. Write a brief, warm opener that welcomes them and invites them to ask a question, get help finding something, or connect with someone at the church.`;
 
-    // Use streamText — that's the call shape the chat route uses
-    // and that mercury-2 actually completes reliably. generateText
-    // was empty-returning even when the model produced content,
-    // possibly due to an SDK ↔ Inception non-streaming-response
-    // serialization quirk.
-    //
-    // Two attempts. A single retry resolves the rare empty-stream
-    // case without adding noticeable latency.
+    // Raw fetch with `reasoning: { effort: "minimal" }` — the AI
+    // SDK doesn't pass that field through cleanly, but Mercury 2
+    // accepts it and drops reasoning_tokens to 0. Removing reasoning
+    // overhead cuts the call from ~600ms to ~250ms and frees the
+    // entire output budget for the visible message, which fixes the
+    // mid-sentence cutoffs we were seeing on context-rich prompts.
+    // Subsequent chat replies still go through streamText with
+    // reasoning enabled — that's where the model's reasoning earns
+    // its keep.
+    const modelName = process.env.AI_MODEL || DEFAULT_MODEL;
+    const apiKey = process.env.INCEPTION_API_KEY ?? "";
+
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const result = streamText({
-          model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
-          system,
-          prompt: userPrompt,
-          maxOutputTokens: 200,
-          temperature: 0.5,
-          abortSignal: AbortSignal.timeout(8000),
-        });
-        let text = "";
-        for await (const chunk of result.textStream) {
-          text += chunk;
+        const aiRes = await fetch(
+          `${INCEPTION_BASE_URL}/chat/completions`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: modelName,
+              messages: [
+                { role: "system", content: system },
+                { role: "user", content: userPrompt },
+              ],
+              max_tokens: 300,
+              temperature: 0.5,
+              reasoning: { effort: "minimal" },
+            }),
+            signal: AbortSignal.timeout(12000),
+          },
+        );
+        if (!aiRes.ok) {
+          logger.warn("[embed/outreach] AI HTTP error", {
+            attempt,
+            status: aiRes.status,
+            statusText: aiRes.statusText,
+          });
+          continue;
         }
+        const data = (await aiRes.json()) as {
+          choices?: Array<{ message?: { content?: string | null } }>;
+        };
+        const text = data.choices?.[0]?.message?.content ?? "";
         const cleaned = text
           .trim()
           .replace(/^["']|["']$/g, "")
