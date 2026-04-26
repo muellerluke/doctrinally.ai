@@ -50,8 +50,10 @@ export const POLICIES = {
   // Per-church global message flow. Safety net for a viral page
   // driving thousands of concurrent sessions.
   "chat:church": { capacity: 600, refillPerSec: 600 / 60 },
-  // Outreach per-church caps. Matches the plan's 50/hour soft cap.
-  "outreach:church": { capacity: 50, refillPerSec: 50 / 3600 },
+  // Outreach per-church caps. Sized for legitimate traffic on a
+  // popular church page (hundreds of visitors / hour each firing
+  // outreach once) plus headroom for development testing.
+  "outreach:church": { capacity: 1000, refillPerSec: 1000 / 3600 },
   // Prospect capture is intentionally tiny — one per session over a
   // long window is the legitimate pattern.
   "prospect:session": { capacity: 3, refillPerSec: 3 / 3600 },
