@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { generateText } from "ai";
+import { streamText } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { db } from "@/db";
 import {
@@ -154,74 +154,90 @@ export async function POST(request: Request) {
   };
   const visibleText = (body.visibleText || "").slice(0, 2000);
 
-  // Per-church throttle. Skip outreach when exceeded.
-  if (!consumeToken("outreach:church", verified.churchId)) {
-    return new NextResponse("throttled", { status: 503, headers: cors });
-  }
+  // Static fallback used whenever the AI call is skipped (throttled,
+  // over budget, errored, empty response). Per product requirement,
+  // the visitor should ALWAYS see an opener.
+  const fallbackOpener = `Hi — welcome to ${church.name}. Anything I can help you find or any question I can answer?`;
+  let opener: string = fallbackOpener;
 
-  // Backend cost-protection gate: skip the AI call when the church is
-  // already at its monthly question cap. AI openers don't bill the
-  // church, but we don't want to eat Inception API costs on top of an
-  // already-overbudget account.
+  const throttled = !consumeToken("outreach:church", verified.churchId);
   const [msgLimit, currentUsage] = await Promise.all([
     getEffectiveMessageLimit(verified.churchId),
     getCurrentUsage(verified.churchId),
   ]);
-  if (
-    msgLimit &&
-    currentUsage &&
-    currentUsage.questions >= msgLimit.effectiveMax
-  ) {
-    return new NextResponse("over_budget", { status: 503, headers: cors });
-  }
+  const overBudget = Boolean(
+    msgLimit && currentUsage && currentUsage.questions >= msgLimit.effectiveMax,
+  );
 
-  // Conceptually two prompts — agent role + current context — folded
-  // into one `system` string with explicit section markers. Mercury 2
-  // doesn't reliably handle two separate `role: "system"` messages in
-  // the messages array (returns empty when given multiples), so the
-  // identity and context sit together in the system slot and the
-  // user turn is a pure task instruction.
-  const systemPrompt = `=== YOUR ROLE ===
-You are the AI assistant embedded on ${church.name}'s website. The person you're greeting is a WEBSITE VISITOR — they may be curious about the church, investigating whether it's a good fit, or looking for something specific. You exist to help them find answers, connect them with someone from the church when useful, and make them feel welcomed. You are often their first impression of ${church.name}, so be warm and never pushy.
-
-=== CURRENT CONTEXT ===
-The visitor has just paused while reading this content on the page:
-
-"""
-${visibleText || "(no visible content captured — they're early in their visit)"}
-"""
-
-They haven't asked you anything yet — they just stopped scrolling. Your job is to write the very first message they'll see from you: a short, warm opener that acknowledges what they're looking at and invites them to ask a question, get help finding something, or be connected with someone at the church.`;
-
-  const userTask = `Write the opener now. Requirements:
-- ONE message only, max 2 sentences, under 200 characters total.
-- Reference something specific from what they're reading when possible.
-- End with an open invitation (a question or a "let me know" — not a guess at their intent).
-- No lists, no markdown, no preamble, no quotation marks. Just the line itself.`;
-
-  // Static fallback used when the model errors or returns empty.
-  // Per product requirement, the visitor should ALWAYS see an opener.
-  const fallbackOpener = `Hi — welcome to ${church.name}. Anything I can help you find or any question I can answer?`;
-
-  let opener: string = fallbackOpener;
-  try {
-    const { text } = await generateText({
-      model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
-      system: systemPrompt,
-      messages: [{ role: "user", content: userTask }],
-      maxOutputTokens: 300,
-      temperature: 0.7,
+  if (throttled || overBudget) {
+    logger.info("[embed/outreach] AI skipped — using fallback", {
+      reason: throttled ? "throttled" : "over_budget",
     });
-    const cleaned = (text ?? "").trim().replace(/^["']|["']$/g, "").slice(0, 400);
-    if (cleaned) {
-      opener = cleaned;
-    } else {
-      logger.warn("[embed/outreach] empty AI response — using fallback");
+  } else {
+    // Sanitize the page snippet — collapse whitespace, strip triple
+    // quotes (we use them as fences below), and cap the length. Long
+    // / messy snippets correlate strongly with Mercury 2 returning
+    // empty content, so keep this tight.
+    const snippet = (visibleText || "")
+      .replace(/[\r\n]+/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/"""+/g, '"')
+      .trim()
+      .slice(0, 800);
+
+    // Brief system + detailed user is the structure that completes
+    // reliably with mercury-2. The chat-route summary call uses the
+    // same shape (`prompt` shorthand + 8s timeout + low temp) and
+    // never empty-returns; the outreach call had been diverging from
+    // that pattern, which is why it kept failing.
+    const system = `You are the AI greeter on ${church.name}'s website. Write a warm opening message for a visitor who just paused on a page. Output JUST the message — no preamble, no markdown, no quotation marks. One short message, max 2 sentences, under 200 characters.`;
+
+    const userPrompt = snippet
+      ? `The visitor is reading this passage on the site:\n\n${snippet}\n\nWrite an opening line that acknowledges something specific from what they're reading, then invites them to ask a question, get help finding something, or connect with someone at the church. Keep it warm and human — no "I'm an AI" disclaimers.`
+      : `The visitor just landed on the site without much visible content yet. Write a brief, warm opener that welcomes them and invites them to ask a question, get help finding something, or connect with someone at the church.`;
+
+    // Use streamText — that's the call shape the chat route uses
+    // and that mercury-2 actually completes reliably. generateText
+    // was empty-returning even when the model produced content,
+    // possibly due to an SDK ↔ Inception non-streaming-response
+    // serialization quirk.
+    //
+    // Two attempts. A single retry resolves the rare empty-stream
+    // case without adding noticeable latency.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const result = streamText({
+          model: inception.chat(process.env.AI_MODEL || DEFAULT_MODEL),
+          system,
+          prompt: userPrompt,
+          maxOutputTokens: 200,
+          temperature: 0.5,
+          abortSignal: AbortSignal.timeout(8000),
+        });
+        let text = "";
+        for await (const chunk of result.textStream) {
+          text += chunk;
+        }
+        const cleaned = text
+          .trim()
+          .replace(/^["']|["']$/g, "")
+          .slice(0, 400);
+        if (cleaned.length >= 5) {
+          opener = cleaned;
+          break;
+        }
+        logger.warn("[embed/outreach] AI returned empty/short content", {
+          attempt,
+          length: cleaned.length,
+          sample: cleaned,
+        });
+      } catch (err) {
+        logger.warn("[embed/outreach] AI errored", {
+          attempt,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
-  } catch (err) {
-    logger.warn("[embed/outreach] AI errored — using fallback", {
-      error: err instanceof Error ? err.message : String(err),
-    });
   }
 
   // Persist as the first assistant message of the conversation so
