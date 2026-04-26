@@ -87,7 +87,18 @@ const LOADER_TEMPLATE = String.raw`(function(){
   var OUTREACH_KEY = "doctrinally_widget_outreach_" + KEY;
   var CONFIG_KEY = "doctrinally_widget_config_" + KEY;
   var PAGEVIEWS_KEY = "doctrinally_widget_pageviews_" + KEY;
-  var EMAIL_PROMPT_KEY = "doctrinally_widget_email_prompted_" + KEY;
+
+  // Load the same Google Fonts the member chat uses. Fonts loaded
+  // at the document level are inherited into shadow DOM, so this
+  // is the right place. Idempotent — only injects once per page.
+  (function loadFonts(){
+    if (document.getElementById("doctrinally-fonts")) return;
+    var link = document.createElement("link");
+    link.id = "doctrinally-fonts";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap";
+    (document.head || document.documentElement).appendChild(link);
+  })();
 
   // ── Shared state ──────────────────────────────────────────────
   var state = {
@@ -98,14 +109,9 @@ const LOADER_TEMPLATE = String.raw`(function(){
     sending: false,
     outreachSent: false,
     awaitingOutreach: false,
+    // Set to true when the AI's captureProspect tool fires, so we
+    // know the visitor has already shared their info this session.
     prospectCaptured: false,
-    // Tracks whether at least one full assistant reply to a user
-    // message has completed this page visit. Drives the "show email
-    // form after the first reply" trigger (concern #5).
-    firstReplyCompleted: false,
-    // True if the visitor already got the inline email prompt at
-    // some point — we don't want to re-prompt them every page visit.
-    emailPrompted: false,
     // Count of user messages sent from this page load only (reset
     // every page). The server holds the full history via summary.
     userMessagesThisVisit: 0,
@@ -120,7 +126,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
   try {
     state.token = localStorage.getItem(STORAGE_KEY) || null;
     state.outreachSent = localStorage.getItem(OUTREACH_KEY) === "1";
-    state.emailPrompted = localStorage.getItem(EMAIL_PROMPT_KEY) === "1";
   } catch (_) {}
 
   var cachedConfig = readCachedConfig();
@@ -271,21 +276,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
     messages.className = "dai-messages";
     panel.appendChild(messages);
 
-    // Prospect form (hidden until shown)
-    var prospectForm = document.createElement("div");
-    prospectForm.className = "dai-prospect";
-    prospectForm.style.display = "none";
-    prospectForm.innerHTML =
-      '<div class="dai-prospect-intro">Want ' + escapeHtml(state.config ? state.config.churchName : "us") + ' to follow up?<br>Leave your name and email.</div>' +
-      '<input class="dai-prospect-name" type="text" placeholder="Your name" autocomplete="name" maxlength="120">' +
-      '<input class="dai-prospect-email" type="email" placeholder="you@example.com" autocomplete="email" maxlength="254">' +
-      '<div class="dai-prospect-actions">' +
-        '<button type="button" class="dai-prospect-skip">Not now</button>' +
-        '<button type="button" class="dai-prospect-submit" disabled>Share my info</button>' +
-      '</div>' +
-      '<div class="dai-prospect-error"></div>';
-    panel.appendChild(prospectForm);
-
     // Composer
     var composer = document.createElement("form");
     composer.className = "dai-composer";
@@ -343,8 +333,7 @@ const LOADER_TEMPLATE = String.raw`(function(){
       messages: messages,
       textarea: textarea,
       submit: submit,
-      counter: counter,
-      prospectForm: prospectForm
+      counter: counter
     };
 
     // Wire events
@@ -360,11 +349,6 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ev.preventDefault();
       sendMessage();
     });
-
-    prospectForm.querySelector(".dai-prospect-skip").addEventListener("click", hideProspectForm);
-    prospectForm.querySelector(".dai-prospect-submit").addEventListener("click", submitProspect);
-    prospectForm.querySelector(".dai-prospect-name").addEventListener("input", maybeEnableProspect);
-    prospectForm.querySelector(".dai-prospect-email").addEventListener("input", maybeEnableProspect);
 
     setupEngagementTracking();
   }
@@ -532,21 +516,12 @@ const LOADER_TEMPLATE = String.raw`(function(){
           content: stripDocumentTags(responseText)
         });
 
-        // Tool-captured prospect — suppress the inline form and mark
-        // the session captured. The assistant's own reply will
-        // naturally thank the visitor, so no extra system message.
+        // The AI's captureProspect tool fired — mark the session so
+        // we don't pass the captureProspect tool registration on
+        // future requests. The assistant's reply naturally thanks
+        // the visitor, so nothing else to do here.
         if (prospectPayload) {
           state.prospectCaptured = true;
-          hideProspectForm();
-        }
-
-        // Concern #5: after the FIRST assistant reply to the
-        // visitor's first message this visit, surface the email
-        // capture form (unless already captured or previously
-        // prompted across visits).
-        if (!state.firstReplyCompleted) {
-          state.firstReplyCompleted = true;
-          maybeShowProspectForm();
         }
       });
     }).catch(function(err){
@@ -563,8 +538,12 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   // ──────────────────────────────────────────────────────────────
-  // Message rendering
+  // Message rendering — markdown + inline citation chips
   // ──────────────────────────────────────────────────────────────
+  // Mirrors the member chat: assistant bubbles render markdown
+  // (bold/italic/links/lists/code/headings/blockquotes) and replace
+  // <document>UUID</document> tags with inline numbered citation
+  // chips. Bible references like "John 3:16" auto-link to BibleGateway.
   function renderMessage(role, content, citations, opts){
     opts = opts || {};
     var messages = el("messages", ".dai-messages");
@@ -573,11 +552,12 @@ const LOADER_TEMPLATE = String.raw`(function(){
     wrap.className = "dai-msg dai-msg-" + role + (opts.streaming ? " dai-streaming" : "");
     var bubble = document.createElement("div");
     bubble.className = "dai-bubble";
-    bubble.textContent = stripDocumentTags(content);
-    wrap.appendChild(bubble);
-    if (citations && citations.length) {
-      bubble.appendChild(renderCitations(citations));
+    if (role === "assistant") {
+      bubble.innerHTML = renderRich(content, citations);
+    } else {
+      bubble.textContent = content || "";
     }
+    wrap.appendChild(bubble);
     messages.appendChild(wrap);
     scrollToBottom();
     return wrap;
@@ -585,42 +565,161 @@ const LOADER_TEMPLATE = String.raw`(function(){
 
   function updateStreamingText(node, text){
     var bubble = node.querySelector(".dai-bubble");
-    if (bubble) bubble.textContent = stripDocumentTags(text);
+    if (bubble) bubble.innerHTML = renderRich(text, null);
     scrollToBottom();
   }
 
   function finishAssistantMessage(node, text, citations){
     node.classList.remove("dai-streaming");
     var bubble = node.querySelector(".dai-bubble");
-    if (bubble) bubble.textContent = stripDocumentTags(text);
-    if (citations && citations.length && bubble) {
-      bubble.appendChild(renderCitations(citations));
-    }
+    if (bubble) bubble.innerHTML = renderRich(text, citations);
     scrollToBottom();
   }
 
-  function renderCitations(citations){
-    var list = document.createElement("div");
-    list.className = "dai-cites";
-    list.appendChild(document.createTextNode("Sources: "));
-    citations.forEach(function(c, i){
-      var item;
-      if (c.sourceUrl) {
-        item = document.createElement("a");
-        item.href = c.sourceUrl;
-        item.target = "_blank";
-        item.rel = "noopener noreferrer";
-      } else {
-        item = document.createElement("span");
-      }
-      item.className = "dai-cite";
-      item.textContent = c.documentTitle || ("Source " + (i + 1));
-      list.appendChild(item);
-      if (i < citations.length - 1) {
-        list.appendChild(document.createTextNode(", "));
-      }
+  // Build the assistant bubble's inner HTML: markdown to HTML with
+  // <document>UUID</document> tags swapped for numbered citation chips.
+  function renderRich(content, citations){
+    if (!content) return "";
+    var citeByDocId = {};
+    (citations || []).forEach(function(c){ citeByDocId[c.documentId] = c; });
+
+    // Tokenize: extract document tags and assign each docId an index
+    // in order of first appearance. Same docId reuses its index.
+    var docIdToIndex = {};
+    var nextIdx = 1;
+    var tokenSlots = [];
+    var tokenized = content.replace(/<document>([^<]+)<\/document>/g, function(_, docId){
+      if (!docIdToIndex[docId]) docIdToIndex[docId] = nextIdx++;
+      var slot = tokenSlots.length;
+      tokenSlots.push({ docId: docId, index: docIdToIndex[docId] });
+      return "\u0000C" + slot + "\u0000";
     });
-    return list;
+
+    // Run markdown on the tokenized content. The sentinel tokens
+    // pass through escape + parsing unchanged because they contain
+    // no markdown chars.
+    var html = parseMarkdown(tokenized);
+
+    // Swap sentinels for chip HTML.
+    html = html.replace(/\u0000C(\d+)\u0000/g, function(_, slotIdx){
+      var info = tokenSlots[parseInt(slotIdx, 10)];
+      var cite = citeByDocId[info.docId];
+      var title = cite && cite.documentTitle ? cite.documentTitle : "Source " + info.index;
+      var url = cite && cite.sourceUrl ? cite.sourceUrl : "";
+      if (url) {
+        return '<a class="dai-cite-chip" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer" title="' + escapeHtml(title) + '">' + info.index + '</a>';
+      }
+      return '<span class="dai-cite-chip" title="' + escapeHtml(title) + '">' + info.index + '</span>';
+    });
+
+    return html;
+  }
+
+  // Tiny markdown → HTML compiler. Handles paragraphs, headings,
+  // unordered/ordered lists, blockquotes, fenced code blocks,
+  // inline code, bold, italic, links, hr, and Bible references.
+  // (Backticks built from charCode 96 so the regexes don't terminate
+  // the outer String.raw template literal in route.ts.)
+  function parseMarkdown(text){
+    if (!text) return "";
+    var BT = String.fromCharCode(96);
+    var fencedRe = new RegExp(BT + BT + BT + "([\\s\\S]*?)" + BT + BT + BT, "g");
+    var inlineRe = new RegExp(BT + "([^" + BT + "\\n]+)" + BT, "g");
+
+    // 1. Pull out fenced code blocks before anything else processes them.
+    var codeBlocks = [];
+    text = text.replace(fencedRe, function(_, code){
+      var i = codeBlocks.push(code.replace(/^\n/, "").replace(/\n$/, "")) - 1;
+      return "\u0000B" + i + "\u0000";
+    });
+
+    // 2. And inline code spans, so backticks don't get misread.
+    var inlineCode = [];
+    text = text.replace(inlineRe, function(_, code){
+      var i = inlineCode.push(code) - 1;
+      return "\u0000I" + i + "\u0000";
+    });
+
+    // 3. Escape HTML on whatever's left. Sentinels are pure ASCII
+    //    digits + null bytes so they're untouched.
+    text = escapeHtml(text);
+
+    // 4. Walk lines to assemble block elements.
+    var lines = text.split("\n");
+    var out = [];
+    var openList = null; // "ul" | "ol" | null
+    var paraBuf = [];
+
+    function flushPara(){
+      if (paraBuf.length){
+        out.push("<p>" + processInline(paraBuf.join(" ")) + "</p>");
+        paraBuf = [];
+      }
+    }
+    function flushList(){
+      if (openList){ out.push("</" + openList + ">"); openList = null; }
+    }
+
+    for (var i = 0; i < lines.length; i++){
+      var raw = lines[i];
+      var line = raw.replace(/\s+$/, "");
+      var trimmed = line.replace(/^\s+/, "");
+      if (!trimmed){ flushPara(); flushList(); continue; }
+
+      var h = trimmed.match(/^(#{1,3})\s+(.+)$/);
+      if (h){ flushPara(); flushList(); var lvl = h[1].length; out.push("<h" + lvl + ">" + processInline(h[2]) + "</h" + lvl + ">"); continue; }
+
+      if (/^---+$/.test(trimmed)){ flushPara(); flushList(); out.push("<hr>"); continue; }
+
+      if (/^&gt;\s?/.test(trimmed)){ flushPara(); flushList(); out.push("<blockquote>" + processInline(trimmed.replace(/^&gt;\s?/, "")) + "</blockquote>"); continue; }
+
+      var ul = trimmed.match(/^[-*]\s+(.+)$/);
+      if (ul){ flushPara(); if (openList !== "ul"){ flushList(); out.push("<ul>"); openList = "ul"; } out.push("<li>" + processInline(ul[1]) + "</li>"); continue; }
+
+      var ol = trimmed.match(/^\d+\.\s+(.+)$/);
+      if (ol){ flushPara(); if (openList !== "ol"){ flushList(); out.push("<ol>"); openList = "ol"; } out.push("<li>" + processInline(ol[1]) + "</li>"); continue; }
+
+      flushList();
+      paraBuf.push(trimmed);
+    }
+    flushPara();
+    flushList();
+
+    var html = out.join("");
+
+    // 5. Restore inline + fenced code (escaped, since they were pulled out
+    //    BEFORE the global escape pass).
+    html = html.replace(/\u0000I(\d+)\u0000/g, function(_, idx){
+      return "<code>" + escapeHtml(inlineCode[parseInt(idx, 10)]) + "</code>";
+    });
+    html = html.replace(/\u0000B(\d+)\u0000/g, function(_, idx){
+      return "<pre><code>" + escapeHtml(codeBlocks[parseInt(idx, 10)]) + "</code></pre>";
+    });
+
+    return html;
+  }
+
+  // Inline markdown: bold, italic, links, then Bible references.
+  function processInline(s){
+    s = s.replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/__([^_\n]+?)__/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>");
+    s = s.replace(/(^|[^_])_([^_\n]+?)_(?!_)/g, "$1<em>$2</em>");
+    s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function(_, txt, url){
+      return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">' + txt + '</a>';
+    });
+    s = linkBibleRefs(s);
+    return s;
+  }
+
+  // Auto-link Bible references like "John 3:16", "1 Cor 13:4-7", "Psalm 23".
+  function linkBibleRefs(s){
+    var bookList = "Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1 Samuel|2 Samuel|1 Kings|2 Kings|1 Chronicles|2 Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song of Solomon|Song of Songs|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1 Corinthians|2 Corinthians|Galatians|Ephesians|Philippians|Colossians|1 Thessalonians|2 Thessalonians|1 Timothy|2 Timothy|Titus|Philemon|Hebrews|James|1 Peter|2 Peter|1 John|2 John|3 John|Jude|Revelation";
+    var re = new RegExp("\\b(" + bookList + ")\\s+(\\d+)(?::(\\d+)(?:-(\\d+))?)?\\b", "g");
+    return s.replace(re, function(match){
+      var url = "https://www.biblegateway.com/passage/?search=" + encodeURIComponent(match) + "&version=NIV";
+      return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + match + '</a>';
+    });
   }
 
   function scrollToBottom(){
@@ -782,136 +881,68 @@ const LOADER_TEMPLATE = String.raw`(function(){
   }
 
   // ──────────────────────────────────────────────────────────────
-  // Prospect capture — UI form
-  // ──────────────────────────────────────────────────────────────
-  // Show the inline form right after the first assistant reply
-  // completes (concern #5). Skip if already captured, already shown
-  // this visit, or already prompted in a prior visit. The LLM can
-  // also capture via the captureProspect tool — when that fires we
-  // set prospectCaptured = true from the __PROSPECT__ sentinel and
-  // this function short-circuits.
-  function maybeShowProspectForm(){
-    if (PREVIEW_MODE) return;
-    if (state.prospectCaptured) return;
-    if (state.emailPrompted) return; // don't re-prompt across visits
-    var prospectForm = el("prospectForm", ".dai-prospect");
-    if (!prospectForm) return;
-    if (prospectForm.style.display !== "none") return;
-    prospectForm.style.display = "block";
-    state.emailPrompted = true;
-    try { localStorage.setItem(EMAIL_PROMPT_KEY, "1"); } catch (_) {}
-    scrollToBottom();
-    maybeEnableProspect();
-  }
-
-  function hideProspectForm(){
-    var prospectForm = el("prospectForm", ".dai-prospect");
-    if (!prospectForm) return;
-    prospectForm.style.display = "none";
-    // Treat "hidden" as "don't re-prompt this visitor" — whether
-    // they captured, dismissed, or the tool preempted the form.
-    state.emailPrompted = true;
-    try { localStorage.setItem(EMAIL_PROMPT_KEY, "1"); } catch (_) {}
-  }
-
-  function maybeEnableProspect(){
-    var prospectForm = el("prospectForm", ".dai-prospect");
-    if (!prospectForm) return;
-    var name = prospectForm.querySelector(".dai-prospect-name").value.trim();
-    var email = prospectForm.querySelector(".dai-prospect-email").value.trim();
-    var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-    var submit = prospectForm.querySelector(".dai-prospect-submit");
-    submit.disabled = !(name.length >= 2 && emailOk);
-  }
-
-  function submitProspect(){
-    var prospectForm = el("prospectForm", ".dai-prospect");
-    if (!prospectForm) return;
-    var name = prospectForm.querySelector(".dai-prospect-name").value.trim();
-    var email = prospectForm.querySelector(".dai-prospect-email").value.trim();
-    var errorEl = prospectForm.querySelector(".dai-prospect-error");
-    errorEl.textContent = "";
-    var submit = prospectForm.querySelector(".dai-prospect-submit");
-    submit.disabled = true;
-
-    fetch(APP_URL + "/api/embed/prospects?k=" + encodeURIComponent(KEY), {
-      method: "POST",
-      mode: "cors",
-      credentials: "omit",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Doctrinally-Session": state.token
-      },
-      body: JSON.stringify({
-        name: name,
-        email: email,
-        pageUrl: location.href
-      })
-    }).then(function(res){
-      return res.json().then(function(body){
-        return { ok: res.ok, status: res.status, body: body };
-      });
-    }).then(function(r){
-      if (!r.ok) {
-        errorEl.textContent = (r.body && r.body.message) || "Couldn't save that — please try again.";
-        submit.disabled = false;
-        return;
-      }
-      state.prospectCaptured = true;
-      prospectForm.style.display = "none";
-      renderMessage("assistant", "Thanks! Someone from " + ((state.config && state.config.churchName) || "the church") + " will reach out soon.", null);
-    }).catch(function(){
-      errorEl.textContent = "Network error — please try again.";
-      submit.disabled = false;
-    });
-  }
-
-  // ──────────────────────────────────────────────────────────────
   // CSS
   // ──────────────────────────────────────────────────────────────
   function widgetCss(primary, isLeft){
+    // Color tokens approximating member chat's OKLCH palette in sRGB.
+    var bg = "#fbf9f5";          // panel background (warm off-white)
+    var card = "#ffffff";        // assistant bubble background
+    var fg = "#3a302a";          // body text
+    var muted = "#7c6e62";       // secondary text
+    var border = "#e8e2d8";      // dividers
     return [
       ":host { all: initial; }",
-      ":host, * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }",
+      ":host, * { box-sizing: border-box; font-family: 'Source Serif 4', ui-serif, Georgia, 'Times New Roman', serif; }",
       ".dai-root { position: fixed; bottom: 20px; z-index: 2147483000; " + (isLeft ? "left: 20px;" : "right: 20px;") + " }",
       ".dai-launcher { all: initial; box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; background: " + primary + "; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 24px rgba(0,0,0,0.22); border: 0; position: relative; transition: transform 150ms ease; }",
       ".dai-launcher:hover { transform: scale(1.05); }",
       ".dai-launcher svg { width: 28px; height: 28px; display: block; color: #fff; }",
       ".dai-unread { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 999px; background: #ef4444; border: 2px solid #fff; }",
-      ".dai-panel { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(400px, calc(100vw - 40px)); height: min(600px, calc(100vh - 120px)); background: #fff; border-radius: 16px; box-shadow: 0 20px 48px rgba(0,0,0,0.25); overflow: hidden; opacity: 0; transform: translateY(16px) scale(0.98); transform-origin: bottom " + (isLeft ? "left" : "right") + "; transition: opacity 180ms ease, transform 180ms ease; pointer-events: none; display: flex; flex-direction: column; }",
+      ".dai-panel { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(400px, calc(100vw - 40px)); height: min(600px, calc(100vh - 120px)); background: " + bg + "; border-radius: 16px; box-shadow: 0 20px 48px rgba(0,0,0,0.25); overflow: hidden; opacity: 0; transform: translateY(16px) scale(0.98); transform-origin: bottom " + (isLeft ? "left" : "right") + "; transition: opacity 180ms ease, transform 180ms ease; pointer-events: none; display: flex; flex-direction: column; color: " + fg + "; }",
       ".dai-panel.dai-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }",
-      ".dai-header { background: " + primary + "; color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }",
-      ".dai-title { font-size: 15px; font-weight: 600; }",
+      ".dai-header { background: " + primary + "; color: #fff; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }",
+      ".dai-title { font-family: 'Playfair Display', ui-serif, Georgia, serif; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }",
       ".dai-close { all: initial; cursor: pointer; color: #fff; padding: 4px; display: flex; }",
       ".dai-close svg { width: 18px; height: 18px; }",
-      ".dai-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #fafafa; }",
+      ".dai-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: " + bg + "; }",
       ".dai-msg { display: flex; }",
       ".dai-msg-user { justify-content: flex-end; }",
       ".dai-msg-assistant { justify-content: flex-start; }",
-      ".dai-bubble { max-width: 92%; padding: 16px 20px; border-radius: 18px; font-size: 16px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; color: #111; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }",
-      ".dai-msg-user .dai-bubble { background: " + primary + "; color: #fff; }",
+      ".dai-bubble { max-width: 92%; padding: 14px 18px; border-radius: 18px; font-size: 16px; line-height: 1.6; word-wrap: break-word; color: " + fg + "; background: " + card + "; box-shadow: 0 1px 2px rgba(0,0,0,0.04); border: 1px solid " + border + "; }",
+      ".dai-msg-user .dai-bubble { background: " + primary + "; color: #fff; border-color: transparent; }",
       ".dai-streaming .dai-bubble::after { content: '▊'; opacity: 0.6; margin-left: 2px; animation: dai-blink 1s steps(2) infinite; }",
       "@keyframes dai-blink { 50% { opacity: 0; } }",
-      ".dai-cites { margin-top: 8px; font-size: 12px; color: #555; }",
-      ".dai-cite { color: " + primary + "; text-decoration: underline; margin-right: 4px; }",
-      ".dai-composer { display: flex; gap: 8px; padding: 10px 12px 4px 12px; background: #fff; border-top: 1px solid #eee; }",
-      ".dai-input { all: initial; flex: 1; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 8px 12px; font-size: 14px; line-height: 1.4; min-height: 36px; max-height: 140px; resize: none; color: #111; }",
+      // Markdown elements within bubbles (assistant only — user msgs stay plain).
+      ".dai-bubble p { margin: 0 0 10px 0; }",
+      ".dai-bubble p:last-child { margin-bottom: 0; }",
+      ".dai-bubble strong { font-weight: 600; }",
+      ".dai-bubble em { font-style: italic; }",
+      ".dai-bubble ul, .dai-bubble ol { margin: 0 0 10px 0; padding-left: 22px; }",
+      ".dai-bubble li { margin-bottom: 4px; }",
+      ".dai-bubble blockquote { margin: 0 0 10px 0; padding-left: 12px; border-left: 2px solid " + primary + "55; color: " + muted + "; font-style: italic; }",
+      ".dai-bubble code { font-family: ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace; background: " + bg + "; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }",
+      ".dai-bubble pre { margin: 0 0 10px 0; padding: 10px 12px; background: " + bg + "; border: 1px solid " + border + "; border-radius: 8px; overflow-x: auto; font-size: 13px; }",
+      ".dai-bubble pre code { background: transparent; padding: 0; }",
+      ".dai-bubble a { color: " + primary + "; text-decoration: underline; text-decoration-color: " + primary + "55; text-underline-offset: 2px; }",
+      ".dai-bubble a:hover { text-decoration-color: " + primary + "; }",
+      ".dai-bubble h1, .dai-bubble h2, .dai-bubble h3 { font-family: 'Playfair Display', ui-serif, Georgia, serif; font-weight: 600; margin: 0 0 8px 0; line-height: 1.3; }",
+      ".dai-bubble h1 { font-size: 18px; }",
+      ".dai-bubble h2 { font-size: 17px; }",
+      ".dai-bubble h3 { font-size: 16px; }",
+      ".dai-bubble hr { margin: 12px 0; border: 0; border-top: 1px solid " + border + "; }",
+      // Inline citation chip — mirrors member chat's CitationBadge.
+      ".dai-cite-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; margin: 0 2px; border-radius: 4px; background: color-mix(in srgb, " + primary + " 15%, transparent); color: " + primary + "; font-size: 11px; font-weight: 600; line-height: 1; text-decoration: none; vertical-align: baseline; cursor: pointer; transition: background 120ms; }",
+      ".dai-cite-chip:hover { background: color-mix(in srgb, " + primary + " 28%, transparent); text-decoration: none; }",
+      ".dai-composer { display: flex; gap: 8px; padding: 12px 14px 6px 14px; background: " + card + "; border-top: 1px solid " + border + "; }",
+      ".dai-input { all: initial; flex: 1; background: " + card + "; border: 1px solid " + border + "; border-radius: 10px; padding: 10px 14px; font-family: 'Source Serif 4', ui-serif, Georgia, serif; font-size: 15px; line-height: 1.5; min-height: 38px; max-height: 140px; resize: none; color: " + fg + "; }",
       ".dai-input:focus { outline: 2px solid " + primary + "33; border-color: " + primary + "; }",
-      ".dai-submit { all: initial; cursor: pointer; background: " + primary + "; color: #fff; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; align-self: flex-end; }",
+      ".dai-submit { all: initial; cursor: pointer; background: " + primary + "; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; align-self: flex-end; }",
       ".dai-submit:disabled { opacity: 0.4; cursor: default; }",
       ".dai-submit svg { width: 16px; height: 16px; }",
-      ".dai-counter { padding: 0 16px 8px 16px; font-size: 11px; color: #888; text-align: right; background: #fff; }",
+      ".dai-counter { padding: 0 18px 10px 18px; font-size: 11px; color: " + muted + "; text-align: right; background: " + card + "; }",
       ".dai-counter-over { color: #dc2626; font-weight: 600; }",
-      ".dai-toast { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(360px, calc(100vw - 40px)); background: #fff; color: #111; padding: 16px 20px; border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); font-size: 15px; line-height: 1.55; cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; }",
-      ".dai-toast-show { opacity: 1; transform: translateY(0); pointer-events: auto; }",
-      ".dai-prospect { padding: 12px 16px; background: #f7f4ef; border-top: 1px solid #e8e1d6; display: flex; flex-direction: column; gap: 8px; }",
-      ".dai-prospect-intro { font-size: 13px; color: #333; line-height: 1.4; }",
-      ".dai-prospect input { all: initial; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #111; }",
-      ".dai-prospect-actions { display: flex; gap: 8px; justify-content: flex-end; }",
-      ".dai-prospect-skip { all: initial; cursor: pointer; padding: 6px 10px; font-size: 12px; color: #666; }",
-      ".dai-prospect-submit { all: initial; cursor: pointer; background: " + primary + "; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; }",
-      ".dai-prospect-submit:disabled { opacity: 0.4; cursor: default; }",
-      ".dai-prospect-error { font-size: 12px; color: #dc2626; }"
+      ".dai-toast { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(360px, calc(100vw - 40px)); background: " + card + "; color: " + fg + "; padding: 16px 20px; border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); border: 1px solid " + border + "; font-size: 15px; line-height: 1.55; cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 200ms ease, transform 200ms ease; pointer-events: none; }",
+      ".dai-toast-show { opacity: 1; transform: translateY(0); pointer-events: auto; }"
     ].join(" ");
   }
 
