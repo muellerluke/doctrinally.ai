@@ -11,30 +11,24 @@ import type { ProspectStatus } from "@/db/schema/prospects";
 
 export interface ProspectRow {
   id: string;
-  name: string;
-  email: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
   status: ProspectStatus;
   sourceType: string;
   sourceUrl: string | null;
+  sourcePageTitle: string | null;
   chatId: string | null;
   createdAt: string; // ISO
 }
 
-function formatSource(row: ProspectRow): string {
-  if (row.sourceType === "embed_widget") return "Website chat";
-  if (row.sourceType === "contact_form") return "Contact form";
-  if (row.sourceType === "manual") return "Manual entry";
-  if (row.sourceType === "import") return "Import";
-  return row.sourceType;
-}
-
-function formatPagePath(url: string | null): string {
-  if (!url) return "—";
+function formatPagePath(url: string | null): string | null {
+  if (!url) return null;
   try {
     const u = new URL(url);
     return u.pathname === "/" ? u.host : u.pathname;
   } catch {
-    return url.slice(0, 40);
+    return url.slice(0, 60);
   }
 }
 
@@ -47,38 +41,82 @@ const columns: ColumnDef<ProspectRow>[] = [
         href={`/prospects/${row.original.id}`}
         className="font-medium text-foreground hover:underline"
       >
-        {row.original.name}
+        {row.original.name ?? (
+          <span className="italic text-muted-foreground">No name</span>
+        )}
       </Link>
     ),
   },
   {
-    accessorKey: "email",
-    header: "Email",
-    cell: ({ row }) => (
-      <a
-        href={`mailto:${row.original.email}`}
-        className="text-muted-foreground hover:text-foreground hover:underline"
-      >
-        {row.original.email}
-      </a>
-    ),
+    id: "contact",
+    header: "Contact",
+    cell: ({ row }) => {
+      const { email, phone } = row.original;
+      if (!email && !phone) {
+        return <span className="text-sm text-muted-foreground">—</span>;
+      }
+      return (
+        <div className="space-y-0.5 text-sm">
+          {email && (
+            <a
+              href={`mailto:${email}`}
+              className="block truncate text-foreground/80 hover:text-foreground hover:underline"
+            >
+              {email}
+            </a>
+          )}
+          {phone && (
+            <a
+              href={`tel:${phone.replace(/[^+\d]/g, "")}`}
+              className="block truncate text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {phone}
+            </a>
+          )}
+        </div>
+      );
+    },
   },
   {
-    id: "source",
-    header: "Source",
-    cell: ({ row }) => (
-      <div className="text-sm">
-        <div className="text-foreground/80">{formatSource(row.original)}</div>
-        {row.original.sourceUrl && (
-          <div
-            className="truncate text-xs text-muted-foreground"
-            title={row.original.sourceUrl}
-          >
-            {formatPagePath(row.original.sourceUrl)}
-          </div>
-        )}
-      </div>
-    ),
+    id: "viewing",
+    header: "Viewing",
+    cell: ({ row }) => {
+      const { sourceUrl, sourcePageTitle, sourceType } = row.original;
+      const path = formatPagePath(sourceUrl);
+      const sourceLabel =
+        sourceType === "embed_widget"
+          ? null
+          : sourceType === "contact_form"
+          ? "Contact form"
+          : sourceType === "manual"
+          ? "Manual entry"
+          : sourceType === "import"
+          ? "Import"
+          : sourceType;
+      // Non-widget sources don't carry a page — show the source label
+      // instead so the column is never empty.
+      if (!path && !sourcePageTitle) {
+        return (
+          <span className="text-sm text-muted-foreground">
+            {sourceLabel ?? "—"}
+          </span>
+        );
+      }
+      return (
+        <div className="space-y-0.5 text-sm" title={sourceUrl ?? undefined}>
+          {sourcePageTitle && (
+            <div className="max-w-[260px] truncate text-foreground/80">
+              {sourcePageTitle}
+            </div>
+          )}
+          {path && (
+            <div className="max-w-[260px] truncate text-xs text-muted-foreground">
+              {path}
+            </div>
+          )}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "createdAt",
@@ -119,8 +157,10 @@ export function ProspectsTable({ rows }: Props) {
       if (status !== "all" && r.status !== status) return false;
       if (!q) return true;
       return (
-        r.name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
+        (r.name ?? "").toLowerCase().includes(q) ||
+        (r.email ?? "").toLowerCase().includes(q) ||
+        (r.phone ?? "").toLowerCase().includes(q) ||
+        (r.sourcePageTitle ?? "").toLowerCase().includes(q) ||
         (r.sourceUrl ?? "").toLowerCase().includes(q)
       );
     });
@@ -132,7 +172,7 @@ export function ProspectsTable({ rows }: Props) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, or page..."
+            placeholder="Search by name, email, phone, or page..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"

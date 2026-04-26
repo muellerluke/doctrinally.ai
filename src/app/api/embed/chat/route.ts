@@ -217,12 +217,15 @@ function buildWidgetSystemPrompt({
     ? `You have one tool:
 1. \`search\` — returns content from the church's library (sermons, documents, videos, teachings). ALWAYS use it at least once before answering questions about the church's specific teaching. Use it multiple times with different queries if the first search is thin.
 
-This visitor has already shared their name and email with us in an earlier part of the conversation — do NOT ask for their info again. Focus entirely on answering their questions.`
+This visitor has already shared their contact info with us earlier in the conversation — do NOT ask for it again. Focus entirely on answering their questions.`
     : `You have two tools:
 1. \`search\` — returns content from the church's library (sermons, documents, videos, teachings). ALWAYS use it at least once before answering questions about the church's specific teaching. Use it multiple times with different queries if the first search is thin.
-2. \`captureProspect\` — records the visitor's name and email so the church can follow up. Call this tool ONLY when the visitor has actually given you their name AND email in their messages (extract them from what they've written). Do NOT invent or guess values. If only one is given, ask for the other before calling.
+2. \`captureProspect\` — records the visitor's contact info so a pastor or someone from the church can follow up personally. AT LEAST ONE of \`email\` or \`phone\` is required; \`name\` is optional but include it whenever the visitor has shared it. Call this tool ONLY when the visitor has actually given you their info in their messages (extract them from what they've written). Do NOT invent or guess values.
 
-When the visitor signals interest in being contacted (detailed question, mentions wanting to visit, explicitly asks to connect), invite them to share their name and email naturally.`;
+CRITICAL — ASK FOR FOLLOW-UP CONTACT IMMEDIATELY:
+On your VERY FIRST response in this conversation, after you answer their question, ALWAYS invite the visitor to share a phone number or email address so a pastor or someone from ${churchName} can follow up with more information. Phrase it warmly and naturally — make clear it's so the church can serve them better, not for marketing. Either phone or email is fine; if they share their name too, that's helpful but not required.
+
+If they don't share contact info on their reply, you may gently bring it up ONE more time later in the conversation, but do not pester. The moment the visitor provides an email or a phone (or both), call \`captureProspect\` immediately and then briefly thank them.`;
 
   return `You are the AI assistant embedded on ${churchName}'s website. The person you're chatting with is a WEBSITE VISITOR — they may be curious, investigating whether this church is a good fit, or looking for specific information. They are not necessarily a member.${summaryBlock}
 
@@ -283,6 +286,13 @@ function chunksToMetadata(chunks: RetrievedChunk[]): Citation[] {
 }
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+// Lenient phone shape: must start with `+` or a digit and contain
+// 7–30 chars total drawn from digits and common separators (space,
+// dash, parens, dot). We deliberately don't normalize to E.164 — a
+// pastor can read "+44 7700 900123" or "(555) 555-1234" just fine,
+// and stripping formatting before storage loses information visitors
+// expect to see preserved.
+const PHONE_RX = /^[+\d][\d\s().-]{6,29}$/;
 
 /**
  * Shared state the captureProspect tool writes into so the outer
@@ -296,6 +306,7 @@ interface ProspectCaptureState {
   prospectId: string | null;
   name: string | null;
   email: string | null;
+  phone: string | null;
 }
 
 function createCaptureProspectTool({
@@ -303,34 +314,41 @@ function createCaptureProspectTool({
   chatId,
   sessionId,
   originUrl,
+  originPageTitle,
   captureState,
 }: {
   churchId: string;
   chatId: string;
   sessionId: string;
   originUrl: string | null;
+  originPageTitle: string | null;
   captureState: ProspectCaptureState;
-}): Tool<{ name: string; email: string }, unknown> {
+}): Tool<{ name?: string; email?: string; phone?: string }, unknown> {
   return {
     description:
-      "Save the visitor's name and email so the church can follow up with them later. Call this ONLY when the visitor has actually provided both their name and email in their messages. Do not invent or guess values. If only one is known, ask for the other first.",
-    inputSchema: jsonSchema<{ name: string; email: string }>({
+      "Save the visitor's contact info so a pastor or someone from the church can follow up. AT LEAST ONE of `email` or `phone` is required — `name` is optional. Call this ONLY when the visitor has actually provided their info in their messages; do not invent or guess values.",
+    inputSchema: jsonSchema<{ name?: string; email?: string; phone?: string }>({
       type: "object",
       properties: {
         name: {
           type: "string",
           description:
-            "The visitor's name as they wrote it. Trim whitespace.",
+            "The visitor's name as they wrote it. Trim whitespace. Optional — include only when the visitor has shared their name.",
         },
         email: {
           type: "string",
           description:
-            "The visitor's email address, lowercased.",
+            "The visitor's email address, lowercased. Optional if a phone number is provided. At least one of email or phone is required.",
+        },
+        phone: {
+          type: "string",
+          description:
+            "The visitor's phone number as they typed it (preserve country code, dashes, parens). Optional if an email is provided. At least one of email or phone is required.",
         },
       },
-      required: ["name", "email"],
+      required: [],
     }),
-    execute: async ({ name, email }) => {
+    execute: async ({ name, email, phone }) => {
       // Early-return if we've already captured this turn — prevents
       // the model from double-calling the tool in the same response.
       if (captureState.captured) {
@@ -341,17 +359,14 @@ function createCaptureProspectTool({
         };
       }
 
-      const cleanName = (name || "").trim().slice(0, 120);
-      const cleanEmail = (email || "").trim().toLowerCase().slice(0, 254);
-      if (cleanName.length < 2) {
-        return {
-          ok: false,
-          reason: "name_too_short",
-          message:
-            "The name you provided looks incomplete. Ask the visitor again for their full name.",
-        };
-      }
-      if (!EMAIL_RX.test(cleanEmail)) {
+      const trimmedName = (name ?? "").trim().slice(0, 120);
+      const cleanName = trimmedName.length >= 2 ? trimmedName : null;
+      const cleanEmailRaw = (email ?? "").trim().toLowerCase().slice(0, 254);
+      const cleanEmail = cleanEmailRaw.length > 0 ? cleanEmailRaw : null;
+      const cleanPhoneRaw = (phone ?? "").trim().slice(0, 30);
+      const cleanPhone = cleanPhoneRaw.length > 0 ? cleanPhoneRaw : null;
+
+      if (cleanEmail && !EMAIL_RX.test(cleanEmail)) {
         return {
           ok: false,
           reason: "email_invalid",
@@ -359,16 +374,44 @@ function createCaptureProspectTool({
             "That email doesn't look valid. Ask the visitor to re-share it.",
         };
       }
+      if (cleanPhone && !PHONE_RX.test(cleanPhone)) {
+        return {
+          ok: false,
+          reason: "phone_invalid",
+          message:
+            "That phone number doesn't look valid. Ask the visitor to re-share it.",
+        };
+      }
+      if (!cleanEmail && !cleanPhone) {
+        return {
+          ok: false,
+          reason: "no_contact",
+          message:
+            "Need at least an email or a phone number. Ask the visitor for one before calling this tool again.",
+        };
+      }
 
       try {
-        // Merge on return: if this church already has a prospect with
-        // the same email, update the row and append the session.
-        const existing = await db.query.prospects.findFirst({
-          where: and(
-            eq(prospects.churchId, churchId),
-            eq(prospects.email, cleanEmail)
-          ),
-        });
+        // Merge on return: prefer email-key when present (the more
+        // common stable identifier), fall back to phone-key for
+        // phone-only captures. Both unique constraints are partial
+        // (NULLs treated as distinct), so multiple email-only and
+        // multiple phone-only rows for a church coexist cleanly.
+        const existing = cleanEmail
+          ? await db.query.prospects.findFirst({
+              where: and(
+                eq(prospects.churchId, churchId),
+                eq(prospects.email, cleanEmail)
+              ),
+            })
+          : cleanPhone
+          ? await db.query.prospects.findFirst({
+              where: and(
+                eq(prospects.churchId, churchId),
+                eq(prospects.phone, cleanPhone)
+              ),
+            })
+          : null;
         let prospectId: string;
         if (existing) {
           const prior = existing.metadata?.sessionHistory ?? [];
@@ -378,7 +421,11 @@ function createCaptureProspectTool({
           await db
             .update(prospects)
             .set({
-              name: cleanName,
+              // Update fields opportunistically — keep prior values
+              // when this turn didn't supply something.
+              name: cleanName ?? existing.name,
+              email: cleanEmail ?? existing.email,
+              phone: cleanPhone ?? existing.phone,
               metadata: {
                 ...(existing.metadata ?? {}),
                 sessionHistory,
@@ -397,6 +444,7 @@ function createCaptureProspectTool({
               sessionId,
               name: cleanName,
               email: cleanEmail,
+              phone: cleanPhone,
               // Distinct source_ref from the form-based capture ("embed_widget")
               // so admins can spot tool-captures if they ever need to.
               sourceType: "embed_widget",
@@ -405,6 +453,9 @@ function createCaptureProspectTool({
               metadata: {
                 sessionHistory: [sessionId],
                 firstSeenAt: new Date().toISOString(),
+                ...(originPageTitle
+                  ? { sourcePageTitle: originPageTitle.slice(0, 300) }
+                  : {}),
               },
             })
             .returning({ id: prospects.id });
@@ -421,18 +472,22 @@ function createCaptureProspectTool({
         captureState.prospectId = prospectId;
         captureState.name = cleanName;
         captureState.email = cleanEmail;
+        captureState.phone = cleanPhone;
 
         logger.info("[embed/chat] prospect captured via tool", {
           churchId,
           prospectId,
           sessionId,
           merged: !!existing,
+          hasEmail: !!cleanEmail,
+          hasPhone: !!cleanPhone,
+          hasName: !!cleanName,
         });
 
         return {
           ok: true,
           message:
-            "Saved. Briefly thank the visitor and let them know someone from the church will reach out.",
+            "Saved. Briefly thank the visitor and let them know someone from the church will follow up.",
         };
       } catch (err) {
         logger.error("[embed/chat] prospect tool failed", {
@@ -800,6 +855,7 @@ export async function POST(request: Request) {
     prospectId: null,
     name: null,
     email: null,
+    phone: null,
   };
 
   logger.info("[embed/chat] request", {
@@ -837,6 +893,7 @@ export async function POST(request: Request) {
             chatId,
             sessionId: verified.value.sessionId,
             originUrl: session.metadata?.lastPageUrl ?? originCheck.origin,
+            originPageTitle: session.metadata?.lastPageTitle ?? null,
             captureState,
           }),
         },
@@ -870,8 +927,11 @@ export async function POST(request: Request) {
           );
         }
         // Emit a prospect sentinel when the captureProspect tool
-        // fired — the widget uses this to hide its inline form,
-        // flip `prospectCaptured`, and skip future re-prompts.
+        // fired — the widget uses this to flip `prospectCaptured` so
+        // the tool isn't registered on future requests. The widget
+        // doesn't surface name/email/phone in its UI, but we still
+        // ship them in the payload for completeness so any debug
+        // tooling can see what was captured.
         if (captureState.captured) {
           controller.enqueue(
             encoder.encode(
@@ -880,6 +940,7 @@ export async function POST(request: Request) {
                   prospectId: captureState.prospectId,
                   name: captureState.name,
                   email: captureState.email,
+                  phone: captureState.phone,
                 })
             )
           );

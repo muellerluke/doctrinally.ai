@@ -35,9 +35,15 @@ import { logger } from "@/lib/logger";
  * on the launcher.
  *
  * Always AI-generated via `mercury-2`. If the model can't produce a
- * line in time (timeout, error, throttle hit, monthly budget cap), we
- * skip outreach for this visitor — no fallback message is sent and
- * `outreachSentAt` is left unset so a future page nav can retry.
+ * line in time (timeout, error, throttle hit), we fall back to a static
+ * welcome message so the visitor still sees an opener.
+ *
+ * If the church is over its monthly message budget AND has not enabled
+ * overage, we suppress outreach entirely — `{ opener: null }` is
+ * returned and `outreachSentAt` is left unset so a future page nav
+ * retries once the budget resets or overage is enabled. Reaching out
+ * to a visitor who can't reply (because the chat endpoint will 403)
+ * is a dead-end UX.
  *
  * Server-side enforcement of "once per session" is authoritative —
  * the widget also holds a localStorage flag but the server's
@@ -163,6 +169,21 @@ export async function POST(request: Request) {
   const overBudget = Boolean(
     msgLimit && currentUsage && currentUsage.questions >= msgLimit.effectiveMax,
   );
+
+  // Hard stop: church is out of monthly messages and hasn't opted into
+  // overage. There's no chat budget for the visitor to reply against, so
+  // proactively reaching out only invites them into a dead-end conversation
+  // (the chat endpoint will 403 with `message_limit_reached`). Skip the DB
+  // insert and leave `outreachSentAt` unset so a future page nav retries
+  // once the budget resets or overage is enabled.
+  if (overBudget && msgLimit && !msgLimit.overageEnabled) {
+    logger.info("[embed/outreach] suppressed — over budget, no overage", {
+      churchId: verified.churchId,
+      questions: currentUsage?.questions,
+      limit: msgLimit.limit,
+    });
+    return NextResponse.json({ opener: null }, { headers: cors });
+  }
 
   if (throttled || overBudget) {
     logger.info("[embed/outreach] AI skipped — using fallback", {

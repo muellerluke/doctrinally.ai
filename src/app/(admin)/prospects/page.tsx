@@ -27,9 +27,11 @@ export const dynamic = "force-dynamic";
 
 /**
  * Prospect list view. A lead is captured any time a website visitor
- * fills out the name/email form in the embedded chat widget. Gated on
- * Enterprise because the widget itself is Enterprise-only — Standard
- * churches see an upgrade card instead of the table.
+ * shares contact info (email or phone, optionally name) through the
+ * embedded chat widget — either via the AI's `captureProspect` tool
+ * or any future inline form. Gated on Enterprise because the widget
+ * itself is Enterprise-only — Standard churches see an upgrade card
+ * instead of the table.
  */
 export default async function ProspectsPage() {
   const { church } = await requireMembership();
@@ -43,7 +45,7 @@ export default async function ProspectsPage() {
       <div className="space-y-8">
         <PageHeader
           title="Prospects"
-          description="Visitors who shared their name and email through your website chat."
+          description="Visitors who shared contact info through your website chat so a pastor can follow up."
         />
         <Card className="border-dashed">
           <CardHeader className="flex-row items-center gap-3 space-y-0">
@@ -63,8 +65,9 @@ export default async function ProspectsPage() {
               <CardDescription>
                 Capture visitor leads from your own website. The embedded
                 chat widget reaches out first, asks a page-aware question,
-                and invites visitors to share their name + email — so you
-                never miss a lead while you sleep.
+                and invites visitors to share their email or phone so a
+                pastor can follow up — even when nobody&apos;s at the
+                keyboard.
               </CardDescription>
             </div>
           </CardHeader>
@@ -83,9 +86,11 @@ export default async function ProspectsPage() {
       id: prospects.id,
       name: prospects.name,
       email: prospects.email,
+      phone: prospects.phone,
       status: prospects.status,
       sourceType: prospects.sourceType,
       sourceUrl: prospects.sourceUrl,
+      metadata: prospects.metadata,
       chatId: prospects.chatId,
       createdAt: prospects.createdAt,
     })
@@ -98,9 +103,11 @@ export default async function ProspectsPage() {
     id: r.id,
     name: r.name,
     email: r.email,
+    phone: r.phone,
     status: r.status as ProspectStatus,
     sourceType: r.sourceType,
     sourceUrl: r.sourceUrl,
+    sourcePageTitle: r.metadata?.sourcePageTitle ?? null,
     chatId: r.chatId,
     createdAt: r.createdAt.toISOString(),
   }));
@@ -117,7 +124,7 @@ export default async function ProspectsPage() {
         <EmptyState
           icon={UserPlus}
           title="No prospects yet"
-          description="When website visitors chat with your widget and leave their name and email, they'll appear here. Set up the widget in Settings → Website Chat."
+          description="When website visitors share an email or phone number through your chat widget, they'll appear here so you can follow up. Set up the widget in Settings → Website Chat."
         />
       )}
     </div>

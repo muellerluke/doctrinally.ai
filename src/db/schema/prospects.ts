@@ -23,10 +23,22 @@ import { chats } from "./chats";
  * keeps a hard link to `chat_id` + `session_id` so the transcript view
  * can load the conversation directly without dereferencing metadata.
  *
- * Unique `(church_id, email)` enforces merge-on-return: a visitor who
- * converts twice updates the existing row rather than duplicating.
+ * Contact info is intentionally lenient: at least one of `email` or
+ * `phone` must be populated by the application layer, but both are
+ * nullable at the column level so a phone-only or email-only capture
+ * is valid. Postgres treats NULL as distinct in unique constraints, so
+ * the per-channel uniques below allow many rows with NULL email (or
+ * NULL phone) without conflict — the constraint only fires when a
+ * concrete value repeats within the same church.
+ *
+ * `name` is also nullable: visitors are often willing to share contact
+ * info before sharing a name, and we don't want to block lead capture
+ * over it.
+ *
  * `metadata.sessionHistory` keeps the audit trail of every session the
- * prospect has been seen in.
+ * prospect has been seen in. `metadata.sourcePageTitle` records the
+ * <title> of the page where they were first captured, so the dashboard
+ * can show "what they were looking at" without an extra session join.
  */
 export const prospects = pgTable(
   "prospects",
@@ -43,8 +55,9 @@ export const prospects = pgTable(
     // The widget writes this id when capturing; merge-on-return appends
     // additional session ids to `metadata.sessionHistory`.
     sessionId: uuid("session_id"),
-    name: text("name").notNull(),
-    email: text("email").notNull(),
+    name: text("name"),
+    email: text("email"),
+    phone: text("phone"),
     sourceType: text("source_type").notNull(),
     sourceRef: text("source_ref"),
     sourceUrl: text("source_url"),
@@ -55,6 +68,7 @@ export const prospects = pgTable(
         sessionHistory?: string[];
         firstSeenAt?: string;
         lastSeenAt?: string;
+        sourcePageTitle?: string;
       }>()
       .notNull()
       .default({}),
@@ -63,6 +77,7 @@ export const prospects = pgTable(
   },
   (table) => [
     unique("prospects_church_email_unique").on(table.churchId, table.email),
+    unique("prospects_church_phone_unique").on(table.churchId, table.phone),
     index("prospects_church_id_idx").on(table.churchId),
     index("prospects_status_idx").on(table.status),
   ]
