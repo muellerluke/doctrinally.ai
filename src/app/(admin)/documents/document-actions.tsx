@@ -47,8 +47,13 @@ export function DocumentActions({
 }: DocumentActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const { addUpload, updateProgress, completeUpload, failUpload } =
-    useUploads();
+  const {
+    addUpload,
+    startUpload,
+    updateProgress,
+    completeUpload,
+    failUpload,
+  } = useUploads();
 
   const refreshContent = useCallback(() => {
     if (onContentChanged) {
@@ -172,6 +177,7 @@ export function DocumentActions({
         churchId={churchId}
         folderId={currentFolderId}
         onUploadStart={addUpload}
+        onUploadDequeue={startUpload}
         onUploadProgress={updateProgress}
         onUploadComplete={handleUploadComplete}
         onUploadError={failUpload}

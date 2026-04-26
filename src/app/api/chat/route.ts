@@ -601,11 +601,15 @@ export async function POST(request: Request) {
           );
         }
 
-        controller.close();
-
-        // Save messages to DB for all chats (authenticated and anonymous).
-        // Anonymous chats have userId=null but are still tracked for analytics,
-        // billing, and topic classification.
+        // Persist messages BEFORE closing the stream. The client uses the
+        // closed stream as the signal to extract the new chatId and call
+        // router.replace('/chat/[id]'), which remounts the page from a
+        // server-rendered initialMessages fetched via getChatMessages. If we
+        // closed first and saved after, that fetch raced the inserts and the
+        // streamed answer was wiped on first message in a new chat.
+        // Anonymous chats have userId=null but are still tracked for
+        // analytics, billing, and topic classification.
+        let savedUserMessageId: string | null = null;
         if (chatId) {
           try {
             const [userMsg] = await db
@@ -641,21 +645,26 @@ export async function POST(request: Request) {
             // Increment question count for billing (all chats, including admin test)
             await incrementQuestionCount(churchId);
 
-            // Classify topic in background (only for non-admin-test chats)
-            if (!isAdminTest && userMsg) {
-              tasks
-                .trigger("classify-message", {
-                  messageId: userMsg.id,
-                  chatId,
-                  churchId,
-                })
-                .catch((err) =>
-                  console.error("Failed to trigger classify-message:", err)
-                );
-            }
+            savedUserMessageId = userMsg?.id ?? null;
           } catch (err) {
             console.error("Failed to save messages:", err);
           }
+        }
+
+        controller.close();
+
+        // Topic classification is fire-and-forget — kept after close so its
+        // network latency doesn't delay the client's stream-done signal.
+        if (chatId && !isAdminTest && savedUserMessageId) {
+          tasks
+            .trigger("classify-message", {
+              messageId: savedUserMessageId,
+              chatId,
+              churchId,
+            })
+            .catch((err) =>
+              console.error("Failed to trigger classify-message:", err)
+            );
         }
       } catch (err) {
         controller.error(err);

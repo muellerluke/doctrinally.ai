@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, ChevronUp, Upload, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Clock, Upload, X } from "lucide-react";
 
 import { useUploads } from "@/components/documents/upload-provider";
 import { Progress } from "@/components/ui/progress";
@@ -26,6 +26,7 @@ export function UploadProgress() {
   if (uploads.length === 0) return null;
 
   const activeCount = uploads.filter((u) => u.status === "uploading").length;
+  const queuedCount = uploads.filter((u) => u.status === "queued").length;
   const errorCount = uploads.filter((u) => u.status === "error").length;
 
   return (
@@ -39,10 +40,14 @@ export function UploadProgress() {
         <span className="flex items-center gap-2">
           <Upload className="size-4 text-primary" />
           {activeCount > 0
-            ? `Uploading ${activeCount} file${activeCount > 1 ? "s" : ""}...`
-            : errorCount > 0
-              ? `${errorCount} upload${errorCount > 1 ? "s" : ""} failed`
-              : "Uploads complete"}
+            ? `Uploading ${activeCount}${
+                queuedCount > 0 ? ` (${queuedCount} queued)` : ""
+              }...`
+            : queuedCount > 0
+              ? `${queuedCount} queued`
+              : errorCount > 0
+                ? `${errorCount} upload${errorCount > 1 ? "s" : ""} failed`
+                : "Uploads complete"}
         </span>
         <span className="flex items-center gap-1">
           {errorCount > 0 && (
@@ -71,15 +76,27 @@ export function UploadProgress() {
                 <Check className="size-4 shrink-0 text-green-600" />
               ) : upload.status === "error" ? (
                 <X className="size-4 shrink-0 text-destructive" />
+              ) : upload.status === "queued" ? (
+                <Clock className="size-4 shrink-0 text-muted-foreground" />
               ) : (
                 <Upload className="size-4 shrink-0 animate-pulse text-primary" />
               )}
 
               {/* Filename + progress */}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium">
+                <p
+                  className={`truncate text-xs font-medium ${
+                    upload.status === "queued" ? "text-muted-foreground" : ""
+                  }`}
+                >
                   {upload.filename}
                 </p>
+
+                {upload.status === "queued" && (
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    Queued
+                  </p>
+                )}
 
                 {upload.status === "uploading" && (
                   <div className="mt-1 flex items-center gap-2">
@@ -100,7 +117,7 @@ export function UploadProgress() {
               </div>
 
               {/* Dismiss */}
-              {upload.status !== "uploading" && (
+              {upload.status !== "uploading" && upload.status !== "queued" && (
                 <Button
                   variant="ghost"
                   size="icon-xs"

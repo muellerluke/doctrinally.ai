@@ -19,6 +19,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+// Cap on concurrent uploads. Vercel Blob enforces a per-account ceiling
+// (~20–50 depending on plan); going above that returns 429 and surfaces
+// in the UI as "Upload failed". Four is conservative enough to stay well
+// under the floor while still feeling instant for small batches.
+const MAX_CONCURRENT_UPLOADS = 4;
+
 // Explicit extension list (in addition to `video/*`) so the OS picker
 // highlights these as selectable even when the browser can't map them to
 // a MIME type. Covers every container ffmpeg routinely handles.
@@ -138,6 +144,10 @@ interface FileUploadDialogProps {
   churchId: string;
   folderId?: string | null;
   onUploadStart?: (upload: UploadItem) => void;
+  /** Fired when a worker pulls a queued upload off the queue and begins
+   *  the actual blob transfer. Lets the progress UI flip the row from
+   *  "Queued" to "uploading". */
+  onUploadDequeue?: (id: string) => void;
   onUploadProgress?: (id: string, progress: number) => void;
   onUploadComplete?: (id: string) => void;
   onUploadError?: (id: string, error: string) => void;
@@ -149,6 +159,7 @@ export function FileUploadDialog({
   churchId,
   folderId,
   onUploadStart,
+  onUploadDequeue,
   onUploadProgress,
   onUploadComplete,
   onUploadError,
@@ -227,38 +238,63 @@ export function FileUploadDialog({
     resetForm();
     onOpenChange(false);
 
-    // Fire all uploads concurrently
-    for (const entry of batch) {
-      const uploadId = crypto.randomUUID();
-      const { docType, effectiveMime } = resolveFileMeta(entry.file);
+    // Pre-generate uploadIds and resolve metadata so the worker pool has
+    // everything it needs without re-running browser-side resolution per
+    // pop. Surfacing every file up front (as "queued") gives the user
+    // immediate feedback that all N files are accounted for.
+    const jobs = batch.map((entry) => ({
+      entry,
+      uploadId: crypto.randomUUID(),
+      ...resolveFileMeta(entry.file),
+    }));
 
+    for (const job of jobs) {
       onUploadStart?.({
-        id: uploadId,
-        filename: entry.file.name,
+        id: job.uploadId,
+        filename: job.entry.file.name,
         progress: 0,
-        status: "uploading",
+        status: "queued",
       });
+    }
 
-      // Don't await — let uploads run in parallel
-      upload(`documents/${churchId}/${entry.file.name}`, entry.file, {
-        access: "public",
-        handleUploadUrl: "/api/documents/upload",
-        multipart: true,
-        contentType: effectiveMime,
-        clientPayload: JSON.stringify({
-          title: entry.title,
-          tags: tagList.join(","),
-          folderId: folderId ?? null,
-          fileType: effectiveMime,
-          fileName: entry.file.name,
-          fileSize: entry.file.size,
-          uploadId,
-        }),
-        onUploadProgress: (event) => {
-          onUploadProgress?.(uploadId, Math.round(event.percentage));
-        },
-      })
-        .then(async (blob) => {
+    // Worker pool: a fixed number of async loops share a cursor and pull
+    // the next job until the queue drains. Caps simultaneous PUT streams
+    // to MAX_CONCURRENT_UPLOADS so we stay under Vercel Blob's per-account
+    // concurrent-upload ceiling.
+    let cursor = 0;
+    const runWorker = async () => {
+      while (cursor < jobs.length) {
+        const idx = cursor++;
+        const job = jobs[idx];
+        if (!job) break;
+        const { entry, uploadId, docType, effectiveMime } = job;
+
+        onUploadDequeue?.(uploadId);
+
+        try {
+          const blob = await upload(
+            `documents/${churchId}/${entry.file.name}`,
+            entry.file,
+            {
+              access: "public",
+              handleUploadUrl: "/api/documents/upload",
+              multipart: true,
+              contentType: effectiveMime,
+              clientPayload: JSON.stringify({
+                title: entry.title,
+                tags: tagList.join(","),
+                folderId: folderId ?? null,
+                fileType: effectiveMime,
+                fileName: entry.file.name,
+                fileSize: entry.file.size,
+                uploadId,
+              }),
+              onUploadProgress: (event) => {
+                onUploadProgress?.(uploadId, Math.round(event.percentage));
+              },
+            }
+          );
+
           // Client-side fallback: tell the server the blob URL in case the
           // Vercel Blob webhook didn't fire (e.g. local dev, or network
           // issue in production). If the webhook already handled it, this
@@ -276,13 +312,18 @@ export function FileUploadDialog({
           onUploadComplete?.(uploadId);
           window.plausible?.("Document Upload", { props: { type: "file" } });
           toast.success(`Uploaded: ${entry.file.name}`);
-        })
-        .catch((err) => {
+        } catch (err) {
           const errorMsg =
             err instanceof Error ? err.message : "Upload failed";
           onUploadError?.(uploadId, errorMsg);
           toast.error(`${entry.file.name}: ${errorMsg}`);
-        });
+        }
+      }
+    };
+
+    const workerCount = Math.min(MAX_CONCURRENT_UPLOADS, jobs.length);
+    for (let i = 0; i < workerCount; i++) {
+      void runWorker();
     }
 
     setLoading(false);

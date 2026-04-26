@@ -244,6 +244,7 @@ Rules:
 - Place each citation on its own line with blank lines before and after.
 - Never emit a bare or empty tag. Never put a tag inside a sentence.
 - 1-2 citations total for the response — the single most relevant source per point.
+- NEVER cite the same documentId more than once in a response. If you'd reference the same source again, just continue without a tag.
 
 Bible quotations:
 - You may quote scripture from memory. Always include book, chapter, verse.

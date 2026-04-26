@@ -648,7 +648,11 @@ const LOADER_TEMPLATE = String.raw`(function(){
     citations.forEach(function(c){ citeByDocId[c.documentId] = c; });
 
     // Split content into [text, citation, text, citation, …] parts.
+    // Dedup: if the model cites the same documentId twice, the
+    // second (and any subsequent) occurrence is dropped — we render
+    // each source at most once per response.
     var parts = [];
+    var seenDocIds = {};
     var lastIdx = 0;
     var re = /<document>([^<]+)<\/document>/g;
     var m;
@@ -656,8 +660,12 @@ const LOADER_TEMPLATE = String.raw`(function(){
       if (m.index > lastIdx) {
         parts.push({ kind: "text", value: content.slice(lastIdx, m.index) });
       }
-      var cite = citeByDocId[m[1]];
-      if (cite) parts.push({ kind: "cite", cite: cite });
+      var docId = m[1];
+      var cite = citeByDocId[docId];
+      if (cite && !seenDocIds[docId]) {
+        seenDocIds[docId] = true;
+        parts.push({ kind: "cite", cite: cite });
+      }
       lastIdx = m.index + m[0].length;
     }
     if (lastIdx < content.length) {
