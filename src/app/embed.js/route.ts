@@ -747,17 +747,34 @@ const LOADER_TEMPLATE = String.raw`(function(){
       video: "video"
     })[cite.documentType] || "filetext";
 
-    var metaParts = [];
-    if (cite.pageNumber != null) metaParts.push("Page " + cite.pageNumber);
-    if (cite.heading) metaParts.push(cite.heading);
-    var meta = metaParts.length ? metaParts.join(" · ") : "";
+    // Inline citation is intentionally minimal: icon + title + URL.
+    // The visitor clicks through to read the source — the chip's job
+    // is just to identify what they're about to open, not to preview
+    // its body. (Earlier versions also showed page/heading metadata
+    // and a chunk preview; the preview was also where leaked tool-
+    // result JSON would surface in the UI.)
+    //
+    // For sources that don't have a sourceUrl (uploaded PlateJS docs,
+    // PDFs/Word files without a hosted URL), fall back to the
+    // page-number / heading metadata so the chip still tells the
+    // visitor where in the document the answer came from.
+    var secondaryLine = "";
+    if (cite.sourceUrl) {
+      secondaryLine = '<div class="dai-cite-doc-meta dai-cite-doc-url">' + escapeHtml(cite.sourceUrl) + '</div>';
+    } else {
+      var metaParts = [];
+      if (cite.pageNumber != null) metaParts.push("Page " + cite.pageNumber);
+      if (cite.heading) metaParts.push(cite.heading);
+      if (metaParts.length) {
+        secondaryLine = '<div class="dai-cite-doc-meta">' + escapeHtml(metaParts.join(" · ")) + '</div>';
+      }
+    }
 
     var inner = [
       '<div class="dai-cite-doc-icon">' + svgIcon(iconKey) + '</div>',
       '<div class="dai-cite-doc-body">',
         '<div class="dai-cite-doc-title">' + escapeHtml(cite.documentTitle || "Source") + '</div>',
-        meta ? '<div class="dai-cite-doc-meta">' + escapeHtml(meta) + '</div>' : '',
-        cite.chunkContent ? '<div class="dai-cite-doc-preview">' + escapeHtml(cite.chunkContent) + '</div>' : '',
+        secondaryLine,
       '</div>',
       cite.sourceUrl ? '<div class="dai-cite-doc-arrow">' + svgIcon("externallink") + '</div>' : ''
     ].join("");
@@ -1170,7 +1187,11 @@ const LOADER_TEMPLATE = String.raw`(function(){
       ".dai-cite-doc-body { flex: 1; min-width: 0; }",
       ".dai-cite-doc-title { font-size: 13px; font-weight: 600; line-height: 1.4; color: " + fg + "; }",
       ".dai-cite-doc-meta { margin-top: 2px; font-size: 11px; color: " + muted + "; }",
-      ".dai-cite-doc-preview { margin-top: 4px; font-size: 12px; line-height: 1.5; color: " + muted + "; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }",
+      // URL secondary line: single-line ellipsis-truncate so a long
+      // URL doesn't push the chip wider than the chat bubble. Relies
+      // on the dai-cite-doc-body min-width:0 rule above so the flex
+      // child can actually shrink.
+      ".dai-cite-doc-url { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
       ".dai-cite-doc-arrow { flex-shrink: 0; color: " + muted + "; padding-top: 2px; }",
       ".dai-cite-doc-arrow svg { width: 12px; height: 12px; }",
       ".dai-composer { display: flex; gap: 8px; padding: 12px 14px 6px 14px; background: " + card + "; border-top: 1px solid " + border + "; }",
