@@ -1,6 +1,5 @@
 "use server";
 
-import { randomBytes } from "crypto";
 import { getServerSession } from "next-auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -13,16 +12,7 @@ import { authOptions } from "@/lib/auth";
 import { getActiveMembershipForUser } from "@/lib/active-church";
 import { canUseEmbedWidget } from "@/lib/plan-gating";
 import { isFeatureEnabled } from "@/lib/feature-flags";
-
-/**
- * Generate a collision-resistant public embed key. This is NOT a secret —
- * it ships in every page source that embeds the widget — so we just need
- * enough entropy to prevent guessing. `dai_pk_` prefix makes keys
- * recognizable in logs and tooling.
- */
-export function generateEmbedKey(): string {
-  return `dai_pk_${randomBytes(18).toString("base64url")}`;
-}
+import { generateEmbedKey } from "@/lib/embed/key";
 
 async function getAuthContext() {
   const session = await getServerSession(authOptions);

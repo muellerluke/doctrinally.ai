@@ -19,7 +19,7 @@ import { stripe, getStripePriceId } from "@/lib/stripe";
 import { getPlanLimits, TRIAL_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
 import { canUseYouTubeSync } from "@/lib/plan-gating";
-import { generateEmbedKey } from "@/lib/actions/embed";
+import { generateEmbedKey } from "@/lib/embed/key";
 import {
   fetchChannelVideos,
   resolveChannel,
