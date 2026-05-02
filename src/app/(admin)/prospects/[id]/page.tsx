@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { asc, eq, and, inArray } from "drizzle-orm";
+import { asc, eq, and, inArray, or } from "drizzle-orm";
 import {
   ArrowLeft,
   Mail,
@@ -9,6 +9,7 @@ import {
   Globe,
   MessageSquare,
   Eye,
+  Sparkles,
 } from "lucide-react";
 import { db } from "@/db";
 import {
@@ -71,9 +72,18 @@ export default async function ProspectDetailPage({ params }: PageProps) {
   // Collect every chat this prospect has had with the widget. The
   // canonical link is `prospect.chat_id`; merge-on-return appends
   // more sessions into `metadata.sessionHistory`, so also look up
-  // their chats.
+  // their chats. We fetch the canonical session by `chatId` because
+  // its id is NOT guaranteed to be in `sessionHistory`.
   const sessionIds = prospect.metadata?.sessionHistory ?? [];
-  const extraSessions = sessionIds.length
+  const sessionFilters = [
+    sessionIds.length
+      ? inArray(embedWidgetSessions.id, sessionIds)
+      : undefined,
+    prospect.chatId
+      ? eq(embedWidgetSessions.chatId, prospect.chatId)
+      : undefined,
+  ].filter((c): c is NonNullable<typeof c> => c !== undefined);
+  const extraSessions = sessionFilters.length
     ? await db
         .select({
           id: embedWidgetSessions.id,
@@ -81,12 +91,16 @@ export default async function ProspectDetailPage({ params }: PageProps) {
           origin: embedWidgetSessions.origin,
           createdAt: embedWidgetSessions.createdAt,
           metadata: embedWidgetSessions.metadata,
+          conversationSummary: embedWidgetSessions.conversationSummary,
+          summaryUpdatedAt: embedWidgetSessions.summaryUpdatedAt,
         })
         .from(embedWidgetSessions)
         .where(
           and(
             eq(embedWidgetSessions.churchId, church.id),
-            inArray(embedWidgetSessions.id, sessionIds)
+            sessionFilters.length === 1
+              ? sessionFilters[0]
+              : or(...sessionFilters)
           )
         )
     : [];
@@ -157,6 +171,21 @@ export default async function ProspectDetailPage({ params }: PageProps) {
 
   const sourcePageTitle = prospect.metadata?.sourcePageTitle ?? null;
   const sourcePagePath = formatPagePath(prospect.sourceUrl);
+
+  // Conversation summaries are auto-refreshed by the embed chat route
+  // after each turn (5-min TTL, 4-message minimum). Show them newest
+  // first so the freshest "what they care about" signal leads the card.
+  const summaryEntries = extraSessions
+    .filter(
+      (s) =>
+        s.conversationSummary && s.conversationSummary.trim().length > 0
+    )
+    .map((s) => ({
+      sessionId: s.id,
+      text: s.conversationSummary as string,
+      updatedAt: s.summaryUpdatedAt ?? s.createdAt,
+    }))
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   return (
     <div className="space-y-8">
@@ -305,6 +334,38 @@ export default async function ProspectDetailPage({ params }: PageProps) {
         </Card>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="flex-row items-center gap-2 space-y-0">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Conversation insights</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {summaryEntries.length === 0 ? (
+                <p className="text-xs italic text-muted-foreground">
+                  Conversation too short to summarize.
+                </p>
+              ) : (
+                summaryEntries.map((s, i) => (
+                  <div key={s.sessionId} className="space-y-1">
+                    {summaryEntries.length > 1 && (
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                        Session {summaryEntries.length - i} ·{" "}
+                        {new Date(s.updatedAt).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </div>
+                    )}
+                    <p className="leading-relaxed text-foreground/80">
+                      {s.text}
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Status</CardTitle>

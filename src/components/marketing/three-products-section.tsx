@@ -4,13 +4,13 @@ import { threeProducts } from "@/content/marketing/data";
 import { cn } from "@/lib/utils";
 
 /**
- * Home + /features page primary framing: three AIs, one library.
- *
- * Visual hierarchy puts Embedded AI (gold accent) in the middle
- * position — it's the newest + highest-leverage product (captures
- * prospects while the pastor sleeps) and the one we want visitors to
- * click through on. Member AI and Sermon AI flank it in primary brown
- * so the gold card reads as "new thing worth noticing."
+ * Home + /features page primary framing: Website Chat is the flagship
+ * product, with Member AI and Sermon AI as siblings sharing the same
+ * content library. Website Chat (gold, first card) is the surface most
+ * visitors will meet before Sunday — it's how a church gets prospects
+ * from its existing website. Member AI and Sermon AI are also included
+ * on every plan, framed here as additional places the same library
+ * shows up.
  */
 export function ThreeProductsSection() {
   return (
@@ -26,16 +26,16 @@ export function ThreeProductsSection() {
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
-            Three AIs, one library
+            One library, three places it shows up
           </p>
           <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-            Everywhere your church{" "}
-            <span className="italic text-primary">needs to speak.</span>
+            Built for the visitor who hasn&rsquo;t{" "}
+            <span className="italic text-primary">walked in yet.</span>
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">
-            Upload once. Your teaching grounds every answer across three
-            surfaces — members, website visitors, and the pastor writing
-            Sunday&rsquo;s sermon.
+            Your Website Chat is where most people will meet your church before
+            Sunday. The same library powers Member AI for your congregation and
+            Sermon AI for your pastor &mdash; all included on every plan.
           </p>
         </div>
 
@@ -53,7 +53,7 @@ export function ThreeProductsSection() {
             >
               {p.accent === "gold" && (
                 <span className="absolute right-5 top-5 rounded-full border border-gold/50 bg-gold/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gold">
-                  New
+                  Flagship
                 </span>
               )}
               <div

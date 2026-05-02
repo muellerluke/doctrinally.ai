@@ -21,23 +21,22 @@ export function canUseYouTubeSync(plan: string): boolean {
 }
 
 /**
- * Plan-only gate for the embedded chat widget. Stays plan-only so
- * the name matches the behavior — use `isEmbeddedChatAvailable`
- * below to get the combined plan + feature-flag check.
+ * Plan-only gate for the Website Chat widget. Website Chat is
+ * included on every plan, so this always returns true today. The
+ * function is preserved (not deleted) so the call sites keep their
+ * shape and we have a single place to re-introduce a plan gate later
+ * if the product strategy changes.
  */
-export function canUseEmbedWidget(plan: string): boolean {
-  return plan === "enterprise";
+export function canUseEmbedWidget(_plan: string): boolean {
+  return true;
 }
 
 /**
- * Combined gate: widget is exposed to a church only when their plan
- * allows it AND the `embedded_chat` feature flag is enabled for them.
- *
- * The two gates are complementary: plan-gating answers "is this in
- * your subscription?" and the flag answers "have we rolled it out to
- * you?" A Standard church with the flag on still can't use the
- * widget (plan gate still blocks); an Enterprise church with the
- * flag off is hidden from the widget entirely.
+ * Combined gate: Website Chat is exposed to a church only when their
+ * plan allows it AND the `embedded_chat` feature flag is enabled for
+ * them. The plan check is currently a no-op (every plan includes the
+ * widget); the flag is the per-church kill switch a super-admin can
+ * toggle to disable a misbehaving church without a deploy.
  *
  * Async because it reads the flag (cached in memory). Call once per
  * render/request and pass the boolean down rather than calling

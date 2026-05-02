@@ -179,27 +179,29 @@ export function fuseRankings(
 export const SEMANTIC_SIMILARITY_FLOOR = 0.3;
 
 /**
- * Hybrid search combining semantic and keyword search with reciprocal rank fusion.
+ * Hybrid search variant that takes a pre-computed embedding instead of
+ * generating one. Lets latency-sensitive callers (e.g. the embedded
+ * widget) parallelize `generateQueryEmbedding` with their auth/rate-limit
+ * checks, then hand the resulting vector here once everything is gated.
  *
- * Each returned chunk carries `semanticSimilarity` and/or `keywordRank`
- * depending on which methods matched it. Both are set when a chunk is found
- * by both methods — a strong co-occurrence signal. These scores live on
- * different scales and must be compared separately (see callers).
- *
- * `scope` defaults to "member" so every existing call site keeps its current
- * behavior — only the sermon-writer and doctrine-check opt into "full".
+ * `fusionMultiplier` controls how many candidates each leg fetches before
+ * fusion — defaults to 2 (matches `hybridSearch`). One-shot RAG callers
+ * can pass a smaller value (e.g. 1.5) to trim SQL work when they don't
+ * need a re-query head-room.
  */
-export async function hybridSearch(
+export async function hybridSearchWithEmbedding(
   churchId: string,
+  embedding: number[],
   query: string,
   limit = 8,
-  scope: RetrievalScope = "member"
+  scope: RetrievalScope = "member",
+  fusionMultiplier = 2
 ): Promise<RetrievedChunk[]> {
-  const embedding = await generateQueryEmbedding(query);
+  const fetchLimit = Math.max(limit, Math.ceil(limit * fusionMultiplier));
 
   const [semanticResults, keywordResults] = await Promise.all([
-    semanticSearch(churchId, embedding, limit * 2, scope),
-    keywordSearch(churchId, query, limit * 2, scope),
+    semanticSearch(churchId, embedding, fetchLimit, scope),
+    keywordSearch(churchId, query, fetchLimit, scope),
   ]);
 
   // Drop semantic hits below the noise floor before fusion. This keeps
@@ -235,6 +237,27 @@ export async function hybridSearch(
     semanticSimilarity: semanticByChunk.get(chunk.chunkId),
     keywordRank: keywordByChunk.get(chunk.chunkId),
   }));
+}
+
+/**
+ * Hybrid search combining semantic and keyword search with reciprocal rank fusion.
+ *
+ * Each returned chunk carries `semanticSimilarity` and/or `keywordRank`
+ * depending on which methods matched it. Both are set when a chunk is found
+ * by both methods — a strong co-occurrence signal. These scores live on
+ * different scales and must be compared separately (see callers).
+ *
+ * `scope` defaults to "member" so every existing call site keeps its current
+ * behavior — only the sermon-writer and doctrine-check opt into "full".
+ */
+export async function hybridSearch(
+  churchId: string,
+  query: string,
+  limit = 8,
+  scope: RetrievalScope = "member"
+): Promise<RetrievedChunk[]> {
+  const embedding = await generateQueryEmbedding(query);
+  return hybridSearchWithEmbedding(churchId, embedding, query, limit, scope);
 }
 
 function mapRowToChunk(

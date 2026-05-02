@@ -20,7 +20,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
  * enough entropy to prevent guessing. `dai_pk_` prefix makes keys
  * recognizable in logs and tooling.
  */
-function generateEmbedKey(): string {
+export function generateEmbedKey(): string {
   return `dai_pk_${randomBytes(18).toString("base64url")}`;
 }
 
@@ -36,7 +36,15 @@ async function getAuthContext() {
   };
 }
 
-async function requireEnterpriseContext() {
+/**
+ * Auth + flag gate for the admin-side Website Chat actions. Website
+ * Chat is included on every plan today, so this no longer enforces a
+ * plan tier — but it still requires an authenticated owner/admin
+ * context and respects the per-church `embedded_chat` feature-flag
+ * kill switch. Mirrors the public-config gate so admin-side writes
+ * can't quietly configure a widget that won't load for visitors.
+ */
+async function requireEmbedContext() {
   const ctx = await getAuthContext();
   if (!ctx) return { error: "Unauthorized" as const };
 
@@ -44,19 +52,10 @@ async function requireEnterpriseContext() {
     where: eq(subscriptions.churchId, ctx.membership.churchId),
   });
   if (!sub) return { error: "Subscription not found" as const };
-  if (!canUseEmbedWidget(sub.plan)) {
-    return {
-      error: "The embeddable chat widget requires the Enterprise plan" as const,
-    };
-  }
-  // Feature-flag gate — even Enterprise churches can have the widget
-  // rolled back via the super-admin Feature Flags page. Mirrors the
-  // public-config gate so admin-side writes can't quietly configure a
-  // widget that won't load for visitors.
   if (!(await isFeatureEnabled(ctx.membership.churchId, "embedded_chat"))) {
     return {
       error:
-        "The embeddable chat widget isn't rolled out to your church yet. Contact support." as const,
+        "Website Chat isn't available for your church right now. Contact support." as const,
     };
   }
 
@@ -87,7 +86,7 @@ export async function getEmbedConfig() {
 }
 
 export async function generateEmbedPublicKey() {
-  const gated = await requireEnterpriseContext();
+  const gated = await requireEmbedContext();
   if ("error" in gated) return { error: gated.error };
   const { ctx } = gated;
 
@@ -114,7 +113,7 @@ export async function generateEmbedPublicKey() {
 export async function updateEmbedOutreachSettings(input: {
   proactiveOutreachEnabled?: boolean;
 }) {
-  const gated = await requireEnterpriseContext();
+  const gated = await requireEmbedContext();
   if ("error" in gated) return { error: gated.error };
   const { ctx } = gated;
 
@@ -132,7 +131,7 @@ export async function updateEmbedOutreachSettings(input: {
 }
 
 export async function setEmbedEnabled(enabled: boolean) {
-  const gated = await requireEnterpriseContext();
+  const gated = await requireEmbedContext();
   if ("error" in gated) return { error: gated.error };
   const { ctx } = gated;
 
@@ -166,10 +165,10 @@ export async function setEmbedEnabled(enabled: boolean) {
  * the church's brand.
  *
  * Returns `null` (surfaced as 404 from the route handler) when the key
- * is unknown, the church's subscription is inactive, the plan isn't
- * Enterprise, or the admin disabled the widget. Keeping the downgrade
- * path as a silent 404 avoids rendering upgrade prompts on public
- * visitor pages.
+ * is unknown, the church's subscription is inactive, the admin
+ * disabled the widget, or the per-church kill-switch flag is off.
+ * Keeping the downgrade path as a silent 404 avoids rendering upgrade
+ * prompts on public visitor pages.
  */
 export async function resolvePublicEmbedConfig(key: string): Promise<
   | {

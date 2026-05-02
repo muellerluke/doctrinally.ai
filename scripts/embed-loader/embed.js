@@ -1,57 +1,4 @@
-import { NextResponse } from "next/server";
-
-/**
- * Public loader served from a stable URL. Churches paste one line into
- * their site:
- *
- *   <script src="https://doctrinally.ai/embed.js"
- *           data-church-key="dai_pk_..." async></script>
- *
- * Optional attributes:
- *   data-position="left" | "right"   — default "right"
- *   data-preview-mode="true"         — launcher only, no outreach /
- *                                       prospect capture. Useful for
- *                                       Squarespace/Webflow editor
- *                                       previews whose origins aren't
- *                                       in the church's allowlist.
- *
- * This loader is a single vanilla-JS IIFE. No frameworks, no eval.
- * All UI lives in an attached Shadow DOM (mode: open — closed is
- * defeatable via host monkey-patching and just costs us
- * debuggability). Styles can't bleed in either direction.
- *
- * Transport — plain `fetch` for config / session / outreach / prospect
- * endpoints; streaming chat uses `fetch` + `response.body.getReader()`
- * + `TextDecoder`, parsing the same wire protocol the member chat
- * client uses (zero-width-space chunk delimiters + `__CHAT_ID__` /
- * `__CITATIONS__` trailing sentinels).
- */
-export async function GET() {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
-  const script = LOADER_TEMPLATE.replace(/__APP_URL__/g, appUrl);
-
-  return new NextResponse(script, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/javascript; charset=utf-8",
-      // 5-minute cache. The loader is small (~20KB), so re-fetching
-      // every few minutes on repeat visits is cheap, and we want the
-      // window between "ship a security fix" and "every browser has
-      // it" to be short. The per-church config lives at
-      // /api/embed/config/[key] with a 60 s TTL — the loader's
-      // refresh cycle is the upper bound on patch propagation.
-      "Cache-Control": "public, max-age=300, must-revalidate",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
-}
-
-// ──────────────────────────────────────────────────────────────────
-// Loader template (sent verbatim to the browser).
-// Template hole: __APP_URL__
-// ──────────────────────────────────────────────────────────────────
-
-const LOADER_TEMPLATE = String.raw`(function(){
+(function(){
   "use strict";
   if (window.__doctrinallyEmbedLoaded) return;
   window.__doctrinallyEmbedLoaded = true;
@@ -1225,4 +1172,4 @@ const LOADER_TEMPLATE = String.raw`(function(){
       return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c];
     });
   }
-})();`;
+})();

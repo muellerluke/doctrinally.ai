@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Download, Search } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusSelect } from "./status-select";
 import type { ProspectStatus } from "@/db/schema/prospects";
@@ -20,16 +21,6 @@ export interface ProspectRow {
   sourcePageTitle: string | null;
   chatId: string | null;
   createdAt: string; // ISO
-}
-
-function formatPagePath(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    return u.pathname === "/" ? u.host : u.pathname;
-  } catch {
-    return url.slice(0, 60);
-  }
 }
 
 const columns: ColumnDef<ProspectRow>[] = [
@@ -78,47 +69,6 @@ const columns: ColumnDef<ProspectRow>[] = [
     },
   },
   {
-    id: "viewing",
-    header: "Viewing",
-    cell: ({ row }) => {
-      const { sourceUrl, sourcePageTitle, sourceType } = row.original;
-      const path = formatPagePath(sourceUrl);
-      const sourceLabel =
-        sourceType === "embed_widget"
-          ? null
-          : sourceType === "contact_form"
-          ? "Contact form"
-          : sourceType === "manual"
-          ? "Manual entry"
-          : sourceType === "import"
-          ? "Import"
-          : sourceType;
-      // Non-widget sources don't carry a page — show the source label
-      // instead so the column is never empty.
-      if (!path && !sourcePageTitle) {
-        return (
-          <span className="text-sm text-muted-foreground">
-            {sourceLabel ?? "—"}
-          </span>
-        );
-      }
-      return (
-        <div className="space-y-0.5 text-sm" title={sourceUrl ?? undefined}>
-          {sourcePageTitle && (
-            <div className="max-w-[260px] truncate text-foreground/80">
-              {sourcePageTitle}
-            </div>
-          )}
-          {path && (
-            <div className="max-w-[260px] truncate text-xs text-muted-foreground">
-              {path}
-            </div>
-          )}
-        </div>
-      );
-    },
-  },
-  {
     accessorKey: "createdAt",
     header: "Captured",
     cell: ({ row }) => (
@@ -159,9 +109,7 @@ export function ProspectsTable({ rows }: Props) {
       return (
         (r.name ?? "").toLowerCase().includes(q) ||
         (r.email ?? "").toLowerCase().includes(q) ||
-        (r.phone ?? "").toLowerCase().includes(q) ||
-        (r.sourcePageTitle ?? "").toLowerCase().includes(q) ||
-        (r.sourceUrl ?? "").toLowerCase().includes(q)
+        (r.phone ?? "").toLowerCase().includes(q)
       );
     });
   }, [rows, query, status]);
@@ -172,13 +120,13 @@ export function ProspectsTable({ rows }: Props) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, phone, or page..."
+            placeholder="Search by name, email, or phone..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {[
             { value: "all", label: "All" },
             { value: "new", label: "New" },
@@ -199,6 +147,15 @@ export function ProspectsTable({ rows }: Props) {
               {s.label}
             </button>
           ))}
+          <Button
+            variant="outline"
+            size="sm"
+            render={<a href="/api/prospects/export" download />}
+            className="gap-1.5"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
         </div>
       </div>
       <DataTable columns={columns} data={filtered} />

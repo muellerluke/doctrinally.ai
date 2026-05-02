@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { eq, and, asc } from "drizzle-orm";
 import { streamText, generateText, stepCountIs, jsonSchema, type Tool } from "ai";
+import {
+  hybridSearchWithEmbedding,
+  generateQueryEmbedding,
+} from "@/lib/retrieval";
+import { buildRagContext } from "@/lib/chat/rag";
 import { createOpenAI } from "@ai-sdk/openai";
 import { db } from "@/db";
 import {
@@ -11,7 +16,6 @@ import {
   subscriptions,
   prospects,
 } from "@/db/schema";
-import { hybridSearch } from "@/lib/retrieval";
 import {
   incrementQuestionCount,
   getCurrentUsage,
@@ -208,19 +212,13 @@ function buildWidgetSystemPrompt({
     ? `\n\nPrior conversation context (visitor has chatted before on this site; their history is summarized below — they do NOT see these messages in the UI, so refer back only if relevant):\n"""\n${priorSummary}\n"""\n`
     : "";
 
-  // Two distinct prompts — when the prospect is already captured we
-  // describe ONLY the search tool (captureProspect is literally not
-  // registered for this request, see the POST handler). Telling the
-  // model about a tool it can't call would just produce tool-call
-  // attempts that the SDK rejects.
+  // captureProspect is literally not registered when the prospect is
+  // already captured (see the POST handler). Telling the model about a
+  // tool it can't call just produces tool-call attempts the SDK rejects.
   const toolsSection = prospectCaptured
-    ? `You have one tool:
-1. \`search\` — returns content from the church's library (sermons, documents, videos, teachings). ALWAYS use it at least once before answering questions about the church's specific teaching. Use it multiple times with different queries if the first search is thin.
-
-This visitor has already shared their contact info with us earlier in the conversation — do NOT ask for it again. Focus entirely on answering their questions.`
-    : `You have two tools:
-1. \`search\` — returns content from the church's library (sermons, documents, videos, teachings). ALWAYS use it at least once before answering questions about the church's specific teaching. Use it multiple times with different queries if the first search is thin.
-2. \`captureProspect\` — records the visitor's contact info so a pastor or someone from the church can follow up personally. AT LEAST ONE of \`email\` or \`phone\` is required; \`name\` is optional but include it whenever the visitor has shared it. Call this tool ONLY when the visitor has actually given you their info in their messages (extract them from what they've written). Do NOT invent or guess values.
+    ? `This visitor has already shared their contact info with us earlier in the conversation — do NOT ask for it again. Focus entirely on answering their questions.`
+    : `You have one tool:
+- \`captureProspect\` — records the visitor's contact info so a pastor or someone from the church can follow up personally. AT LEAST ONE of \`email\` or \`phone\` is required; \`name\` is optional but include it whenever the visitor has shared it. Call this tool ONLY when the visitor has actually given you their info in their messages (extract them from what they've written). Do NOT invent or guess values.
 
 CRITICAL — ASK FOR FOLLOW-UP CONTACT IMMEDIATELY:
 On your VERY FIRST response in this conversation, after you answer their question, ALWAYS invite the visitor to share a phone number or email address so a pastor or someone from ${churchName} can follow up with more information. Phrase it warmly and naturally — make clear it's so the church can serve them better, not for marketing. Either phone or email is fine; if they share their name too, that's helpful but not required.
@@ -231,6 +229,9 @@ If they don't share contact info on their reply, you may gently bring it up ONE 
 
 ${toolsSection}
 
+Retrieved context:
+The visitor's latest message will be prefixed with a \`<retrieved_context>\` block containing the most relevant passages from the church's library — sermons, documents, videos, teachings. Each passage is a \`<chunk>\` tag with metadata attributes (\`doc\`, \`title\`, \`type\`, etc.) and the passage text inside. Ground your answer in those passages when they're relevant. If the block is missing, empty, or contains no \`<chunk>\` tags, you have no church-specific material for this question — say so honestly and offer to connect them with the church.
+
 Tone:
 - Warm and welcoming. This is often a visitor's first touchpoint.
 - Short answers — 1 to 3 short paragraphs. Visitors on a website are skimming, not settling in.
@@ -238,7 +239,7 @@ Tone:
 - When the church has not taught on the topic directly, be honest: "I didn't find anything in our teaching library on that specific question — would you like me to have someone from the church follow up?" Do not invent a position.
 
 Citations:
-Each search result has a "documentId" field (UUID). When you reference a source, emit:
+Each \`<chunk>\` in the retrieved context has a \`doc="UUID"\` attribute. When you reference a source, emit:
 
   <document>DOCUMENT_ID</document>
 
@@ -250,39 +251,34 @@ Rules:
 - NEVER cite the same documentId more than once in a response. If you'd reference the same source again, just continue without a tag.
 
 Pick the RIGHT documentId — accuracy is non-negotiable:
-- The documentId you emit MUST belong to the exact search result whose \`content\` you drew the fact from. Re-read the \`content\` field of the result you're about to cite. If the sentence you just wrote is not literally supported by that result's \`content\`, you are citing the wrong result. Find the correct one or drop the citation.
-- Several search results may discuss the same topic. They are NOT interchangeable. The visitor will click the citation and read the cited page; if it doesn't say what your reply implied, you've broken trust.
-- When two results say similar things, cite the one whose \`content\` is closest to your wording. When unsure which is the source, omit the citation rather than guess.
-- The documentId is a long UUID. Copy it character-for-character from the search result. Do not paraphrase, abbreviate, or invent a UUID.
+- The documentId you emit MUST belong to the exact \`<chunk>\` whose passage you drew the fact from. Re-read that chunk's text. If the sentence you just wrote is not literally supported by that chunk, you are citing the wrong one. Find the correct one or drop the citation.
+- Several chunks may discuss the same topic. They are NOT interchangeable. The visitor will click the citation and read the cited page; if it doesn't say what your reply implied, you've broken trust.
+- When two chunks say similar things, cite the one whose text is closest to your wording. When unsure which is the source, omit the citation rather than guess.
+- The documentId is a long UUID. Copy it character-for-character from the chunk's \`doc\` attribute. Do not paraphrase, abbreviate, or invent a UUID.
 
-NEVER echo raw tool output:
-The \`search\` tool returns JSON-formatted data for YOUR context only. Read it, paraphrase what's useful into natural English prose, and emit a \`<document>\` tag for each citation. Under no circumstances write JSON syntax in your response — no curly braces \`{ }\` as data delimiters, no field names like \`chunkContent\`, \`documentId\`, \`documentTitle\`, \`documentType\`, \`sourceUrl\`, \`heading\`, \`resultNumber\`, no \`":"\` key-value pairs, no fragments like \`","chunkContent":"\`. If you find yourself about to write any of those, stop and rephrase as plain English. The visitor must never see the raw search payload.
+NEVER echo the retrieved context verbatim:
+The \`<retrieved_context>\` block is for YOUR reference. Read it, paraphrase what's useful into natural English prose, and emit a \`<document>\` tag for each citation. Do not write \`<chunk>\`, \`<retrieved_context>\`, or any of the metadata attribute names in your reply.
 
 Bible quotations:
 - You may quote scripture from memory. Always include book, chapter, verse.
 - Default to NIV unless the user specifies another translation.
 - Cap: 15 verses total per response. Don't quote whole chapters — summarize and point to a Bible app.
 - When you directly quote, append (once per response, at the end, in italics):
-  *Scripture quotations taken from the Holy Bible, New International Version®, NIV®. Copyright © 1973, 1978, 1984, 2011 by Biblica, Inc.® Used by permission. All rights reserved worldwide.*
-
-If the search tool returns noResults:
-Say you didn't find specific teaching on the topic, offer to connect them with the church, and — if it's a general Bible or theology question — you may share a short, humble answer that starts with "Speaking generally…" Never present general answers as if they came from the church.`;
+  *Scripture quotations taken from the Holy Bible, New International Version®, NIV®. Copyright © 1973, 1978, 1984, 2011 by Biblica, Inc.® Used by permission. All rights reserved worldwide.*`;
 }
 
 /**
- * Detect tool-result JSON bleeding into the visible response. Mercury
- * 2 occasionally echoes a fragment of its `search` tool output when
- * the result set is large or the prompt is long — the user-visible
- * answer ends with something like `…","chunkContent":"…"` followed by
- * the entire payload. Stop sequences catch most of these in the model,
- * but the regex is defense-in-depth.
+ * Detect retrieved-context bleed into the visible response. With one-shot
+ * RAG the model receives `<chunk doc="…" title="…">…</chunk>` blocks; if
+ * it echoes those tags or any of the metadata attribute names verbatim,
+ * the visitor sees raw markup. The legacy JSON-key patterns (from the
+ * old agentic search tool) stay matched for paranoia — Mercury 2 has
+ * been known to invent JSON shapes from training data.
  *
- * The keys below are unique to `chunksToMetadata` / search-tool output
- * and don't appear in natural prose with a colon directly after a
- * closing quote. Returns -1 if the text is clean.
+ * Returns the index of the first detected leak, or -1 if clean.
  */
 function findToolOutputLeakIndex(text: string): number {
-  const m = /"(chunkContent|resultNumber|documentId|documentTitle|documentType|sourceUrl)"\s*:/.exec(
+  const m = /<chunk\s|<\/chunk>|<retrieved_context|"(chunkContent|resultNumber|documentId|documentTitle|documentType|sourceUrl)"\s*:/.exec(
     text
   );
   return m ? m.index : -1;
@@ -553,91 +549,35 @@ function createCaptureProspectTool({
   };
 }
 
-function createSearchTool(churchId: string): Tool<{ query: string }, unknown> {
-  return {
-    description:
-      "Search the church's content library (sermons, documents, videos, teachings). Returns relevant passages with document metadata.",
-    inputSchema: jsonSchema<{ query: string }>({
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "Specific search query tied to the visitor's question.",
-        },
-      },
-      required: ["query"],
-    }),
-    execute: async ({ query }) => {
-      const SEMANTIC_THRESHOLD = 0.3;
-      const KEYWORD_THRESHOLD = 0.01;
-      const results = await hybridSearch(churchId, query, 6, "member");
-      const relevant = results.filter(
-        (c) =>
-          (typeof c.semanticSimilarity === "number" &&
-            c.semanticSimilarity >= SEMANTIC_THRESHOLD) ||
-          (typeof c.keywordRank === "number" &&
-            c.keywordRank >= KEYWORD_THRESHOLD)
-      );
-      if (relevant.length === 0) {
-        return {
-          noResults: true,
-          message:
-            "No specific teaching found in this church's library. Offer to connect the visitor with someone from the church.",
-        };
-      }
-      return relevant.map((c, i) => ({
-        resultNumber: i + 1,
-        documentId: c.documentId,
-        documentTitle: c.documentTitle,
-        documentType: c.documentType,
-        sourceUrl: c.sourceUrl || undefined,
-        heading: c.heading || undefined,
-        startTime: c.startTime,
-        endTime: c.endTime,
-        pageNumber: c.pageNumber,
-        content: c.content,
-      }));
-    },
-  };
+/**
+ * Build the retrieval query for one-shot RAG. Concatenates the last two
+ * messages so a follow-up like "what about Romans?" still pulls in the
+ * topic from the prior assistant turn. Capped at 2000 chars (sliced from
+ * the end so the most recent user content is preserved).
+ */
+function buildRetrievalQuery(
+  messages: Array<{ role: string; content: string }>
+): string {
+  const tail = messages.slice(-2);
+  const joined = tail.map((m) => m.content).join("\n\n");
+  return joined.length > 2000 ? joined.slice(-2000) : joined;
 }
 
-function extractSearchResults(steps: unknown[]): RetrievedChunk[] {
-  const out: RetrievedChunk[] = [];
-  const seen = new Set<string>();
-  for (const step of steps) {
-    const s = step as Record<string, unknown>;
-    const toolResults = s.toolResults as
-      | Array<Record<string, unknown>>
-      | undefined;
-    if (!toolResults) continue;
-    for (const tr of toolResults) {
-      const output = (tr.output ?? tr.result) as unknown;
-      if (tr.toolName !== "search" || !Array.isArray(output)) continue;
-      for (const item of output as Record<string, unknown>[]) {
-        const docId = item.documentId as string;
-        const content = item.content as string;
-        if (!docId || !content) continue;
-        const key = `${docId}:${content}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        out.push({
-          chunkId: `${docId}-${out.length}`,
-          documentId: docId,
-          documentTitle: (item.documentTitle as string) || "Untitled",
-          documentType:
-            (item.documentType as RetrievedChunk["documentType"]) || "platejs",
-          content,
-          sourceUrl: (item.sourceUrl as string) || undefined,
-          heading: (item.heading as string) || undefined,
-          startTime: item.startTime != null ? Number(item.startTime) : undefined,
-          endTime: item.endTime != null ? Number(item.endTime) : undefined,
-          pageNumber:
-            item.pageNumber != null ? Number(item.pageNumber) : undefined,
-        });
-      }
-    }
-  }
-  return out;
+/**
+ * Apply the same relevance gate the old agentic search tool used. Drops
+ * chunks that are weak on both semantic and keyword scores so the model
+ * doesn't try to cite noise.
+ */
+function filterRelevantChunks(chunks: RetrievedChunk[]): RetrievedChunk[] {
+  const SEMANTIC_THRESHOLD = 0.3;
+  const KEYWORD_THRESHOLD = 0.01;
+  return chunks.filter(
+    (c) =>
+      (typeof c.semanticSimilarity === "number" &&
+        c.semanticSimilarity >= SEMANTIC_THRESHOLD) ||
+      (typeof c.keywordRank === "number" &&
+        c.keywordRank >= KEYWORD_THRESHOLD)
+  );
 }
 
 export async function OPTIONS(request: Request) {
@@ -847,49 +787,72 @@ export async function POST(request: Request) {
     );
   }
 
-  // Flip the interaction flag on first message so subsequent sessions
-  // skip the gate. Always-on-first-message is fine because a scripted
-  // attacker still has to pay the 2-s age cost above.
-  if (!session.hasInteracted) {
-    await db
-      .update(embedWidgetSessions)
-      .set({ hasInteracted: true, lastSeenAt: new Date() })
-      .where(eq(embedWidgetSessions.id, session.id));
-  } else {
-    await db
-      .update(embedWidgetSessions)
-      .set({ lastSeenAt: new Date() })
-      .where(eq(embedWidgetSessions.id, session.id));
-  }
-
-  const church = await db.query.churches.findFirst({
-    where: eq(churches.id, verified.value.churchId),
-    columns: { name: true },
-  });
-  const churchName = church?.name ?? "this church";
-
-  const systemPrompt = buildWidgetSystemPrompt({
-    churchName,
-    priorSummary: session.conversationSummary,
-    prospectCaptured: !!session.prospectId,
-  });
   const coreMessages = clientMessages.map((m) => ({
     role: m.role,
     content: m.content,
   }));
   const lastMessage = coreMessages.at(-1);
   const olderMessages = coreMessages.slice(0, -1);
+
+  // One-shot RAG: build the retrieval query from the last 2 messages,
+  // generate the embedding in parallel with the hasInteracted update
+  // and church-name fetch (the embedding round-trip dominates, so
+  // attaching cheap DB ops to the same await is essentially free), then
+  // fire the hybrid search with the pre-computed vector.
+  const retrievalQuery = buildRetrievalQuery(coreMessages);
+  const interactionUpdate = !session.hasInteracted
+    ? { hasInteracted: true, lastSeenAt: new Date() }
+    : { lastSeenAt: new Date() };
+
+  const [embedding, , churchRow] = await Promise.all([
+    generateQueryEmbedding(retrievalQuery),
+    db
+      .update(embedWidgetSessions)
+      .set(interactionUpdate)
+      .where(eq(embedWidgetSessions.id, session.id)),
+    db.query.churches.findFirst({
+      where: eq(churches.id, verified.value.churchId),
+      columns: { name: true },
+    }),
+  ]);
+  const churchName = churchRow?.name ?? "this church";
+
+  const rawChunks = await hybridSearchWithEmbedding(
+    verified.value.churchId,
+    embedding,
+    retrievalQuery,
+    5,
+    "member",
+    1.5
+  );
+  const retrievedChunks = filterRelevantChunks(rawChunks);
+  const ragBlock = buildRagContext(retrievedChunks);
+
+  const systemPrompt = buildWidgetSystemPrompt({
+    churchName,
+    priorSummary: session.conversationSummary,
+    prospectCaptured: !!session.prospectId,
+  });
+
+  const ragBlockTokens = estimateTokens(ragBlock);
   const trimmedOlder = lastMessage
     ? trimHistoryToBudget(olderMessages, {
         systemPromptTokens: estimateTokens(systemPrompt),
-        ragContextTokens: 0,
+        ragContextTokens: ragBlockTokens,
         currentUserTokens: estimateMessageTokens(lastMessage),
         totalBudget: TOTAL_TOKEN_BUDGET,
         outputReserve: OUTPUT_RESERVE,
       })
     : [];
-  const messagesToSend = lastMessage
-    ? [...trimmedOlder, lastMessage]
+
+  // Prepend the RAG block to the last user message so retrieval
+  // travels with the question. Keeps the system prompt prefix-stable
+  // across turns, which matters for prompt-cache hit rates.
+  const lastMessageWithContext = lastMessage
+    ? { role: lastMessage.role, content: ragBlock + lastMessage.content }
+    : null;
+  const messagesToSend = lastMessageWithContext
+    ? [...trimmedOlder, lastMessageWithContext]
     : coreMessages;
 
   const chatId = session.chatId;
@@ -913,6 +876,7 @@ export async function POST(request: Request) {
     sessionId: verified.value.sessionId,
     model: process.env.AI_MODEL || DEFAULT_MODEL,
     messageCount: messagesToSend.length,
+    chunkCount: retrievedChunks.length,
     hasPriorSummary: !!session.conversationSummary,
     prospectAlreadyCaptured,
   });
@@ -928,81 +892,58 @@ export async function POST(request: Request) {
   // still fires — the model could call the tool twice in one
   // response, and we want the second call to no-op even though the
   // registry can't be hot-swapped mid-stream.
-  const searchTool = createSearchTool(verified.value.churchId);
+  const captureProspectTool = prospectAlreadyCaptured
+    ? null
+    : createCaptureProspectTool({
+        churchId: verified.value.churchId,
+        chatId,
+        sessionId: verified.value.sessionId,
+        originUrl: session.metadata?.lastPageUrl ?? originCheck.origin,
+        originPageTitle: session.metadata?.lastPageTitle ?? null,
+        captureState,
+      });
+
   const result = streamText({
     model: getModel(),
     system: systemPrompt,
     messages: messagesToSend,
-    tools: prospectAlreadyCaptured
-      ? { search: searchTool }
-      : {
-          search: searchTool,
-          captureProspect: createCaptureProspectTool({
-            churchId: verified.value.churchId,
-            chatId,
-            sessionId: verified.value.sessionId,
-            originUrl: session.metadata?.lastPageUrl ?? originCheck.origin,
-            originPageTitle: session.metadata?.lastPageTitle ?? null,
-            captureState,
-          }),
-        },
-    stopWhen: stepCountIs(6),
+    ...(captureProspectTool
+      ? {
+          tools: { captureProspect: captureProspectTool },
+          // Allow one captureProspect call + the final reply.
+          stopWhen: stepCountIs(2),
+        }
+      : {}),
     maxOutputTokens: 900,
-    // Stop sequences serve two purposes here. The HTML fragments
-    // (`<b>`, `</b>`, `<br`, `</br`) catch a markdown-bleed bug where
-    // the model would start emitting raw HTML tags instead of
-    // markdown. The JSON-key fragments catch the model leaking its
-    // tool-result JSON into the visible response — Mercury 2 sometimes
-    // echoes a `","chunkContent":"…` fragment when the search results
-    // crowd its context, and these stops halt generation before the
-    // payload bleeds through. The post-stream scrub below is the
-    // belt-and-suspenders backstop if any of these slip past.
-    stopSequences: [
-      "<b>",
-      "</b>",
-      "<br",
-      "</br",
-      '"chunkContent"',
-      '"resultNumber"',
-      '"documentId"',
-    ],
+    // HTML-fragment stops catch a markdown-bleed bug where the model
+    // would emit raw HTML tags instead of markdown. The post-stream
+    // scrub below is the belt-and-suspenders backstop.
+    stopSequences: ["<b>", "</b>", "<br", "</br"],
     temperature: 0.7,
   });
+
+  const citations = chunksToMetadata(retrievedChunks);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
         let fullText = "";
-        let leakTruncated = false;
         for await (const chunk of result.textStream) {
           if (!chunk) continue;
-          // Once a leak has been detected and the stream truncated,
-          // drop everything else the model emits — we already cut
-          // cleanly and don't want late tokens reopening the wound.
-          if (leakTruncated) continue;
+          fullText += chunk;
+          controller.enqueue(encoder.encode(CHUNK_BOUNDARY + chunk));
+        }
 
-          const candidate = fullText + chunk;
-          const leakIdx = findToolOutputLeakIndex(candidate);
-          if (leakIdx === -1) {
-            fullText = candidate;
-            controller.enqueue(encoder.encode(CHUNK_BOUNDARY + chunk));
-            continue;
-          }
-
-          // Tool-result JSON started leaking. Enqueue only the clean
-          // prefix from this chunk, snap to a sentence boundary for
-          // the persisted copy, and stop streaming further tokens.
-          const safeText = trimToCleanBoundary(candidate.slice(0, leakIdx));
-          if (safeText.length > fullText.length) {
-            const cleanChunk = chunk.slice(0, safeText.length - fullText.length);
-            if (cleanChunk) {
-              controller.enqueue(encoder.encode(CHUNK_BOUNDARY + cleanChunk));
-            }
-          }
-          fullText = safeText;
-          leakTruncated = true;
-          logger.warn("[embed/chat] tool-output leak in stream — truncated", {
+        // Defensive backstop: scrub if the model echoed any retrieved-
+        // context attribute names verbatim. With one-shot RAG and no
+        // search tool returning JSON, the leak risk is much lower than
+        // before — but the model can still hallucinate a `<chunk>` or
+        // a `documentId` key, and visitors must never see that.
+        const leakIdx = findToolOutputLeakIndex(fullText);
+        if (leakIdx !== -1) {
+          fullText = trimToCleanBoundary(fullText.slice(0, leakIdx));
+          logger.warn("[embed/chat] context leak post-stream — truncated", {
             churchId: verified.value.churchId,
             chatId,
             sessionId: verified.value.sessionId,
@@ -1010,28 +951,6 @@ export async function POST(request: Request) {
             keptChars: fullText.length,
           });
         }
-
-        // Defensive backstop: if the per-chunk check somehow missed a
-        // leak (a stop sequence fired mid-key, two-chunk straddle,
-        // etc.), scrub fullText once more before the citation
-        // sentinels go on the wire and before we persist.
-        if (!leakTruncated) {
-          const leakIdxFinal = findToolOutputLeakIndex(fullText);
-          if (leakIdxFinal !== -1) {
-            fullText = trimToCleanBoundary(fullText.slice(0, leakIdxFinal));
-            logger.warn("[embed/chat] tool-output leak post-stream — truncated", {
-              churchId: verified.value.churchId,
-              chatId,
-              sessionId: verified.value.sessionId,
-              leakIndex: leakIdxFinal,
-              keptChars: fullText.length,
-            });
-          }
-        }
-
-        const steps = await result.steps;
-        const searchResults = extractSearchResults(steps as unknown[]);
-        const citations = chunksToMetadata(searchResults);
 
         controller.enqueue(encoder.encode(CHAT_ID_SENTINEL + chatId));
         if (citations.length > 0) {
@@ -1062,58 +981,57 @@ export async function POST(request: Request) {
         }
         controller.close();
 
-        // Persist both sides of the turn. Anonymous chat — `userId`
-        // stays null. Messages go into the same table as the member
-        // chat so `/prospects/[id]` can reuse the existing transcript
-        // UI patterns.
-        try {
-          await db.insert(messages).values({
-            chatId,
-            role: "user",
-            content: lastUser.content,
-          });
-          const cleanText = fullText.replace(
-            /<document>[^<]*<\/document>/g,
-            ""
-          );
-          await db.insert(messages).values({
-            chatId,
-            role: "assistant",
-            content: cleanText,
-            citations:
-              citations.length > 0
-                ? (citations as unknown as Record<string, unknown>[])
-                : null,
-            hasCitations: citations.length > 0,
-          });
-          await db
-            .update(chats)
-            .set({ updatedAt: new Date() })
-            .where(eq(chats.id, chatId));
-          await incrementQuestionCount(verified.value.churchId);
-        } catch (err) {
-          logger.error("[embed/chat] failed to persist", {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
+        // Detach all post-stream work so the ReadableStream start
+        // callback returns immediately and the runtime can flush the
+        // last bytes to the visitor without waiting on DB round-trips.
+        void (async () => {
+          try {
+            await db.insert(messages).values({
+              chatId,
+              role: "user",
+              content: lastUser.content,
+            });
+            const cleanText = fullText.replace(
+              /<document>[^<]*<\/document>/g,
+              ""
+            );
+            await db.insert(messages).values({
+              chatId,
+              role: "assistant",
+              content: cleanText,
+              citations:
+                citations.length > 0
+                  ? (citations as unknown as Record<string, unknown>[])
+                  : null,
+              hasCitations: citations.length > 0,
+            });
+            await db
+              .update(chats)
+              .set({ updatedAt: new Date() })
+              .where(eq(chats.id, chatId));
+            await incrementQuestionCount(verified.value.churchId);
+          } catch (err) {
+            logger.error("[embed/chat] failed to persist", {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
 
-        // Fire-and-forget conversation summary update. Runs Mercury 2
-        // against the most recent messages and writes back to
-        // `embed_widget_sessions.conversation_summary`. Intentionally
-        // not awaited — the visitor's response stream is already done
-        // and this only affects the NEXT turn's context injection.
-        // Internally debounced (5 min TTL + 4-message min delta) so a
-        // chatty session doesn't trigger an LLM call on every turn.
-        refreshConversationSummary({
-          churchId: verified.value.churchId,
-          chatId,
-          sessionId: verified.value.sessionId,
-          lastSummaryUpdatedAt: session.summaryUpdatedAt ?? null,
-        }).catch((err) => {
-          logger.warn("[embed/chat] summary refresh failed", {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
+          // Conversation summary update. Internally debounced (5 min
+          // TTL + 4-message min delta) so a chatty session doesn't
+          // trigger an LLM call on every turn.
+          try {
+            await refreshConversationSummary({
+              churchId: verified.value.churchId,
+              chatId,
+              sessionId: verified.value.sessionId,
+              lastSummaryUpdatedAt: session.summaryUpdatedAt ?? null,
+            });
+          } catch (err) {
+            logger.warn("[embed/chat] summary refresh failed", {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        })();
       } catch (err) {
         controller.error(err);
       }

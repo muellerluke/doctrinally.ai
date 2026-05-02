@@ -19,6 +19,7 @@ import { stripe, getStripePriceId } from "@/lib/stripe";
 import { getPlanLimits, TRIAL_DAYS } from "@/lib/plans";
 import { env } from "@/lib/env";
 import { canUseYouTubeSync } from "@/lib/plan-gating";
+import { generateEmbedKey } from "@/lib/actions/embed";
 import {
   fetchChannelVideos,
   resolveChannel,
@@ -313,6 +314,13 @@ export async function createChurch(input: {
         slug: parsed.data.slug,
         isActive: false,
         websiteDomain: normalizedWebsite,
+        // Website Chat is the flagship product on every plan — generate
+        // the public key and flip the admin toggle on at signup so the
+        // only step left for the church is pasting the <script> tag.
+        // The widget is a no-op until that script loads on a real page,
+        // so "live" before paste is harmless.
+        embedPublicKey: generateEmbedKey(),
+        embedEnabled: true,
       })
       .returning({ id: churches.id, slug: churches.slug });
 

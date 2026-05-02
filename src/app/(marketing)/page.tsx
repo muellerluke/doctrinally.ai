@@ -7,7 +7,6 @@ import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
 import { SermonPreview } from "@/components/marketing/sermon-preview";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { CTASection } from "@/components/marketing/cta-section";
-import { BookDemoButton } from "@/components/marketing/book-demo-button";
 import { ThreeProductsSection } from "@/components/marketing/three-products-section";
 import {
   ArrowRight,
@@ -16,6 +15,7 @@ import {
   BarChart3,
   Sparkles,
   Zap,
+  ExternalLink,
 } from "lucide-react";
 import {
   heroStats,
@@ -26,9 +26,10 @@ import {
 } from "@/content/marketing/data";
 
 export const metadata: Metadata = {
-  title: "Your Church's Own AI Assistant — Doctrinally.AI",
+  title:
+    "Capture website visitors with your church's own AI — Doctrinally.AI",
   description:
-    "Give your church its own custom AI assistant — trained on your pastor's sermons, devotions, and teaching. Launch in under 5 minutes. 14-day free trial.",
+    "Drop one line of code on your church website and Website Chat engages visitors at the right moment — answering questions in your voice and dropping name + email into your inbox. Member AI and Sermon AI included on every plan.",
   alternates: { canonical: "https://www.doctrinally.ai" },
 };
 
@@ -44,12 +45,12 @@ export default function HomePage() {
             <span className="pulse-dot absolute inline-flex h-full w-full rounded-full bg-gold" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
           </span>
-          <span className="font-medium">New:</span>
+          <span className="font-medium">Flagship:</span>
           <span className="min-w-0 truncate text-muted-foreground sm:hidden">
-            Launch your church&apos;s AI in under 5 minutes
+            Website Chat is now included on every plan
           </span>
           <span className="hidden min-w-0 truncate text-muted-foreground sm:inline">
-            Launch your church&apos;s own custom AI assistant in under 5 minutes
+            Website Chat &mdash; capture visitors 24/7 &mdash; now included on every plan
           </span>
           <Link
             href="/sign-up"
@@ -77,31 +78,31 @@ export default function HomePage() {
                 className="h-auto max-w-full rounded-full border-primary/20 bg-background/80 py-1.5 pl-1.5 pr-3 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground/80 shadow-sm backdrop-blur sm:text-[11px]"
               >
                 <span className="mr-2 flex h-5 shrink-0 items-center rounded-full bg-gold/15 px-2 text-[10px] text-gold">
-                  <Sparkles className="mr-1 h-3 w-3" /> New
+                  <Sparkles className="mr-1 h-3 w-3" /> Flagship
                 </span>
-                <span className="sm:hidden">Your church&apos;s own AI</span>
+                <span className="sm:hidden">Website Chat for your church</span>
                 <span className="hidden sm:inline">
-                  A private AI trained on your church&apos;s teaching
+                  Website Chat &mdash; capture visitors as they read
                 </span>
               </Badge>
             </div>
 
             <h1 className="animate-fade-up stagger-2 mt-6 font-heading text-[2rem] leading-[1.05] tracking-[-0.02em] sm:text-6xl sm:leading-[1.02] lg:text-[4.6rem]">
-              <span className="text-gradient-ink">Your church.</span>
+              <span className="text-gradient-ink">Stop losing visitors</span>
               <br />
-              <span className="text-gradient-ink">Your doctrine.</span>
+              <span className="text-gradient-ink">the moment they</span>
               <br />
-              <span className="italic text-primary">Its own AI.</span>
+              <span className="italic text-primary">land on your site.</span>
             </h1>
 
             <p className="animate-fade-up stagger-3 mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:mt-8 sm:text-lg">
-              Doctrinally.AI gives your church its own custom AI assistant
-              &mdash; trained on{" "}
+              Doctrinally.AI&rsquo;s Website Chat engages visitors at the
+              right moment, answers in your church&rsquo;s voice, and{" "}
               <span className="font-semibold text-foreground">
-                every sermon, devotion, and document your pastors have taught
+                drops their name and email into your inbox
               </span>
-              . Members ask anything, and the answers come back in your voice,
-              cited to the source.
+              &mdash; so the visitor who almost left becomes a lead. Member AI
+              and Sermon AI are also included on every plan.
             </p>
 
             {/* CTA row */}
@@ -114,7 +115,21 @@ export default function HomePage() {
                 Start your 14-day free trial
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <BookDemoButton />
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-12 px-5 text-[0.95rem]"
+                render={
+                  <a
+                    href="https://church-example.vercel.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                <ExternalLink className="h-4 w-4" />
+                See it in action
+              </Button>
             </div>
 
             {/* Trust row */}
@@ -161,18 +176,20 @@ export default function HomePage() {
 
       {/* ─── THREE PRODUCTS FRAMING ───────────────────────────
           Introduces the three AIs that share one content library.
-          Sits between the hero and the Sermon AI deep-dive so
-          visitors see the full product suite before any single
-          product gets the spotlight. Embedded AI (gold accent) gets
-          the visual weight because it's the newest + the highest-
-          leverage surface for visitor → prospect capture. */}
+          Website Chat (gold, first card) is the flagship — the surface
+          most visitors will meet first and the one we want every plan
+          to include. Member AI and Sermon AI are also included; the
+          Sermon AI deep-dive below shows the pastor-side story for
+          churches considering Enterprise. */}
       <ThreeProductsSection />
 
-      {/* ─── SERMON AI (pastor-side story) ──────────────────────
-          Lives between the member-chat hero and the problem framing
-          so the reader meets both audiences right after the headline.
-          Gold-accented + desktop workspace mock differentiates it
-          visually from the brown phone-shaped chat preview above. */}
+      {/* ─── SERMON AI (Enterprise pastor-side story) ──────────
+          Pastor-facing deep-dive for the Enterprise differentiator.
+          Sits below the Three Products framing so visitors who want
+          the full pastor-side workflow can read it without bumping
+          the flagship Website Chat above. Gold-accented + desktop
+          workspace mock differentiates it visually from the brown
+          phone-shaped chat preview above. */}
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-card/40 via-background to-background py-20 sm:py-28">
         {/* Soft gold ember to signal "different feature, Enterprise tier" */}
         <div
@@ -201,11 +218,11 @@ export default function HomePage() {
               </h2>
 
               <p className="mt-5 text-lg text-muted-foreground">
-                Enterprise churches unlock a second AI — one that drafts
-                sermons alongside your pastor, grounded in the same teaching
-                that answers your members. Chat it through the text. Write
-                alongside it. Publish, and the member chat cites it the moment
-                someone asks.
+                Enterprise churches add a third AI — one that drafts sermons
+                alongside your pastor, grounded in the same library that
+                powers your Website Chat and Member AI. Chat it through the
+                text. Write alongside it. Publish, and every other AI cites it
+                the moment someone asks.
               </p>
 
               <ul className="mt-8 grid gap-5 sm:gap-6">

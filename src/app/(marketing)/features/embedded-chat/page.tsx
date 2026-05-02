@@ -21,9 +21,9 @@ import {
 } from "@/content/marketing/data";
 
 export const metadata: Metadata = {
-  title: "Embedded AI — get prospects while you sleep · Doctrinally.AI",
+  title: "Website Chat — capture website visitors · Doctrinally.AI",
   description:
-    "Drop a single script on your church website. The embedded AI reaches out first when visitors pause to read, answers their questions, and captures their name and email — so you never miss a lead.",
+    "Drop a single script on your church website. Website Chat engages visitors at the right moment, answers their questions, and captures their name and email — so you never miss a lead. Included on every plan.",
   alternates: {
     canonical: "https://www.doctrinally.ai/features/embedded-chat",
   },
@@ -33,14 +33,14 @@ export default function EmbeddedChatPage() {
   return (
     <div className="flex flex-col">
       <PageHero
-        eyebrow="For visitors · Enterprise"
+        eyebrow="Flagship · Website Chat"
         title={
           <>
             Get prospects{" "}
             <span className="italic text-primary">while you sleep.</span>
           </>
         }
-        description="Your website doesn't sleep — now your AI doesn't either. The embedded chat widget watches for readers, reaches out with a question tied to what they're looking at, and drops their name and email into your Prospects dashboard."
+        description="Your website doesn't sleep — now your AI doesn't either. Website Chat engages visitors with thoughtful, tailored conversation in your church's voice, then drops their name and email into your Prospects dashboard."
       >
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Button
@@ -52,7 +52,7 @@ export default function EmbeddedChatPage() {
             <ArrowRight className="h-4 w-4" />
           </Button>
           <span className="text-[12px] text-muted-foreground">
-            Included on the Enterprise plan
+            Included on every plan
           </span>
         </div>
       </PageHero>
@@ -143,20 +143,20 @@ export default function EmbeddedChatPage() {
               {
                 step: "01",
                 icon: ScrollText,
-                title: "Visitor pauses while reading",
-                body: "The widget watches for the natural rhythm of reading — scroll, stop, look for more. When the visitor holds still for a few seconds on a specific section, that's the signal.",
+                title: "Visitor lands on your site",
+                body: "Most website visitors browse silently and leave without ever reaching out. Website Chat sits in the background, ready to help — without ever feeling intrusive.",
               },
               {
                 step: "02",
                 icon: MousePointerClick,
-                title: "Widget reaches out first",
-                body: "One tailored question based on what's visible on the page. Not a generic \"Can I help?\" — an actual thoughtful opener tied to the topic the visitor was reading about.",
+                title: "AI starts the conversation",
+                body: "A thoughtful, tailored opener — not a generic \"Can I help?\" — kicks off a real conversation in your church's voice, grounded in what your church actually teaches.",
               },
               {
                 step: "03",
                 icon: UserPlus,
-                title: "Conversation turns into a prospect",
-                body: "After a couple of exchanges the widget asks for a name and email — gently, with a reason. The lead lands in your Prospects dashboard, with the full conversation transcript attached.",
+                title: "Conversation becomes a prospect",
+                body: "When the moment is right, the AI asks for a name and email — gently, with a reason. The lead lands in your Prospects dashboard with the full conversation transcript attached.",
               },
             ].map((s) => (
               <div key={s.step} className="relative">
@@ -265,7 +265,7 @@ export default function EmbeddedChatPage() {
         </div>
       </section>
 
-      {/* ─── Plan gate ───────────────────────────────────────── */}
+      {/* ─── Included on every plan ─────────────────────────── */}
       <section className="border-b py-16">
         <div className="container mx-auto px-4">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/[0.06] via-background to-primary/[0.04] p-7 text-center sm:p-10">
@@ -273,17 +273,17 @@ export default function EmbeddedChatPage() {
               variant="secondary"
               className="border border-gold/40 bg-gold/10 text-[10px] font-semibold uppercase tracking-wider text-gold"
             >
-              Enterprise plan
+              Flagship &middot; Every plan
             </Badge>
             <h3 className="font-heading text-2xl tracking-tight sm:text-3xl">
-              Embedded AI is included on{" "}
-              <span className="italic text-primary">Enterprise</span>.
+              Website Chat is included on{" "}
+              <span className="italic text-primary">every plan</span>.
             </h3>
             <p className="max-w-xl text-[0.95rem] leading-relaxed text-muted-foreground">
-              Every Enterprise church gets the widget, the Prospects
-              dashboard, and the AI-personalized opener toggle — along
-              with Sermon AI, custom domain support, and YouTube
-              auto-sync.
+              Every church &mdash; Standard or Enterprise &mdash; gets the
+              widget, the Prospects dashboard, and the AI-personalized opener
+              toggle. Enterprise adds Sermon AI, custom domain support, and
+              YouTube auto-sync.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button

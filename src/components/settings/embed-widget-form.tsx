@@ -40,14 +40,14 @@ interface Props {
     proactiveOutreachEnabled: boolean;
   };
   allowedOrigins: string[];
-  appUrl: string;
+  embedScriptUrl: string;
 }
 
 export function EmbedWidgetForm({
   isEnterprise,
   initial,
   allowedOrigins,
-  appUrl,
+  embedScriptUrl,
 }: Props) {
   const router = useRouter();
   const [embedPublicKey, setEmbedPublicKey] = useState(initial.embedPublicKey);
@@ -92,8 +92,8 @@ export function EmbedWidgetForm({
     );
   }
 
-  const scriptSnippet = embedPublicKey
-    ? `<script src="${appUrl}/embed.js" data-church-key="${embedPublicKey}" async></script>`
+  const scriptSnippet = embedPublicKey && embedScriptUrl
+    ? `<script src="${embedScriptUrl}" data-church-key="${embedPublicKey}" async></script>`
     : "";
 
   async function handleGenerate() {

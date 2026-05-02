@@ -9,6 +9,9 @@ import {
   Rss,
   Folder,
   Clock,
+  MousePointerClick,
+  UserPlus,
+  Moon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,12 +24,13 @@ import {
   beforeAfter,
   testimonials,
   sermonAiFeatures,
+  embeddedChatFeatures,
 } from "@/content/marketing/data";
 
 export const metadata: Metadata = {
   title: "Features — Doctrinally.AI",
   description:
-    "Upload sermons, get cited answers, see analytics on what your church is asking. Everything your church needs to give its congregation an AI that speaks with your voice.",
+    "Capture website visitors with Website Chat, give members a private AI chat hub, and (on Enterprise) draft sermons with Sermon AI — all grounded in your church's own teaching.",
   alternates: { canonical: "https://www.doctrinally.ai/features" },
 };
 
@@ -37,11 +41,11 @@ export default function FeaturesPage() {
         eyebrow="Features"
         title={
           <>
-            Everything your church needs to reach its people{" "}
-            <span className="italic text-primary">between Sundays.</span>
+            Capture every visitor.{" "}
+            <span className="italic text-primary">Disciple every member.</span>
           </>
         }
-        description="Upload your sermons, documents, and videos. Your AI learns your voice and answers your congregation's questions 24/7 — with citations back to the source."
+        description="Website Chat is your flagship — included on every plan. Member AI gives your congregation their own chat hub. Enterprise adds Sermon AI and more. All three share the same library of your sermons, documents, and videos."
       >
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Button
@@ -62,6 +66,115 @@ export default function FeaturesPage() {
           </Button>
         </div>
       </PageHero>
+
+      {/* ─── Website Chat (Flagship · Every plan) ─────────────────
+          Top section so the reader meets the headline product before
+          they scroll into the upload-and-index bento. Mirrors the
+          structure of the YouTube auto-sync section below. */}
+      <section
+        id="website-chat"
+        className="relative overflow-hidden border-b py-20 sm:py-28"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[60%] w-[80%] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(closest-side, var(--gold) 0%, transparent 70%)",
+          }}
+        />
+        <div className="container mx-auto px-4">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1">
+                <MousePointerClick className="h-3.5 w-3.5 text-gold" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
+                  Flagship &middot; Every plan
+                </span>
+              </div>
+              <h2 className="mt-5 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
+                Capture visitors{" "}
+                <span className="italic text-primary">while you sleep.</span>
+              </h2>
+              <p className="mt-5 text-lg text-muted-foreground">
+                Drop one <code className="rounded bg-muted/60 px-1 py-0.5 text-[0.85em] font-mono">&lt;script&gt;</code>{" "}
+                tag on your church website. Website Chat engages visitors at
+                the right moment, answers in your voice with cited sources,
+                and drops their name and email into your Prospects dashboard
+                with the full conversation attached.
+              </p>
+              <ul className="mt-7 space-y-4">
+                {embeddedChatFeatures.map((feature) => (
+                  <li key={feature.title} className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10">
+                      <feature.icon className="h-4 w-4 text-gold" />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{feature.title}</div>
+                      <div className="text-[0.95rem] leading-relaxed text-muted-foreground">
+                        {feature.description}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="mt-8 h-11 px-6 font-semibold"
+                render={<Link href="/features/embedded-chat" />}
+              >
+                See Website Chat in action
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="relative">
+              <div className="overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-primary/[0.08]">
+                <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-gold/60" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/60" />
+                  <div className="ml-2 flex-1 truncate rounded-md bg-background/60 px-2 py-1 text-[11px] text-muted-foreground">
+                    yourchurch.com/about
+                  </div>
+                </div>
+                <div className="space-y-3 p-6">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Moon className="h-3.5 w-3.5 text-gold" />
+                    Tuesday, 11:42 PM
+                  </div>
+                  <div className="rounded-lg border border-gold/30 bg-gold/[0.06] p-3 text-sm">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-gold">
+                      Your church AI
+                    </div>
+                    <div className="mt-1 text-foreground/90">
+                      Hey &mdash; happy to answer any questions about what we
+                      teach. What&rsquo;s on your mind?
+                    </div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Visitor
+                    </div>
+                    <div className="mt-1 text-foreground/90">
+                      Do you do infant baptism here?
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/[0.04] p-3 text-sm">
+                    <UserPlus className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="text-[0.85rem] text-foreground/90">
+                      <span className="font-semibold">New prospect:</span>{" "}
+                      Sarah W. &middot; sarah@email.com
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-4 text-center text-[12px] text-muted-foreground">
+                Lands in your Prospects dashboard with the full transcript.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ─── Bento Features Grid ─────────────────────────────────── */}
       <section className="border-b py-20 sm:py-28">

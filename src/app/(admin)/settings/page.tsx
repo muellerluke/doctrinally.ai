@@ -51,8 +51,7 @@ export default async function SettingsPage() {
     : [];
   const appDomain = process.env.NEXT_PUBLIC_APP_DOMAIN || "localhost:3000";
   const protocol = appDomain.includes("localhost") ? "http" : "https";
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${appDomain}`;
+  const embedScriptUrl = process.env.NEXT_PUBLIC_EMBED_SCRIPT_URL ?? "";
 
   // Resolve the widget's allowed origins so the settings card can
   // show admins exactly where their script will load. Same source as
@@ -175,7 +174,7 @@ export default async function SettingsPage() {
               proactiveOutreachEnabled: church.embedProactiveOutreachEnabled,
             }}
             allowedOrigins={allowedOrigins}
-            appUrl={appUrl}
+            embedScriptUrl={embedScriptUrl}
           />
         </TabsContent>
 

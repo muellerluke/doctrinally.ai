@@ -42,10 +42,10 @@ export interface FeatureFlagDefinition {
 export const FEATURE_FLAGS = {
   embedded_chat: {
     key: "embedded_chat",
-    label: "Embedded Chat Widget",
+    label: "Website Chat",
     description:
-      "Website Chat product: the /embed.js script, Prospects dashboard, Website Chat settings tab, and all /api/embed/* endpoints. Works together with plan-gating — the feature is only exposed to a church when BOTH this flag is on AND the church is on a plan that includes the widget (currently Enterprise only).",
-    default: false,
+      "Website Chat product: the /embed.js script, Prospects dashboard, Website Chat settings tab, and all /api/embed/* endpoints. Included on every plan; this flag is the per-church kill switch — flip it off to disable a misbehaving church without a deploy.",
+    default: true,
     category: "products",
   },
 } as const satisfies Record<string, FeatureFlagDefinition>;

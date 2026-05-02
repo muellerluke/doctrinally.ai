@@ -15,7 +15,7 @@ import {
 export const metadata: Metadata = {
   title: "How It Works — Doctrinally.AI",
   description:
-    "Launch your church's AI in under 5 minutes. Upload your sermons, share a QR code, and your congregation can ask questions 24/7 with cited answers.",
+    "Launch your church's AI in under 5 minutes. Upload your sermons, paste Website Chat on your site, and capture visitors and members with cited answers 24/7.",
   alternates: { canonical: "https://www.doctrinally.ai/how-it-works" },
 };
 
@@ -110,16 +110,17 @@ export default function HowItWorksPage() {
               <div className="flex items-center gap-4">
                 <span className="font-heading text-4xl italic text-primary/30">02</span>
                 <h3 className="font-heading text-2xl tracking-tight">
-                  Your AI learns your pastor&apos;s voice
+                  Drop Website Chat on your church site
                 </h3>
               </div>
               <p className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
-                Every answer your AI gives comes from the content you uploaded
-                &mdash; your sermons, your documents, your teaching. It
-                doesn&apos;t guess. It doesn&apos;t pull from the open internet.
-                When it cites a source, that citation links to the exact sermon,
-                timestamp, or document page it came from. When it doesn&apos;t
-                have an answer, it says so honestly.
+                We generate your unique embed key the moment you sign up. Paste
+                one <code className="rounded bg-muted/60 px-1 py-0.5 text-[0.85em] font-mono">&lt;script&gt;</code>{" "}
+                tag on your church website &mdash; Wix, Squarespace, WordPress,
+                or hand-rolled HTML &mdash; and Website Chat goes to work. It
+                engages visitors in your church&rsquo;s voice with cited
+                sources, and drops their name and email into your Prospects
+                dashboard with the full transcript attached.
               </p>
             </div>
 
@@ -127,16 +128,18 @@ export default function HowItWorksPage() {
               <div className="flex items-center gap-4">
                 <span className="font-heading text-4xl italic text-primary/30">03</span>
                 <h3 className="font-heading text-2xl tracking-tight">
-                  Share with a QR code &mdash; no login required
+                  Share Member AI with a QR code
                 </h3>
               </div>
               <p className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed text-muted-foreground">
-                Your church gets a unique URL and QR code. Print it on
-                Sunday&apos;s bulletin, put it on your website, or text it to
-                your small group. Members scan and start asking &mdash; no
-                account, no password, no friction. Your analytics dashboard
-                shows you what they&apos;re asking about, where your content has
-                gaps, and which sermons keep getting revisited.
+                Your church also gets a unique chat hub URL and QR code. Print
+                it on Sunday&apos;s bulletin, put it on your website, or text
+                it to your small group. Members scan and start asking &mdash;
+                no account, no password, no friction. Same content library as
+                Website Chat, just on your church&rsquo;s own subdomain or
+                custom domain. Your analytics dashboard shows what they&rsquo;re
+                asking about, where your content has gaps, and which sermons
+                keep getting revisited.
               </p>
             </div>
           </div>

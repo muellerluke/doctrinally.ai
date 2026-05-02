@@ -20,8 +20,8 @@ import {
 // ─── Hero ──────────────────────────────────────────────────────────
 
 export const heroStats = [
-  { value: "< 5 min", label: "To launch your AI" },
-  { value: "24/7", label: "For every member" },
+  { value: "< 5 min", label: "To install on your site" },
+  { value: "24/7", label: "Capturing prospects" },
   { value: "100%", label: "Your church's voice" },
 ];
 
@@ -116,15 +116,15 @@ export const howItWorksSteps: HowItWorksStep[] = [
   },
   {
     step: "02",
-    icon: Sparkles,
-    title: "Your AI learns your voice",
-    body: "Your pastor's teaching becomes the foundation for every answer — ready for any question your congregation can ask.",
+    icon: MousePointerClick,
+    title: "Drop Website Chat on your church site",
+    body: "Paste one <script> tag we generate at signup. Your AI engages visitors in your church's voice, and warm leads land in your Prospects dashboard automatically.",
   },
   {
     step: "03",
     icon: MessageSquare,
-    title: "Share it with a QR code",
-    body: "Members scan, ask your church's AI anything, and get cited answers 24/7 — no login required.",
+    title: "Share Member AI with a QR code",
+    body: "Members scan a QR code or visit your church's chat hub and ask anything. Cited answers, 24/7, no login required.",
   },
 ];
 
@@ -170,29 +170,29 @@ export interface ProductCard {
 
 export const threeProducts: ProductCard[] = [
   {
-    icon: MessageSquare,
-    kicker: "For members",
-    title: "Member AI",
-    description:
-      "Your congregation's private AI. Lives on your doctrinally.ai subdomain or your own custom domain, trained on everything your church has taught.",
-    href: "/features#member-ai",
-    accent: "primary",
-  },
-  {
     icon: MousePointerClick,
-    kicker: "For visitors",
-    title: "Embedded AI",
+    kicker: "Flagship · On your website",
+    title: "Website Chat",
     description:
-      "A chat widget that lives on your own website. Reaches out to visitors as they read, answers questions in your church's voice, and captures prospects — while you sleep.",
+      "A chat widget that lives on your own church website. Engages visitors at the right moment, answers questions in your voice, and drops their name and email into your Prospects dashboard — while you sleep.",
     href: "/features/embedded-chat",
     accent: "gold",
   },
   {
+    icon: MessageSquare,
+    kicker: "Also included · For members",
+    title: "Member AI",
+    description:
+      "Same content library, your own chat hub. Lives on your doctrinally.ai subdomain or your own custom domain — so members ask anything, anywhere, and hear your church back.",
+    href: "/features#member-ai",
+    accent: "primary",
+  },
+  {
     icon: PenLine,
-    kicker: "For pastors",
+    kicker: "Also included · For pastors",
     title: "Sermon AI",
     description:
-      "An assistant that drafts sermons alongside you, grounded in your own past teaching. Publish, and the other two AIs can cite it the same day.",
+      "Same library, but for the pastor. Drafts sermons alongside you, grounded in your past teaching. Publish, and the chat your visitors and members use cites it the same day.",
     href: "/features#sermon-ai",
     accent: "primary",
   },
@@ -228,19 +228,19 @@ export const embeddedChatFeatures: SermonAiFeature[] = [
     icon: Moon,
     title: "Never miss a visitor",
     description:
-      "Your website doesn't sleep — now your AI doesn't either. It waits, watches, and engages when a visitor stops to read.",
+      "Your website doesn't sleep — now your AI doesn't either. Every visitor gets a chance to be heard, no matter the hour.",
   },
   {
     icon: MousePointerClick,
-    title: "Reaches out first",
+    title: "Starts the conversation",
     description:
-      "After a visitor pauses on a page, the widget opens with a question tied to what they're reading. One chance, no pestering.",
+      "Your AI opens with a thoughtful, tailored question — not a generic 'Can I help?' One chance, no pestering.",
   },
   {
     icon: UserPlus,
     title: "Captures prospects",
     description:
-      "When the conversation warms up, the widget asks for a name and email — and the lead lands in your Prospects dashboard.",
+      "Real conversations naturally lead to a name and email — and the lead lands in your Prospects dashboard.",
   },
   {
     icon: ShieldCheck,
@@ -252,7 +252,7 @@ export const embeddedChatFeatures: SermonAiFeature[] = [
 
 export const embeddedChatTestimonial = {
   quote:
-    "We were losing visitors the moment they hit our website. Now the widget catches them mid-scroll, answers their actual question, and drops their email in our inbox. It's paid for itself every month.",
+    "We were losing visitors the moment they hit our website. Now the widget engages them, answers their actual question, and drops their email in our inbox. It's paid for itself every month.",
   name: "Sarah Whitfield",
   role: "Communications Director",
   church: "Grace Community Church",
@@ -321,6 +321,7 @@ export const sermonAiTestimonial = {
 // ─── Pricing ───────────────────────────────────────────────────────
 
 export const standardFeatures = [
+  "Website Chat — capture visitors as they read, 24/7",
   "Your own doctrinally.ai subdomain",
   "Unlimited document uploads",
   "1,500 member questions / month",
@@ -331,7 +332,6 @@ export const standardFeatures = [
 
 export const enterpriseFeatures = [
   "Everything in Standard, plus:",
-  "Embedded AI — chat widget on your website that captures prospects while you sleep",
   "Auto-sync your entire YouTube channel — sermons, shorts, live replays, and playlists ingested every week",
   "Sermon AI — draft sermons with an assistant trained on your church",
   "Use your own custom domain",
@@ -348,6 +348,21 @@ export interface FAQ {
 }
 
 export const faqs: FAQ[] = [
+  {
+    question: "How do I install the Website Chat widget on my site?",
+    answer:
+      "Paste a single <script> tag your church's web admin can drop in anywhere — Wix, Squarespace, WordPress, or hand-rolled HTML. We generate a unique key for your church automatically the moment you sign up, so installation is one copy-paste away from live.",
+  },
+  {
+    question: "What does Website Chat capture?",
+    answer:
+      "Visitors who engage in conversation are gently asked for their name and email. Their full transcript lands in your Prospects dashboard so you can see what they were asking about, follow up by email, and export the whole list as CSV. No CRM integration required.",
+  },
+  {
+    question: "Is Website Chat available on the Standard plan?",
+    answer:
+      "Yes. Website Chat is included on every plan — Standard and Enterprise both ship with the widget enabled and a unique embed key generated for you at signup. It's our flagship feature: the first AI surface most of your visitors will ever touch.",
+  },
   {
     question: "Do I need technical skills to set this up?",
     answer:

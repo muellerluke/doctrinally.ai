@@ -14,16 +14,13 @@ const protectedPaths = [
 const authPaths = ["/sign-in", "/sign-up"];
 
 // Paths that should never be blocked on subdomains (API, assets, etc.)
-// `/embed.js` serves the public Shadow-DOM loader and is always
-// fetched from the root domain — churches paste the root-domain script
-// URL into their own sites, so subdomain rewrites must not interfere.
 // All widget API calls live under `/api/embed/*` which is covered by
-// the `/api` prefix below.
+// the `/api` prefix below. The widget loader script itself is served
+// from Vercel Blob, not from the app, so no entry is needed for it.
 const alwaysAllowPaths = [
   "/api",
   "/_next",
   "/favicon.ico",
-  "/embed.js",
 ];
 
 export async function middleware(request: NextRequest) {

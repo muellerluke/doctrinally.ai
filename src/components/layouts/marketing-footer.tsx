@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ThemeSelector } from "@/components/shared/theme-selector";
 
 export function MarketingFooter() {
   return (
@@ -33,7 +32,6 @@ export function MarketingFooter() {
           </Link>
         </div>
         <div className="flex flex-col items-center gap-2 sm:items-end">
-          <ThemeSelector />
           <div className="flex items-center gap-4 text-xs">
             <a href="mailto:hello@doctrinally.ai" className="transition-colors hover:text-foreground">
               hello@doctrinally.ai
