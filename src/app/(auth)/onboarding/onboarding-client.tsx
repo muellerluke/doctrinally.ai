@@ -470,9 +470,9 @@ export function OnboardingClient({
             </div>
 
             <div className="rounded-md border border-primary/15 bg-primary/[0.04] p-3 text-xs leading-relaxed text-muted-foreground">
-              We&apos;ll crawl up to 50 pages on Standard or 100 on Enterprise
-              each month so the AI can answer questions from your existing
-              site content. You control which pages get included from settings.
+              We&apos;ll crawl your site each month so the AI can answer
+              questions from your existing site content. You control which
+              pages get included from settings.
             </div>
 
             <div className="flex items-center justify-between gap-3 pt-2">

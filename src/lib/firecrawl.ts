@@ -1,4 +1,4 @@
-import { Firecrawl, type BrandingProfile, type Document } from "@mendable/firecrawl-js";
+import { Firecrawl, type BrandingProfile } from "@mendable/firecrawl-js";
 
 /**
  * Lazy singleton — Firecrawl is only used inside Trigger.dev jobs and a
@@ -184,82 +184,3 @@ function normalizeHex(input: string | undefined | null): string | null {
   return null;
 }
 
-export interface CrawledPage {
-  url: string;
-  title: string;
-  markdown: string;
-}
-
-export interface CrawlSiteOptions {
-  url: string;
-  /** Glob patterns to keep, e.g. ["/sermons/*"]. Empty array = no filter. */
-  includePatterns: string[];
-  /** Glob patterns to skip, e.g. ["/donate*"]. Empty array = no filter. */
-  excludePatterns: string[];
-  /** Hard cap on pages returned. Plan-derived: 50 standard, 100 enterprise. */
-  limit: number;
-}
-
-/**
- * Crawl a single site and return its pages as ingestion-ready markdown.
- * Stays on the supplied origin (no subdomains, no external links) — the
- * caller orchestrates multi-domain crawls by calling this once per
- * configured domain.
- *
- * Internally uses Firecrawl's polling `crawl()` helper with a 10-minute
- * cap; the orchestrating Trigger.dev task gives us the long-running
- * machine, so we don't need to manage our own polling loop here.
- */
-export async function crawlSite(opts: CrawlSiteOptions): Promise<CrawledPage[]> {
-  const url = normalizeUrl(opts.url);
-  const job = await getClient().crawl(url, {
-    limit: opts.limit,
-    includePaths: opts.includePatterns.length > 0 ? opts.includePatterns : null,
-    excludePaths: opts.excludePatterns.length > 0 ? opts.excludePatterns : null,
-    crawlEntireDomain: true,
-    allowSubdomains: false,
-    allowExternalLinks: false,
-    sitemap: "include",
-    scrapeOptions: {
-      formats: ["markdown"],
-      onlyMainContent: true,
-    },
-    pollInterval: 5,
-    timeout: 600,
-  });
-
-  if (job.status !== "completed") {
-    throw new Error(
-      `Firecrawl crawl ended with status "${job.status}" before completion`
-    );
-  }
-
-  return (job.data ?? [])
-    .map(toCrawledPage)
-    .filter((p): p is CrawledPage => p !== null);
-}
-
-function toCrawledPage(doc: Document): CrawledPage | null {
-  const sourceUrl = (doc.metadata?.sourceURL as string | undefined) ??
-    (doc.metadata?.url as string | undefined);
-  const markdown = doc.markdown?.trim();
-  if (!sourceUrl || !markdown) return null;
-
-  const title =
-    (doc.metadata?.title as string | undefined)?.trim() ||
-    (doc.metadata?.ogTitle as string | undefined)?.trim() ||
-    deriveTitleFromUrl(sourceUrl);
-
-  return { url: sourceUrl, title, markdown };
-}
-
-function deriveTitleFromUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const segment = u.pathname.split("/").filter(Boolean).pop() ?? "";
-    if (!segment) return u.hostname;
-    return segment.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  } catch {
-    return url;
-  }
-}

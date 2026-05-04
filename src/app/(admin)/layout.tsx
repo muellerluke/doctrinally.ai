@@ -11,7 +11,6 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/db";
 import { subscriptions, usageRecords } from "@/db/schema";
 import { getActiveMembershipForUser } from "@/lib/active-church";
-import { hasSermonWriter } from "@/lib/plans";
 import { isEmbeddedChatAvailable } from "@/lib/plan-gating";
 
 export default async function AdminLayout({
@@ -87,9 +86,6 @@ export default async function AdminLayout({
         messageOverageCap={sub?.messageOverageCap ?? 0}
         availableChurches={availableChurches}
         activeChurchId={church.id}
-        hasSermonWriter={hasSermonWriter(sub?.plan)}
-        sermonBudgetCents={sub?.sermonBudgetCents ?? 0}
-        sermonSpentCents={usage?.sermonTokensCents ?? 0}
         hasEmbedWidget={hasEmbedWidget}
       />
       <SidebarInset className="h-svh overflow-hidden">

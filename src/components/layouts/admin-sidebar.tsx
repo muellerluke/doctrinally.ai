@@ -11,10 +11,8 @@ import {
   Settings,
   CreditCard,
   LogOut,
-  Sparkles,
   UserPlus,
 } from "lucide-react";
-import { formatCents } from "@/lib/sermons/token-budget";
 import {
   Sidebar,
   SidebarContent,
@@ -58,9 +56,6 @@ interface AdminSidebarProps {
   messageOverageCap?: number;
   availableChurches?: AvailableChurch[];
   activeChurchId?: string;
-  sermonBudgetCents?: number;
-  sermonSpentCents?: number;
-  hasSermonWriter?: boolean;
   hasEmbedWidget?: boolean;
 }
 
@@ -76,29 +71,20 @@ export function AdminSidebar({
   messageOverageCap = 0,
   availableChurches = [],
   activeChurchId,
-  sermonBudgetCents = 0,
-  sermonSpentCents = 0,
-  hasSermonWriter: hasSermonWriterProp = false,
   hasEmbedWidget = false,
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const isOwner = membershipRole === "owner";
-  const canAuthorSermons =
-    hasSermonWriterProp && (membershipRole === "owner" || membershipRole === "admin");
   // Prospects are currently only fed by the embedded widget which is
-  // Enterprise-only. Mirror the nav-gating pattern used for Sermons:
-  // hide the link entirely on Standard so there's nothing confusingly
-  // empty to click into. If we later add a manual-add-prospect flow
-  // we can reopen this to all plans.
+  // Enterprise-only. Hide the link entirely on Standard so there's
+  // nothing confusingly empty to click into. If we later add a manual
+  // add-prospect flow we can reopen this to all plans.
   const canSeeProspects =
     hasEmbedWidget &&
     (membershipRole === "owner" || membershipRole === "admin");
 
   const mainNav = [
     ...baseMainNav,
-    ...(canAuthorSermons
-      ? [{ label: "Sermons", href: "/sermons", icon: Sparkles } as const]
-      : []),
     ...(canSeeProspects
       ? [{ label: "Prospects", href: "/prospects", icon: UserPlus } as const]
       : []),
@@ -146,12 +132,6 @@ export function AdminSidebar({
       : 0;
 
   const isQuestionOver = questionUsage > effectiveQuestionLimit && effectiveQuestionLimit > 0;
-
-  const sermonPct =
-    sermonBudgetCents > 0
-      ? Math.min((sermonSpentCents / sermonBudgetCents) * 100, 100)
-      : 0;
-  const sermonOver = sermonBudgetCents > 0 && sermonSpentCents >= sermonBudgetCents;
 
   return (
     <Sidebar>
@@ -252,34 +232,6 @@ export function AdminSidebar({
                   )}
                 />
               </div>
-              {hasSermonWriterProp ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-                    <span>Sermon AI</span>
-                    <span className={cn(sermonOver && "text-red-400 font-medium")}>
-                      {formatCents(sermonSpentCents)} / {formatCents(sermonBudgetCents)}
-                    </span>
-                  </div>
-                  <Progress
-                    value={sermonPct}
-                    className={cn(
-                      "h-1.5",
-                      sermonOver && "[&>div]:bg-red-400"
-                    )}
-                  />
-                </div>
-              ) : (
-                <Link
-                  href="/billing"
-                  className="flex items-center justify-between rounded-md border border-sidebar-border/60 bg-sidebar-foreground/5 px-2.5 py-1.5 text-[11px] text-sidebar-foreground/70 transition hover:bg-sidebar-foreground/10"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="h-3 w-3" />
-                    Sermon writer
-                  </span>
-                  <span className="text-sidebar-foreground/50">Enterprise</span>
-                </Link>
-              )}
             </div>
           ) : (
             <p className="text-xs text-sidebar-foreground/40">

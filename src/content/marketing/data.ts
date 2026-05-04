@@ -7,9 +7,6 @@ import {
   Globe,
   Sparkles,
   MessageSquare,
-  PenLine,
-  CheckCircle2,
-  Send,
   Rss,
   MousePointerClick,
   UserPlus,
@@ -157,7 +154,7 @@ export const testimonials: Testimonial[] = [
   },
 ];
 
-// ─── Three-product framing (shared library, three surfaces) ────────
+// ─── Two-product framing (shared library, two surfaces) ───────────
 
 export interface ProductCard {
   icon: LucideIcon;
@@ -168,7 +165,7 @@ export interface ProductCard {
   accent?: "primary" | "gold";
 }
 
-export const threeProducts: ProductCard[] = [
+export const productSuite: ProductCard[] = [
   {
     icon: MousePointerClick,
     kicker: "Flagship · On your website",
@@ -187,20 +184,17 @@ export const threeProducts: ProductCard[] = [
     href: "/features#member-ai",
     accent: "primary",
   },
-  {
-    icon: PenLine,
-    kicker: "Also included · For pastors",
-    title: "Sermon AI",
-    description:
-      "Same library, but for the pastor. Drafts sermons alongside you, grounded in your past teaching. Publish, and the chat your visitors and members use cites it the same day.",
-    href: "/features#sermon-ai",
-    accent: "primary",
-  },
 ];
 
-// ─── Member AI feature bullets (for /features page symmetry) ──────
+// ─── Shared product feature bullets (used by Member AI + Embedded) ─
 
-export const memberAiFeatures: SermonAiFeature[] = [
+export interface ProductFeature {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
+export const memberAiFeatures: ProductFeature[] = [
   {
     icon: BookOpen,
     title: "Trained on your teaching",
@@ -223,7 +217,7 @@ export const memberAiFeatures: SermonAiFeature[] = [
 
 // ─── Embedded AI feature bullets ──────────────────────────────────
 
-export const embeddedChatFeatures: SermonAiFeature[] = [
+export const embeddedChatFeatures: ProductFeature[] = [
   {
     icon: Moon,
     title: "Never miss a visitor",
@@ -259,65 +253,6 @@ export const embeddedChatTestimonial = {
   initial: "S",
 };
 
-// ─── Sermon AI (Enterprise feature) ────────────────────────────────
-
-export interface SermonAiFeature {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-}
-
-export const sermonAiFeatures: SermonAiFeature[] = [
-  {
-    icon: PenLine,
-    title: "Draft from a conversation",
-    description:
-      "Chat with an assistant trained on your church's own teaching. It drafts outlines, pulls scripture, and suggests illustrations — in your voice, not a stranger's.",
-  },
-  {
-    icon: Sparkles,
-    title: "Rooted in your doctrine",
-    description:
-      "Every suggestion is grounded in what your church already teaches. The same sermons and documents that power member chat shape what the sermon writer offers up.",
-  },
-  {
-    icon: Send,
-    title: "Publish, and the chat learns it",
-    description:
-      "Once you publish, the sermon joins your library — ready to be cited in member chats the same night you preach it.",
-  },
-];
-
-export const sermonAiSteps = [
-  {
-    step: "01",
-    icon: MessageSquare,
-    title: "Chat through the sermon",
-    body: "Open a new sermon, tell the assistant the text or topic, and start a conversation. It asks clarifying questions, proposes an outline, and pulls scripture — grounded in your own past teaching.",
-  },
-  {
-    step: "02",
-    icon: PenLine,
-    title: "Write alongside it",
-    body: "A rich editor lives beside the chat. Accept suggestions, tweak wording, rearrange sections — the sermon takes shape at your pace, not the AI's.",
-  },
-  {
-    step: "03",
-    icon: CheckCircle2,
-    title: "Publish when it's ready",
-    body: "Add the speaker, date, and series. Publishing drops the sermon into your library so your church's member chat can cite it the moment someone asks.",
-  },
-];
-
-export const sermonAiTestimonial = {
-  quote:
-    "It used to take me a full day to pull together a Sunday outline. Now I start with a conversation about the text, the assistant brings back our church's own words, and I'm refining instead of staring at a blank page.",
-  name: "Kostia Skorenkyi",
-  role: "Pastor",
-  church: "North Cross Church",
-  initial: "K",
-};
-
 // ─── Pricing ───────────────────────────────────────────────────────
 
 export const standardFeatures = [
@@ -333,7 +268,6 @@ export const standardFeatures = [
 export const enterpriseFeatures = [
   "Everything in Standard, plus:",
   "Auto-sync your entire YouTube channel — sermons, shorts, live replays, and playlists ingested every week",
-  "Sermon AI — draft sermons with an assistant trained on your church",
   "Use your own custom domain",
   "Your church's logo and branding",
   "3,000 member questions / month",

@@ -16,21 +16,19 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/marketing/page-hero";
-import { SermonPreview } from "@/components/marketing/sermon-preview";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { CTASection } from "@/components/marketing/cta-section";
 import {
   bentoFeatures,
   beforeAfter,
   testimonials,
-  sermonAiFeatures,
   embeddedChatFeatures,
 } from "@/content/marketing/data";
 
 export const metadata: Metadata = {
   title: "Features — Doctrinally.AI",
   description:
-    "Capture website visitors with Website Chat, give members a private AI chat hub, and (on Enterprise) draft sermons with Sermon AI — all grounded in your church's own teaching.",
+    "Capture website visitors with Website Chat and give members a private AI chat hub — all grounded in your church's own teaching.",
   alternates: { canonical: "https://www.doctrinally.ai/features" },
 };
 
@@ -45,7 +43,7 @@ export default function FeaturesPage() {
             <span className="italic text-primary">Disciple every member.</span>
           </>
         }
-        description="Website Chat is your flagship — included on every plan. Member AI gives your congregation their own chat hub. Enterprise adds Sermon AI and more. All three share the same library of your sermons, documents, and videos."
+        description="Website Chat is your flagship — included on every plan. Member AI gives your congregation their own chat hub. Both share the same library of your sermons, documents, and videos."
       >
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Button
@@ -234,9 +232,8 @@ export default function FeaturesPage() {
       </section>
 
       {/* ─── YouTube Auto-Sync ─────────────────────────────────────
-          Placed before Sermon AI because it's the first Enterprise
-          differentiator most churches will evaluate when sizing the
-          onboarding effort. */}
+          Headline Enterprise differentiator most churches will evaluate
+          when sizing the onboarding effort. */}
       <section
         id="youtube-sync"
         className="relative overflow-hidden border-b py-20 sm:py-28"
@@ -352,80 +349,6 @@ export default function FeaturesPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Sermon AI (Enterprise-only pastor feature) ───────────
-          Placed AFTER the member-chat bento so the reader first
-          grasps the core product, then sees Sermon AI as a distinct
-          second AI for pastors. Gold accent + Enterprise badge set
-          it apart without competing with the bento above. */}
-      <section
-        id="sermon-ai"
-        className="relative overflow-hidden border-b bg-gradient-to-b from-background via-card/30 to-background py-20 sm:py-28"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[60%] w-[80%] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(closest-side, var(--gold) 0%, transparent 70%)",
-          }}
-        />
-        <div className="container mx-auto px-4">
-          <div className="mx-auto max-w-2xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1">
-              <Sparkles className="h-3.5 w-3.5 text-gold" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
-                For pastors · Enterprise
-              </span>
-            </div>
-            <h2 className="mt-5 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
-              Meet{" "}
-              <span className="italic text-primary">Sermon AI</span>
-              <span className="text-muted-foreground/40"> — </span>
-              your second AI.
-            </h2>
-            <p className="mt-5 text-lg text-muted-foreground">
-              The member chat is only half the story. Enterprise churches also
-              get an assistant that drafts sermons with them, trained on the
-              same teaching that answers their congregation.
-            </p>
-          </div>
-
-          <div className="mt-12 grid items-center gap-10 sm:mt-16 lg:grid-cols-5 lg:gap-14">
-            <div className="lg:col-span-3">
-              <SermonPreview />
-            </div>
-
-            <ul className="space-y-6 lg:col-span-2">
-              {sermonAiFeatures.map((feature) => (
-                <li key={feature.title} className="flex items-start gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10">
-                    <feature.icon className="h-5 w-5 text-gold" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">
-                      {feature.title}
-                    </div>
-                    <div className="mt-0.5 text-[0.95rem] leading-relaxed text-muted-foreground">
-                      {feature.description}
-                    </div>
-                  </div>
-                </li>
-              ))}
-              <li className="pt-2">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-11 border-gold/40 hover:border-gold/80"
-                  render={<Link href="/how-it-works#for-teaching-teams" />}
-                >
-                  See the pastor flow <ArrowRight className="h-4 w-4" />
-                </Button>
-              </li>
-            </ul>
           </div>
         </div>
       </section>

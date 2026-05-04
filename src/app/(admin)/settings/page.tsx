@@ -81,8 +81,6 @@ export default async function SettingsPage() {
       .returning();
   }
 
-  const websitePageLimit = isEnterprise ? 100 : 50;
-
   return (
     <div className="space-y-8">
       <PageHeader
@@ -153,8 +151,6 @@ export default async function SettingsPage() {
               lastCrawlPagesIngested: websiteConfig.lastCrawlPagesIngested,
               lastCrawlError: websiteConfig.lastCrawlError,
             }}
-            pageLimit={websitePageLimit}
-            isEnterprise={isEnterprise}
           />
         </TabsContent>
 

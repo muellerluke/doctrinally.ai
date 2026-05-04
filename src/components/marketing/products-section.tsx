@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { threeProducts } from "@/content/marketing/data";
+import { productSuite } from "@/content/marketing/data";
 import { cn } from "@/lib/utils";
 
 /**
  * Home + /features page primary framing: Website Chat is the flagship
- * product, with Member AI and Sermon AI as siblings sharing the same
- * content library. Website Chat (gold, first card) is the surface most
- * visitors will meet before Sunday — it's how a church gets prospects
- * from its existing website. Member AI and Sermon AI are also included
- * on every plan, framed here as additional places the same library
- * shows up.
+ * product, with Member AI as its sibling sharing the same content
+ * library. Website Chat (gold, first card) is the surface most visitors
+ * will meet before Sunday — it's how a church gets prospects from its
+ * existing website. Member AI is also included on every plan, framed
+ * here as another place the same library shows up.
  */
-export function ThreeProductsSection() {
+export function ProductsSection() {
   return (
     <section className="relative overflow-hidden border-b py-20 sm:py-28">
       <div
@@ -26,7 +25,7 @@ export function ThreeProductsSection() {
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
-            One library, three places it shows up
+            One library, two places it shows up
           </p>
           <h2 className="mt-4 font-heading text-[1.75rem] tracking-tight sm:text-5xl">
             Built for the visitor who hasn&rsquo;t{" "}
@@ -34,13 +33,13 @@ export function ThreeProductsSection() {
           </h2>
           <p className="mt-5 text-lg text-muted-foreground">
             Your Website Chat is where most people will meet your church before
-            Sunday. The same library powers Member AI for your congregation and
-            Sermon AI for your pastor &mdash; all included on every plan.
+            Sunday. The same library powers Member AI for your congregation
+            &mdash; included on every plan.
           </p>
         </div>
 
-        <div className="mx-auto mt-14 grid max-w-6xl gap-5 md:grid-cols-3">
-          {threeProducts.map((p) => (
+        <div className="mx-auto mt-14 grid max-w-4xl gap-5 md:grid-cols-2">
+          {productSuite.map((p) => (
             <Link
               key={p.title}
               href={p.href}

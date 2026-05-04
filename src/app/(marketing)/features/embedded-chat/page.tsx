@@ -282,8 +282,8 @@ export default function EmbeddedChatPage() {
             <p className="max-w-xl text-[0.95rem] leading-relaxed text-muted-foreground">
               Every church &mdash; Standard or Enterprise &mdash; gets the
               widget, the Prospects dashboard, and the AI-personalized opener
-              toggle. Enterprise adds Sermon AI, custom domain support, and
-              YouTube auto-sync.
+              toggle. Enterprise adds custom domain support and YouTube
+              auto-sync.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button

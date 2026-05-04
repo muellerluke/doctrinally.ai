@@ -43,14 +43,10 @@ interface WebsiteCrawlingFormProps {
     lastCrawlPagesIngested: number;
     lastCrawlError: string | null;
   };
-  pageLimit: number;
-  isEnterprise: boolean;
 }
 
 export function WebsiteCrawlingForm({
   initial,
-  pageLimit,
-  isEnterprise,
 }: WebsiteCrawlingFormProps) {
   const router = useRouter();
   const [websiteDomain, setWebsiteDomain] = useState(initial.websiteDomain ?? "");
@@ -127,18 +123,10 @@ export function WebsiteCrawlingForm({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              We&apos;ll crawl up to{" "}
-              <span className="font-medium text-foreground">{pageLimit} pages</span>{" "}
-              on this site each month and feed them to your assistant. Pages
-              show up in your document library so the AI can cite them in
-              chat answers.
+              We&apos;ll crawl your site each month and feed the pages to
+              your assistant. Pages show up in your document library so the
+              AI can cite them in chat answers.
             </p>
-            {!isEnterprise && (
-              <p className="text-xs text-muted-foreground">
-                <span className="font-medium">Want more?</span> Upgrade to
-                Enterprise to crawl up to 100 pages each month.
-              </p>
-            )}
           </div>
         </CardContent>
       </Card>

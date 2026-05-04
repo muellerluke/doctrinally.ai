@@ -1,5 +1,5 @@
 import { CheckCircle2, Quote, Sparkles, Video, Folder, Rss } from "lucide-react";
-import { sermonAiTestimonial } from "@/content/marketing/data";
+import { embeddedChatTestimonial } from "@/content/marketing/data";
 
 /**
  * "Why Doctrinally.AI" pane for the sign-up page. Warm, quiet, testimony-
@@ -7,7 +7,7 @@ import { sermonAiTestimonial } from "@/content/marketing/data";
  * feel the product's personality before they type a password.
  */
 export function SignUpAside() {
-  const { quote, name, role, church, initial } = sermonAiTestimonial;
+  const { quote, name, role, church, initial } = embeddedChatTestimonial;
   return (
     <div className="space-y-8 animate-fade-up stagger-1">
       <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-gold">
@@ -138,7 +138,6 @@ export function OnboardingPlanAside({ plan }: { plan: "standard" | "enterprise" 
               "Auto-sync your entire YouTube channel, weekly",
               "Custom domain + your own branding",
               "3,000 member questions / month",
-              "Sermon AI — draft alongside you",
               "Priority support & onboarding",
             ]
           : [

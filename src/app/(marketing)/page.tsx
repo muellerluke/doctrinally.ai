@@ -4,10 +4,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HeroChatPreview } from "@/components/marketing/hero-chat-preview";
-import { SermonPreview } from "@/components/marketing/sermon-preview";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { CTASection } from "@/components/marketing/cta-section";
-import { ThreeProductsSection } from "@/components/marketing/three-products-section";
+import { ProductsSection } from "@/components/marketing/products-section";
 import {
   ArrowRight,
   Check,
@@ -21,15 +20,13 @@ import {
   heroStats,
   beforeAfter,
   testimonials,
-  sermonAiFeatures,
-  sermonAiTestimonial,
 } from "@/content/marketing/data";
 
 export const metadata: Metadata = {
   title:
     "Capture website visitors with your church's own AI — Doctrinally.AI",
   description:
-    "Drop one line of code on your church website and Website Chat engages visitors at the right moment — answering questions in your voice and dropping name + email into your inbox. Member AI and Sermon AI included on every plan.",
+    "Drop one line of code on your church website and Website Chat engages visitors at the right moment — answering questions in your voice and dropping name + email into your inbox. Member AI included on every plan.",
   alternates: { canonical: "https://www.doctrinally.ai" },
 };
 
@@ -102,7 +99,7 @@ export default function HomePage() {
                 drops their name and email into your inbox
               </span>
               &mdash; so the visitor who almost left becomes a lead. Member AI
-              and Sermon AI are also included on every plan.
+              is also included on every plan.
             </p>
 
             {/* CTA row */}
@@ -174,120 +171,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── THREE PRODUCTS FRAMING ───────────────────────────
-          Introduces the three AIs that share one content library.
+      {/* ─── PRODUCTS FRAMING ───────────────────────────
+          Introduces the two AIs that share one content library.
           Website Chat (gold, first card) is the flagship — the surface
           most visitors will meet first and the one we want every plan
-          to include. Member AI and Sermon AI are also included; the
-          Sermon AI deep-dive below shows the pastor-side story for
-          churches considering Enterprise. */}
-      <ThreeProductsSection />
-
-      {/* ─── SERMON AI (Enterprise pastor-side story) ──────────
-          Pastor-facing deep-dive for the Enterprise differentiator.
-          Sits below the Three Products framing so visitors who want
-          the full pastor-side workflow can read it without bumping
-          the flagship Website Chat above. Gold-accented + desktop
-          workspace mock differentiates it visually from the brown
-          phone-shaped chat preview above. */}
-      <section className="relative overflow-hidden border-b bg-gradient-to-b from-card/40 via-background to-background py-20 sm:py-28">
-        {/* Soft gold ember to signal "different feature, Enterprise tier" */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 -z-10 h-[60%] w-[80%] -translate-x-1/2 rounded-full opacity-25 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(closest-side, var(--gold) 0%, transparent 70%)",
-          }}
-        />
-
-        <div className="container mx-auto px-4">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            {/* Copy column */}
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1">
-                <Sparkles className="h-3.5 w-3.5 text-gold" />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">
-                  For pastors · Sermon AI
-                </span>
-              </div>
-
-              <h2 className="mt-5 font-heading text-[1.85rem] leading-tight tracking-tight sm:text-[2.6rem]">
-                An assistant that writes sermons in{" "}
-                <span className="italic text-primary">your</span> voice.
-              </h2>
-
-              <p className="mt-5 text-lg text-muted-foreground">
-                Enterprise churches add a third AI — one that drafts sermons
-                alongside your pastor, grounded in the same library that
-                powers your Website Chat and Member AI. Chat it through the
-                text. Write alongside it. Publish, and every other AI cites it
-                the moment someone asks.
-              </p>
-
-              <ul className="mt-8 grid gap-5 sm:gap-6">
-                {sermonAiFeatures.map((feature) => (
-                  <li key={feature.title} className="flex items-start gap-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gold/40 bg-gold/10">
-                      <feature.icon className="h-5 w-5 text-gold" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-foreground">
-                        {feature.title}
-                      </div>
-                      <div className="mt-0.5 text-[0.95rem] leading-relaxed text-muted-foreground">
-                        {feature.description}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-11 border-gold/40 hover:border-gold/80"
-                  render={<Link href="/features#sermon-ai" />}
-                >
-                  See how it works <ArrowRight className="h-4 w-4" />
-                </Button>
-                <span className="text-[12px] text-muted-foreground">
-                  Included on the Enterprise plan.
-                </span>
-              </div>
-            </div>
-
-            {/* Preview column */}
-            <div className="relative">
-              <SermonPreview />
-            </div>
-          </div>
-
-          {/* Pastor testimonial tucked under the workspace — closes the loop */}
-          <figure className="mx-auto mt-16 max-w-2xl rounded-2xl border border-gold/30 bg-card/60 px-6 py-6 backdrop-blur-sm sm:mt-20 sm:px-8 sm:py-7">
-            <blockquote className="text-[1.02rem] italic leading-relaxed text-foreground/90">
-              &ldquo;{sermonAiTestimonial.quote}&rdquo;
-            </blockquote>
-            <figcaption className="mt-4 flex items-center gap-3 text-sm">
-              <span
-                aria-hidden
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/20 font-heading text-foreground"
-              >
-                {sermonAiTestimonial.initial}
-              </span>
-              <div>
-                <div className="font-semibold text-foreground">
-                  {sermonAiTestimonial.name}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {sermonAiTestimonial.role} · {sermonAiTestimonial.church}
-                </div>
-              </div>
-            </figcaption>
-          </figure>
-        </div>
-      </section>
+          to include. Member AI is also included on every plan. */}
+      <ProductsSection />
 
       {/* ─── BEFORE / AFTER ───────────────────────────────────── */}
       <section className="relative border-b py-20 sm:py-28">

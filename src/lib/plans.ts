@@ -24,7 +24,7 @@ export const PLANS = {
     features: {
       customDomain: true,
       customBranding: true,
-      sermonWriter: true,
+      sermonWriter: false,
       youtubeSync: true,
     },
     description: "For churches that want full control over their experience",
@@ -33,7 +33,6 @@ export const PLANS = {
       "Unlimited document uploads",
       "3,000 messages per month",
       "Your own logo and branding",
-      "AI-assisted sermon writer ($10/mo AI budget)",
       "Auto-sync your entire YouTube channel every week",
     ],
   },
@@ -68,12 +67,15 @@ export function getOverageRates(plan: PlanType) {
 }
 
 /**
- * Whether a plan has access to the sermon-writer feature. Enterprise only.
+ * Whether a plan has access to the sermon-writer feature. Currently
+ * disabled for all plans — the soft-hide kill switch for Sermon AI.
+ * The function is preserved (rather than deleted) so the feature can
+ * be re-enabled by flipping `enterprise.features.sermonWriter` back on.
  * Used for UI gating and `/api/sermons/chat` route-entry checks.
  */
 export function hasSermonWriter(plan: PlanType | undefined | null): boolean {
   if (!plan) return false;
-  return PLANS[plan].features.sermonWriter === true;
+  return PLANS[plan].features.sermonWriter;
 }
 
 /**

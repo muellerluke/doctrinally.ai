@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
-import { documents, memberships } from "@/db/schema";
+import { documents, memberships, subscriptions } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { plateToSermonMarkdown } from "@/lib/sermons/markdown-serializer";
 import { lookupByReference } from "@/lib/bible";
 import { isSuperAdminEmail } from "@/lib/super-admin";
+import { hasSermonWriter } from "@/lib/plans";
 
 /**
  * Export a sermon as plain markdown. The response is `text/markdown` with a
@@ -45,6 +46,16 @@ export async function GET(request: Request) {
     if (!membership || membership.role === "member") {
       return new Response("Forbidden", { status: 403 });
     }
+  }
+
+  // Plan gate: defense-in-depth alongside the soft-hide via plans.ts.
+  // Mirrors the gate on /api/sermons/chat — even if a sermon document
+  // already exists, export is unavailable when the feature is disabled.
+  const sub = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.churchId, doc.churchId),
+  });
+  if (!sub || !hasSermonWriter(sub.plan)) {
+    return new Response("Forbidden", { status: 403 });
   }
 
   let plateNodes: unknown[] = [];
