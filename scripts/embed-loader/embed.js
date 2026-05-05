@@ -262,7 +262,7 @@
     }
     var title = document.createElement("div");
     title.className = "dai-title";
-    title.textContent = (state.config && state.config.churchName) || "Chat";
+    title.textContent = "AI Chat";
     var closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "dai-close";
