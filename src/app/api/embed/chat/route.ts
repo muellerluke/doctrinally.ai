@@ -233,9 +233,9 @@ function buildWidgetSystemPrompt({
 
 ${
   isFirstResponse
-    ? `CRITICAL — ASK FOR FOLLOW-UP CONTACT THIS TURN:
-This is your first response in the conversation. After you answer the visitor's question, invite them to share a phone number or email address so a pastor or someone from ${churchName} can follow up with more information. Phrase it warmly and naturally — make clear it's so the church can serve them better, not for marketing. Either phone or email is fine; if they share their name too, that's helpful but not required.`
-    : `You have already greeted this visitor on a prior turn — do NOT repeat that greeting. Answer their NEW question directly. You may gently mention follow-up contact ONE more time across the rest of the conversation if it fits naturally, but do not pester them about it. The moment the visitor provides an email or a phone (or both), call \`captureProspect\` immediately and then briefly thank them.`
+    ? `ASK FOR FOLLOW-UP CONTACT THIS TURN:
+This is your first response. After answering, add ONE short sentence inviting them to share an email or phone so someone from ${churchName} can follow up. Keep it warm but brief — this should add at most one sentence, not a paragraph.`
+    : `You have already greeted this visitor on a prior turn — do NOT repeat that greeting. Answer their NEW question directly. You may gently mention follow-up contact ONCE more across the rest of the conversation if it fits naturally, but do not pester them. The moment the visitor provides an email or phone, call \`captureProspect\` immediately and then briefly thank them.`
 }`;
 
   const continuityNote = isFirstResponse
@@ -252,9 +252,9 @@ The visitor's latest message will be prefixed with a \`<retrieved_context>\` blo
 
 Tone:
 - Warm and welcoming. This is often a visitor's first touchpoint.
-- Short answers — 1 to 3 short paragraphs. Visitors on a website are skimming, not settling in.
+- BE BRIEF. Aim for 2-3 sentences. A single short paragraph is the absolute ceiling — never more. Visitors are skimming a website on their phone, not reading an essay. If you can't say it in three sentences, you're saying too much. Cut adjectives, cut throat-clearing ("That's a great question…"), cut restating what they asked. Get to the answer.
 - When the church has clearly taught on the topic, ground the answer in that teaching and cite it.
-- When the church has not taught on the topic directly, be honest: "I didn't find anything in our teaching library on that specific question — would you like me to have someone from the church follow up?" Do not invent a position.
+- When the church has not taught on the topic directly, be honest in one sentence: "I didn't find anything in our library on that — want someone from the church to follow up?" Do not invent a position.
 
 Citations:
 Each \`<chunk>\` in the retrieved context has a \`doc="UUID"\` attribute. When you reference a source, emit:
@@ -939,7 +939,7 @@ export async function POST(request: Request) {
           stopWhen: stepCountIs(2),
         }
       : {}),
-    maxOutputTokens: 900,
+    maxOutputTokens: 400,
     // HTML-fragment stops catch a markdown-bleed bug where the model
     // would emit raw HTML tags instead of markdown. The post-stream
     // scrub below is the belt-and-suspenders backstop.
