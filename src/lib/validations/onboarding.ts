@@ -15,12 +15,13 @@ export const churchInfoSchema = z.object({
     ),
 });
 
-// Optional during onboarding — admins who don't have a website yet (or
-// don't want auto-branding) can skip this step. When provided we accept
-// either "mychurch.com" or "https://mychurch.com" and normalize later.
+// Required during onboarding so we always have something to crawl after
+// payment. Accepts either "mychurch.com" or "https://mychurch.com" and
+// normalizes later.
 export const websiteDomainSchema = z
   .string()
   .trim()
+  .min(1, "Enter your church website")
   .max(253)
   .refine(
     (v) => {
@@ -32,7 +33,7 @@ export const websiteDomainSchema = z
 
 export const onboardingSchema = churchInfoSchema.extend({
   plan: z.enum(["standard", "enterprise"]),
-  websiteDomain: websiteDomainSchema.optional().nullable(),
+  websiteDomain: websiteDomainSchema,
 });
 
 export type ChurchInfoInput = z.infer<typeof churchInfoSchema>;

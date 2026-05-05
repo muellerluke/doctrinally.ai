@@ -203,14 +203,25 @@ function buildWidgetSystemPrompt({
   churchName,
   priorSummary,
   prospectCaptured,
+  priorAssistantTurns,
 }: {
   churchName: string;
   priorSummary: string | null;
   prospectCaptured: boolean;
+  /** Count of assistant messages already in the visible chat history. */
+  priorAssistantTurns: number;
 }): string {
-  const summaryBlock = priorSummary
-    ? `\n\nPrior conversation context (visitor has chatted before on this site; their history is summarized below — they do NOT see these messages in the UI, so refer back only if relevant):\n"""\n${priorSummary}\n"""\n`
-    : "";
+  // Skip the summary when the messages array already carries the
+  // in-session conversation. Injecting both creates redundant context
+  // — the model sees the same exchange twice and can latch onto the
+  // summary's framing, which has caused the model to repeat its prior
+  // turn instead of replying to the new user message.
+  const summaryBlock =
+    priorSummary && priorAssistantTurns === 0
+      ? `\n\nPrior conversation context (visitor has chatted before on this site; their history is summarized below — they do NOT see these messages in the UI, so refer back only if relevant):\n"""\n${priorSummary}\n"""\n`
+      : "";
+
+  const isFirstResponse = priorAssistantTurns === 0;
 
   // captureProspect is literally not registered when the prospect is
   // already captured (see the POST handler). Telling the model about a
@@ -220,12 +231,19 @@ function buildWidgetSystemPrompt({
     : `You have one tool:
 - \`captureProspect\` — records the visitor's contact info so a pastor or someone from the church can follow up personally. AT LEAST ONE of \`email\` or \`phone\` is required; \`name\` is optional but include it whenever the visitor has shared it. Call this tool ONLY when the visitor has actually given you their info in their messages (extract them from what they've written). Do NOT invent or guess values.
 
-CRITICAL — ASK FOR FOLLOW-UP CONTACT IMMEDIATELY:
-On your VERY FIRST response in this conversation, after you answer their question, ALWAYS invite the visitor to share a phone number or email address so a pastor or someone from ${churchName} can follow up with more information. Phrase it warmly and naturally — make clear it's so the church can serve them better, not for marketing. Either phone or email is fine; if they share their name too, that's helpful but not required.
+${
+  isFirstResponse
+    ? `CRITICAL — ASK FOR FOLLOW-UP CONTACT THIS TURN:
+This is your first response in the conversation. After you answer the visitor's question, invite them to share a phone number or email address so a pastor or someone from ${churchName} can follow up with more information. Phrase it warmly and naturally — make clear it's so the church can serve them better, not for marketing. Either phone or email is fine; if they share their name too, that's helpful but not required.`
+    : `You have already greeted this visitor on a prior turn — do NOT repeat that greeting. Answer their NEW question directly. You may gently mention follow-up contact ONE more time across the rest of the conversation if it fits naturally, but do not pester them about it. The moment the visitor provides an email or a phone (or both), call \`captureProspect\` immediately and then briefly thank them.`
+}`;
 
-If they don't share contact info on their reply, you may gently bring it up ONE more time later in the conversation, but do not pester. The moment the visitor provides an email or a phone (or both), call \`captureProspect\` immediately and then briefly thank them.`;
+  const continuityNote = isFirstResponse
+    ? ""
+    : `\n\nConversation continuity:
+You are mid-conversation. Read the messages above carefully and respond to the visitor's MOST RECENT message (the last user turn). Do NOT repeat or paraphrase your prior assistant message — generate a fresh, specific reply to what they just asked.`;
 
-  return `You are the AI assistant embedded on ${churchName}'s website. The person you're chatting with is a WEBSITE VISITOR — they may be curious, investigating whether this church is a good fit, or looking for specific information. They are not necessarily a member.${summaryBlock}
+  return `You are the AI assistant embedded on ${churchName}'s website. The person you're chatting with is a WEBSITE VISITOR — they may be curious, investigating whether this church is a good fit, or looking for specific information. They are not necessarily a member.${summaryBlock}${continuityNote}
 
 ${toolsSection}
 
@@ -828,10 +846,15 @@ export async function POST(request: Request) {
   const retrievedChunks = filterRelevantChunks(rawChunks);
   const ragBlock = buildRagContext(retrievedChunks);
 
+  const priorAssistantTurns = olderMessages.filter(
+    (m) => m.role === "assistant"
+  ).length;
+
   const systemPrompt = buildWidgetSystemPrompt({
     churchName,
     priorSummary: session.conversationSummary,
     prospectCaptured: !!session.prospectId,
+    priorAssistantTurns,
   });
 
   const ragBlockTokens = estimateTokens(ragBlock);
@@ -876,8 +899,10 @@ export async function POST(request: Request) {
     sessionId: verified.value.sessionId,
     model: process.env.AI_MODEL || DEFAULT_MODEL,
     messageCount: messagesToSend.length,
+    priorAssistantTurns,
     chunkCount: retrievedChunks.length,
     hasPriorSummary: !!session.conversationSummary,
+    summaryInjected: !!session.conversationSummary && priorAssistantTurns === 0,
     prospectAlreadyCaptured,
   });
 

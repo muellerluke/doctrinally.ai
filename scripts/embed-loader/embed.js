@@ -12,6 +12,33 @@
   var CONFIG_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
   var PAGEVIEW_DEDUPE_MS = 30 * 60 * 1000;  // 30 minutes
 
+  // Mirror of FONT_CSS_MAP / GOOGLE_FONTS_URL_MAP in
+  // src/app/(chat)/layout.tsx — keep byte-identical so the widget and
+  // member chat resolve admin-selected fonts the same way. The widget
+  // can't import from src/ (it's bundled separately and served from
+  // R2), so this duplication is intentional.
+  var FONT_CSS_MAP = {
+    "source-serif": "'Source Serif 4', serif",
+    "playfair": "'Playfair Display', serif",
+    "inter": "'Inter', sans-serif",
+    "lora": "'Lora', serif",
+    "merriweather": "'Merriweather', serif",
+    "dm-sans": "'DM Sans', sans-serif",
+    "nunito": "'Nunito', sans-serif",
+    "eb-garamond": "'EB Garamond', serif"
+  };
+  var GOOGLE_FONTS_URL_MAP = {
+    "inter": "Inter:wght@400;500;600;700",
+    "lora": "Lora:wght@400;500;600;700",
+    "merriweather": "Merriweather:wght@400;700",
+    "dm-sans": "DM+Sans:wght@400;500;600;700",
+    "nunito": "Nunito:wght@400;500;600;700",
+    "eb-garamond": "EB+Garamond:wght@400;500;600;700"
+  };
+  // Default stacks used when admin hasn't picked a custom font.
+  var DEFAULT_BODY_FONT = "'Source Serif 4', ui-serif, Georgia, 'Times New Roman', serif";
+  var DEFAULT_HEADING_FONT = "'Playfair Display', ui-serif, Georgia, serif";
+
   var scriptEl = document.currentScript || (function(){
     var all = document.getElementsByTagName("script");
     for (var i = all.length - 1; i >= 0; i--) {
@@ -46,6 +73,22 @@
     link.href = "https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap";
     (document.head || document.documentElement).appendChild(link);
   })();
+
+  // Load the church's selected Google Font, if any. Idempotent and
+  // tolerant of unknown keys — silently no-ops when the font isn't
+  // in GOOGLE_FONTS_URL_MAP (e.g., admin selected a font added in a
+  // newer deploy than the loader served from R2).
+  function loadCustomFont(fontKey){
+    if (!fontKey) return;
+    var param = GOOGLE_FONTS_URL_MAP[fontKey];
+    if (!param) return;
+    if (document.getElementById("doctrinally-fonts-custom")) return;
+    var link = document.createElement("link");
+    link.id = "doctrinally-fonts-custom";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=" + param + "&display=swap";
+    (document.head || document.documentElement).appendChild(link);
+  }
 
   // ── Shared state ──────────────────────────────────────────────
   var state = {
@@ -87,6 +130,7 @@
   // background. If no cache, fetch config before rendering.
   if (cachedConfig) {
     state.config = cachedConfig;
+    loadCustomFont(cachedConfig.fontFamily);
     renderWidget();
     handshake();
     // Background refresh — keeps cache warm, updates visible colors
@@ -95,6 +139,7 @@
       if (fresh) {
         state.config = fresh;
         saveCachedConfig(fresh);
+        loadCustomFont(fresh.fontFamily);
       }
     });
   } else {
@@ -102,6 +147,7 @@
       if (!config) return;
       state.config = config;
       saveCachedConfig(config);
+      loadCustomFont(config.fontFamily);
       renderWidget();
       handshake();
     });
@@ -182,14 +228,13 @@
   }
 
   function renderWidget(){
-    var primary = (state.config && state.config.primaryColor) || "#4A2C2A";
     var host = document.createElement("div");
     host.id = "doctrinally-embed-host";
     host.style.cssText = "all: revert;";
     var shadow = host.attachShadow({ mode: "open" });
 
     var style = document.createElement("style");
-    style.textContent = widgetCss(primary, IS_LEFT);
+    style.textContent = widgetCss(state.config, IS_LEFT);
     shadow.appendChild(style);
 
     var root = document.createElement("div");
@@ -205,6 +250,16 @@
     // Header
     var header = document.createElement("div");
     header.className = "dai-header";
+    if (state.config && state.config.logoUrl) {
+      var logo = document.createElement("img");
+      logo.className = "dai-logo";
+      logo.src = state.config.logoUrl;
+      logo.alt = (state.config && state.config.churchName) || "";
+      logo.loading = "lazy";
+      logo.decoding = "async";
+      logo.onerror = function(){ logo.style.display = "none"; };
+      header.appendChild(logo);
+    }
     var title = document.createElement("div");
     title.className = "dai-title";
     title.textContent = (state.config && state.config.churchName) || "Chat";
@@ -338,10 +393,13 @@
   // ──────────────────────────────────────────────────────────────
   // Session handshake
   // ──────────────────────────────────────────────────────────────
-  // No message rehydration — if the visitor has talked to us before,
-  // the server holds a conversation summary and will inject it into
-  // the LLM's prompt on the next turn. The UI starts empty every
-  // page load (cleaner, faster, no stale context confusing visitors).
+  // Returning visitors get their prior conversation restored into the
+  // panel from the server's `previousMessages` payload (last ~30
+  // messages for the chat). Restored messages are DOM-only — they are
+  // NOT pushed into thisVisitMessages, so the chat endpoint's request
+  // body still only carries this-visit turns. Server-side, the LLM
+  // gets continuity from the running conversation summary for any
+  // history beyond the 30-message restore cap.
   function handshake(){
     var payload = {
       token: state.token,
@@ -368,6 +426,15 @@
       }
       if (data.config) {
         saveCachedConfig(data.config);
+      }
+      if (data.previousMessages && data.previousMessages.length) {
+        for (var i = 0; i < data.previousMessages.length; i++) {
+          var pm = data.previousMessages[i];
+          try {
+            renderMessage(pm.role, pm.content, pm.citations || null);
+          } catch (_) { /* skip a single bad row, never break the panel */ }
+        }
+        scrollToBottom();
       }
     }).catch(function(){ /* silent */ });
   }
@@ -1058,16 +1125,47 @@
   // ──────────────────────────────────────────────────────────────
   // CSS
   // ──────────────────────────────────────────────────────────────
-  function widgetCss(primary, isLeft){
-    // Color tokens approximating member chat's OKLCH palette in sRGB.
-    var bg = "#fbf9f5";          // panel background (warm off-white)
-    var card = "#ffffff";        // assistant bubble background
-    var fg = "#3a302a";          // body text
-    var muted = "#7c6e62";       // secondary text
-    var border = "#e8e2d8";      // dividers
+  function widgetCss(config, isLeft){
+    var c = config || {};
+    // Color tokens. Defaults approximate member chat's OKLCH palette in
+    // sRGB; admin-set values from the church's branding override them.
+    var primary = c.primaryColor || "#4A2C2A";
+    var bg = c.backgroundColor || "#fbf9f5";
+    var fg = c.textColor || "#3a302a";
+    // When the admin set a custom background, bubbles inherit it so the
+    // whole panel reads as one surface. Otherwise keep the default warm
+    // white so unbranded widgets retain visual hierarchy.
+    var card = c.backgroundColor ? bg : "#ffffff";
+    // muted/border are derived from bg+fg via color-mix() when the admin
+    // configured a custom palette — mirrors src/app/(chat)/layout.tsx
+    // lines 112-120. Fall back to hardcoded defaults otherwise so plain
+    // Standard widgets don't depend on color-mix() support.
+    var hasCustomPalette = !!(c.backgroundColor && c.textColor);
+    var muted = hasCustomPalette
+      ? "color-mix(in srgb, " + fg + " 60%, " + bg + ")"
+      : "#7c6e62";
+    var border = hasCustomPalette
+      ? "color-mix(in srgb, " + fg + " 12%, " + bg + ")"
+      : "#e8e2d8";
+
+    // Font stacks. If admin selected a custom font, use it for both
+    // body and headings (same approach as the member chat — see
+    // src/app/(chat)/layout.tsx:159). If they kept the default
+    // 'source-serif', body stays Source Serif 4 and headings stay
+    // Playfair Display, matching the historical widget look.
+    var hasCustomFont = !!(c.fontFamily && c.fontFamily !== "source-serif" && FONT_CSS_MAP[c.fontFamily]);
+    var bodyFont = hasCustomFont ? FONT_CSS_MAP[c.fontFamily] : DEFAULT_BODY_FONT;
+    var headingFont = hasCustomFont ? FONT_CSS_MAP[c.fontFamily] : DEFAULT_HEADING_FONT;
+
+    // Logo size. Cap at 28px so a configured 56px logoHeight from the
+    // member chat doesn't overflow the ~50px-tall widget header.
+    var logoH = parseInt(c.logoHeight, 10);
+    if (!logoH || isNaN(logoH)) logoH = 28;
+    if (logoH > 28) logoH = 28;
+
     return [
       ":host { all: initial; }",
-      ":host, * { box-sizing: border-box; font-family: 'Source Serif 4', ui-serif, Georgia, 'Times New Roman', serif; }",
+      ":host, * { box-sizing: border-box; font-family: " + bodyFont + "; }",
       ".dai-root { position: fixed; bottom: 20px; z-index: 2147483000; " + (isLeft ? "left: 20px;" : "right: 20px;") + " }",
       ".dai-launcher { all: initial; box-sizing: border-box; width: 60px; height: 60px; border-radius: 999px; background: " + primary + "; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 24px rgba(0,0,0,0.22); border: 0; position: relative; transition: transform 150ms ease; }",
       ".dai-launcher:hover { transform: scale(1.05); }",
@@ -1075,9 +1173,10 @@
       ".dai-unread { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; border-radius: 999px; background: #ef4444; border: 2px solid #fff; }",
       ".dai-panel { position: absolute; bottom: 80px; " + (isLeft ? "left: 0;" : "right: 0;") + " width: min(400px, calc(100vw - 40px)); height: min(600px, calc(100vh - 120px)); background: " + bg + "; border-radius: 16px; box-shadow: 0 20px 48px rgba(0,0,0,0.25); overflow: hidden; opacity: 0; transform: translateY(16px) scale(0.98); transform-origin: bottom " + (isLeft ? "left" : "right") + "; transition: opacity 180ms ease, transform 180ms ease; pointer-events: none; display: flex; flex-direction: column; color: " + fg + "; }",
       ".dai-panel.dai-open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }",
-      ".dai-header { background: " + primary + "; color: #fff; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }",
-      ".dai-title { font-family: 'Playfair Display', ui-serif, Georgia, serif; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }",
-      ".dai-close { all: initial; cursor: pointer; color: #fff; padding: 4px; display: flex; }",
+      ".dai-header { background: " + primary + "; color: #fff; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-shrink: 0; }",
+      ".dai-logo { height: " + logoH + "px; max-width: 140px; object-fit: contain; border-radius: 4px; flex-shrink: 0; }",
+      ".dai-title { font-family: " + headingFont + "; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+      ".dai-close { all: initial; cursor: pointer; color: #fff; padding: 4px; display: flex; flex-shrink: 0; }",
       ".dai-close svg { width: 18px; height: 18px; }",
       ".dai-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: " + bg + "; }",
       ".dai-msg { display: flex; }",
@@ -1104,7 +1203,7 @@
       ".dai-bubble pre code { background: transparent; padding: 0; }",
       ".dai-bubble a { color: " + primary + "; text-decoration: underline; text-decoration-color: " + primary + "55; text-underline-offset: 2px; }",
       ".dai-bubble a:hover { text-decoration-color: " + primary + "; }",
-      ".dai-bubble h1, .dai-bubble h2, .dai-bubble h3 { font-family: 'Playfair Display', ui-serif, Georgia, serif; font-weight: 600; margin: 0 0 8px 0; line-height: 1.3; }",
+      ".dai-bubble h1, .dai-bubble h2, .dai-bubble h3 { font-family: " + headingFont + "; font-weight: 600; margin: 0 0 8px 0; line-height: 1.3; }",
       ".dai-bubble h1 { font-size: 18px; }",
       ".dai-bubble h2 { font-size: 17px; }",
       ".dai-bubble h3 { font-size: 16px; }",
@@ -1145,7 +1244,7 @@
       // Composer textarea: line-height pinned to 24px and vertical
       // padding to 8px so 1 line == 40px and 3 lines == 88px exactly.
       // The auto-grow JS in onInput keeps the height between those.
-      ".dai-input { all: initial; flex: 1; box-sizing: border-box; background: " + card + "; border: 1px solid " + border + "; border-radius: 10px; padding: 8px 14px; font-family: 'Source Serif 4', ui-serif, Georgia, serif; font-size: 15px; line-height: 24px; height: 40px; min-height: 40px; max-height: 88px; overflow-y: auto; resize: none; color: " + fg + "; display: block; width: 100%; }",
+      ".dai-input { all: initial; flex: 1; box-sizing: border-box; background: " + card + "; border: 1px solid " + border + "; border-radius: 10px; padding: 8px 14px; font-family: " + bodyFont + "; font-size: 15px; line-height: 24px; height: 40px; min-height: 40px; max-height: 88px; overflow-y: auto; resize: none; color: " + fg + "; display: block; width: 100%; }",
       ".dai-input:focus { outline: 2px solid " + primary + "33; border-color: " + primary + "; }",
       ".dai-submit { all: initial; cursor: pointer; background: " + primary + "; color: #fff; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; align-self: flex-end; }",
       ".dai-submit:disabled { opacity: 0.4; cursor: default; }",

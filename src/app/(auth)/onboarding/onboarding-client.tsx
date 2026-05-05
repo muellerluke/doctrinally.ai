@@ -183,19 +183,11 @@ export function OnboardingClient({
 
   function handleNextFromWebsite() {
     setErrors({});
-    if (websiteDomain.trim().length > 0) {
-      const parsed = websiteDomainSchema.safeParse(websiteDomain);
-      if (!parsed.success) {
-        setErrors({ websiteDomain: parsed.error.issues[0].message });
-        return;
-      }
+    const parsed = websiteDomainSchema.safeParse(websiteDomain);
+    if (!parsed.success) {
+      setErrors({ websiteDomain: parsed.error.issues[0].message });
+      return;
     }
-    setStep(3);
-  }
-
-  function skipWebsite() {
-    setErrors({});
-    setWebsiteDomain("");
     setStep(3);
   }
 
@@ -321,7 +313,7 @@ export function OnboardingClient({
     : [
         { label: "Create your account", description: "Done" },
         { label: "Name your church", description: "Pick a URL" },
-        { label: "Connect your website", description: "Optional" },
+        { label: "Connect your website", description: "Required" },
         { label: "YouTube channel", description: "Optional" },
         { label: "Pick a plan", description: "14 days free" },
       ];
@@ -470,39 +462,29 @@ export function OnboardingClient({
             </div>
 
             <div className="rounded-md border border-primary/15 bg-primary/[0.04] p-3 text-xs leading-relaxed text-muted-foreground">
-              We&apos;ll crawl your site each month so the AI can answer
-              questions from your existing site content. You control which
-              pages get included from settings.
+              We&apos;ll crawl your site after checkout so the AI can answer
+              questions from your existing site content, then refresh it each
+              month. You control which pages get included from settings.
             </div>
 
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2">
               <Button
-                variant="ghost"
-                onClick={skipWebsite}
+                variant="outline"
+                onClick={() => setStep(1)}
                 disabled={loading}
                 className="h-11"
               >
-                Skip for now
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
               </Button>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(1)}
-                  disabled={loading}
-                  className="h-11"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  className="h-11 font-semibold"
-                  onClick={handleNextFromWebsite}
-                  disabled={loading}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+              <Button
+                className="h-11 font-semibold"
+                onClick={handleNextFromWebsite}
+                disabled={loading}
+              >
+                Continue
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>

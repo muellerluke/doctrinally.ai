@@ -39,6 +39,7 @@ describe("onboardingSchema", () => {
         name: "A",
         slug: "a-b",
         plan: "free",
+        websiteDomain: "mychurch.com",
       }).success
     ).toBe(false);
     expect(
@@ -46,6 +47,33 @@ describe("onboardingSchema", () => {
         name: "AB",
         slug: "a-b",
         plan: "enterprise",
+        websiteDomain: "mychurch.com",
+      }).success
+    ).toBe(true);
+  });
+
+  it("requires a website domain", () => {
+    expect(
+      onboardingSchema.safeParse({
+        name: "AB",
+        slug: "a-b",
+        plan: "enterprise",
+      }).success
+    ).toBe(false);
+    expect(
+      onboardingSchema.safeParse({
+        name: "AB",
+        slug: "a-b",
+        plan: "enterprise",
+        websiteDomain: "",
+      }).success
+    ).toBe(false);
+    expect(
+      onboardingSchema.safeParse({
+        name: "AB",
+        slug: "a-b",
+        plan: "enterprise",
+        websiteDomain: "https://mychurch.com",
       }).success
     ).toBe(true);
   });

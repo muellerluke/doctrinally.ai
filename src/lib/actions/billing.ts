@@ -133,7 +133,19 @@ export async function verifyCheckoutSession(sessionId: string) {
     }
   }
 
-  return { success: true };
+  // Hand the success page everything it needs to render the post-checkout
+  // install-snippet step in one round-trip.
+  const [snippetChurch] = await db
+    .select({ embedPublicKey: churches.embedPublicKey })
+    .from(churches)
+    .where(eq(churches.id, churchId))
+    .limit(1);
+
+  return {
+    success: true as const,
+    embedPublicKey: snippetChurch?.embedPublicKey ?? null,
+    embedScriptUrl: process.env.NEXT_PUBLIC_EMBED_SCRIPT_URL ?? "",
+  };
 }
 
 export async function createBillingPortalSession() {

@@ -7,14 +7,12 @@ import {
   Copy,
   Check,
   Loader2,
-  Lock,
   RefreshCw,
   ShieldAlert,
   Sparkles,
   Globe,
 } from "lucide-react";
 import { toast } from "sonner";
-import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -23,7 +21,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
   generateEmbedPublicKey,
@@ -32,7 +29,6 @@ import {
 } from "@/lib/actions/embed";
 
 interface Props {
-  isEnterprise: boolean;
   initial: {
     embedPublicKey: string | null;
     embedEnabled: boolean;
@@ -44,7 +40,6 @@ interface Props {
 }
 
 export function EmbedWidgetForm({
-  isEnterprise,
   initial,
   allowedOrigins,
   embedScriptUrl,
@@ -58,39 +53,6 @@ export function EmbedWidgetForm({
 
   const [proactive, setProactive] = useState(initial.proactiveOutreachEnabled);
   const [savingOutreach, setSavingOutreach] = useState(false);
-
-  if (!isEnterprise) {
-    return (
-      <Card className="border-dashed">
-        <CardHeader className="flex-row items-center gap-3 space-y-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/10">
-            <Lock className="h-5 w-5 text-gold" />
-          </div>
-          <div>
-            <CardTitle className="text-lg">
-              Embeddable chat widget
-              <Badge
-                variant="secondary"
-                className="ml-2 border border-gold/40 bg-gold/10 text-[10px] font-semibold uppercase tracking-wider text-gold"
-              >
-                Enterprise
-              </Badge>
-            </CardTitle>
-            <CardDescription>
-              Drop a floating chat bubble onto your own church website. Your
-              members ask questions right from your homepage — same docs,
-              same branding, same AI.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Button render={<Link href="/billing" />}>
-            Upgrade to Enterprise
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const scriptSnippet = embedPublicKey && embedScriptUrl
     ? `<script src="${embedScriptUrl}" data-church-key="${embedPublicKey}" async></script>`

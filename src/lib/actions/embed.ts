@@ -10,7 +10,7 @@ import {
 } from "@/db/schema";
 import { authOptions } from "@/lib/auth";
 import { getActiveMembershipForUser } from "@/lib/active-church";
-import { canUseEmbedWidget } from "@/lib/plan-gating";
+import { canUseCustomBranding, canUseEmbedWidget } from "@/lib/plan-gating";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { generateEmbedKey } from "@/lib/embed/key";
 
@@ -165,6 +165,11 @@ export async function resolvePublicEmbedConfig(key: string): Promise<
       appUrl: string;
       primaryColor: string | null;
       accentColor: string | null;
+      backgroundColor: string | null;
+      textColor: string | null;
+      logoUrl: string | null;
+      logoHeight: string | null;
+      fontFamily: string | null;
       churchName: string;
     }
   | null
@@ -179,6 +184,11 @@ export async function resolvePublicEmbedConfig(key: string): Promise<
       isActive: churches.isActive,
       primaryColor: churches.primaryColor,
       accentColor: churches.accentColor,
+      backgroundColor: churches.backgroundColor,
+      textColor: churches.textColor,
+      logoUrl: churches.logoUrl,
+      logoHeight: churches.logoHeight,
+      fontFamily: churches.fontFamily,
       plan: subscriptions.plan,
       subStatus: subscriptions.status,
     })
@@ -200,10 +210,20 @@ export async function resolvePublicEmbedConfig(key: string): Promise<
   // church's public site beyond the widget disappearing.
   if (!(await isFeatureEnabled(church.id, "embedded_chat"))) return null;
 
+  // Custom branding (logo, fonts, full color palette) is Enterprise-only,
+  // matching the member chat. Standard plans get back primary/accent only,
+  // so the widget falls through to its hardcoded defaults for the rest.
+  const canBrand = canUseCustomBranding(church.plan);
+
   return {
     appUrl: process.env.NEXT_PUBLIC_APP_URL || "",
     primaryColor: church.primaryColor,
     accentColor: church.accentColor,
+    backgroundColor: canBrand ? church.backgroundColor : null,
+    textColor: canBrand ? church.textColor : null,
+    logoUrl: canBrand ? church.logoUrl : null,
+    logoHeight: canBrand ? church.logoHeight : null,
+    fontFamily: canBrand ? church.fontFamily : null,
     churchName: church.name,
   };
 }

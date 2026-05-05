@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { createHash } from "crypto";
 import { db } from "@/db";
 import {
   chats,
   embedWidgetSessions,
   churches,
+  messages,
 } from "@/db/schema";
 import { resolvePublicEmbedConfig } from "@/lib/actions/embed";
 import {
@@ -151,21 +152,48 @@ export async function POST(request: Request) {
           // Treat as if no token: fall through to mint a new
           // session (which then has to clear the daily IP cap).
         } else {
-          // Summary-only rehydrate: returning visitors get a fresh
-          // UI but the server still holds the running conversation
-          // summary and injects it into the LLM's context on the
-          // next turn. The IP table already updated above.
-          await db
-            .update(embedWidgetSessions)
-            .set({
-              lastSeenAt: new Date(),
-              metadata: {
-                ...(session.metadata ?? {}),
-                lastPageUrl: body.pageUrl,
-                lastPageTitle: body.pageTitle,
-              },
-            })
-            .where(eq(embedWidgetSessions.id, session.id));
+          // Returning-visitor rehydrate: pull the last ~30 messages
+          // for this chat so the widget can restore the conversation
+          // panel. Server still holds the running conversation summary
+          // for context beyond the 30-message window. Run the session
+          // update and the message fetch in parallel — keeps rehydrate
+          // latency flat. Filter `system` at the SQL level (defense in
+          // depth — the enum permits it but nothing should be writing
+          // it for embed chats today).
+          const [, recentMessages] = await Promise.all([
+            db
+              .update(embedWidgetSessions)
+              .set({
+                lastSeenAt: new Date(),
+                metadata: {
+                  ...(session.metadata ?? {}),
+                  lastPageUrl: body.pageUrl,
+                  lastPageTitle: body.pageTitle,
+                },
+              })
+              .where(eq(embedWidgetSessions.id, session.id)),
+            db
+              .select({
+                role: messages.role,
+                content: messages.content,
+                citations: messages.citations,
+              })
+              .from(messages)
+              .where(
+                and(
+                  eq(messages.chatId, session.chatId),
+                  inArray(messages.role, ["user", "assistant"])
+                )
+              )
+              .orderBy(desc(messages.createdAt))
+              .limit(30),
+          ]);
+
+          // desc + reverse lets the index seek backward (cheap when a
+          // chat ever exceeds 30 rows). Drop empty content rows defensively.
+          const previousMessages = recentMessages
+            .filter((m) => m.content && m.content.trim().length > 0)
+            .reverse();
 
           return NextResponse.json(
             {
@@ -175,6 +203,7 @@ export async function POST(request: Request) {
               outreachSent: !!session.outreachSentAt,
               prospectCaptured: !!session.prospectId,
               hasHistory: !!session.conversationSummary,
+              previousMessages,
               config: {
                 churchName: config.churchName,
                 primaryColor: config.primaryColor,
@@ -278,6 +307,7 @@ export async function POST(request: Request) {
       outreachSent: false,
       prospectCaptured: false,
       hasHistory: false,
+      previousMessages: [],
       config: {
         churchName: config.churchName,
         primaryColor: config.primaryColor,

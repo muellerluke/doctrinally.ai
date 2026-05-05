@@ -10,7 +10,6 @@ import { requireMembership } from "@/lib/auth-guards";
 import {
   canUseCustomBranding,
   canUseYouTubeSync,
-  isEmbeddedChatAvailable,
 } from "@/lib/plan-gating";
 import { PageHeader } from "@/components/shared/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,12 +32,6 @@ export default async function SettingsPage() {
 
   const isEnterprise = sub ? canUseCustomBranding(sub.plan) : false;
   const canYouTubeSync = sub ? canUseYouTubeSync(sub.plan) : false;
-  // Combined plan + flag gate. Returning false hides the Website Chat
-  // tab content behind the upgrade CTA even on Enterprise if the flag
-  // is off — keeps admin-side settings in sync with what visitors see.
-  const canEmbed = sub
-    ? await isEmbeddedChatAvailable(church.id, sub.plan)
-    : false;
   const isOwner = membership.role === "owner";
 
   const sync = await db.query.youtubeChannelSyncs.findFirst({
@@ -162,7 +155,6 @@ export default async function SettingsPage() {
 
         <TabsContent value="embedded-ai" className="mt-6">
           <EmbedWidgetForm
-            isEnterprise={canEmbed}
             initial={{
               embedPublicKey: church.embedPublicKey,
               embedEnabled: church.embedEnabled,
