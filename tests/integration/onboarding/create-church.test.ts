@@ -18,6 +18,13 @@ vi.mock("@/lib/stripe", () => ({
   ),
 }));
 
+// Stub trigger.dev so the fire-and-forget `extract-website-branding` task
+// the action enqueues after a successful insert doesn't reach for a real
+// API key during tests.
+vi.mock("@trigger.dev/sdk/v3", () => ({
+  tasks: { trigger: vi.fn() },
+}));
+
 // Import AFTER mocks are declared so @/db, next-auth, stripe all resolve to
 // the mocked versions.
 const { createChurch } = await import("@/lib/actions/onboarding");
@@ -42,6 +49,7 @@ describe("createChurch", () => {
       name: "North Cross Church",
       slug: "north-cross",
       plan: "enterprise",
+      websiteDomain: "northcross.church",
     });
 
     expect(result).toMatchObject({
@@ -106,7 +114,11 @@ describe("createChurch", () => {
       user: { id: user.id, email: user.email, name: user.name },
     };
 
-    await createChurch({ name: "Small Church", plan: "standard" });
+    await createChurch({
+      name: "Small Church",
+      plan: "standard",
+      websiteDomain: "smallchurch.org",
+    });
 
     const db = getTestDb();
     const subs = await db.query.subscriptions.findMany();
@@ -121,11 +133,17 @@ describe("createChurch", () => {
       user: { id: user.id, email: user.email, name: user.name },
     };
 
-    await createChurch({ name: "First Church", slug: "same-slug", plan: "standard" });
+    await createChurch({
+      name: "First Church",
+      slug: "same-slug",
+      plan: "standard",
+      websiteDomain: "firstchurch.org",
+    });
     const result = await createChurch({
       name: "Second Church",
       slug: "same-slug",
       plan: "standard",
+      websiteDomain: "secondchurch.org",
     });
     expect(result).toMatchObject({
       error: expect.stringContaining("already taken"),

@@ -47,6 +47,13 @@ vi.mock("@/lib/stripe", async () => {
   };
 });
 
+// Stub trigger.dev so the fire-and-forget `extract-website-branding` task
+// the action enqueues after a successful insert doesn't reach for a real
+// API key during tests.
+vi.mock("@trigger.dev/sdk/v3", () => ({
+  tasks: { trigger: vi.fn() },
+}));
+
 // Lazy imports so the mocks above apply before these modules load.
 const { signUp } = await import("@/lib/actions/auth");
 const { createChurch } = await import("@/lib/actions/onboarding");
@@ -82,6 +89,7 @@ describe("Full onboarding journey (flagship)", () => {
       name: "North Cross Church",
       slug: "north-cross",
       plan: "enterprise",
+      websiteDomain: "northcross.church",
     });
     expect(churchResult).toMatchObject({
       success: true,
